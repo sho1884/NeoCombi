@@ -113,6 +113,8 @@ NeoCEG と同じく：
 
 ## Security
 
+> セキュリティ要件のレベルは兄弟プロジェクト（NeoCEG / ModelLogue）と統一する。
+
 ### Policy
 
 - Follow OWASP Top 10 (latest version) guidelines
@@ -122,16 +124,25 @@ NeoCEG と同じく：
 - **Never use `eval()` or `Function()` with user input**
 - **Never use `dangerouslySetInnerHTML` with user input**
 - Validate all DSL input through parser (no direct execution)
-- 外部 PICT 呼び出し時は引数のサニタイズに注意（コマンドインジェクション防止）
+- Sanitize factor / level / expected-value strings before rendering
+- 外部 PICT 呼び出し時は引数のサニタイズに注意（コマンドインジェクション防止）。`spawnSync` の引数配列で渡し、シェル経由はしない
+- Keep dependencies updated (`npm audit`)
+
+### Vercel Best Practices
+
+- Security headers configured in `vercel.json`（CSP / X-Frame-Options / Strict-Transport-Security / Referrer-Policy）
+- HTTPS enforced (automatic)
+- No secrets in code — use environment variables
 
 ### AI-Generated Code Risks
 
 When using AI assistance for code generation:
-- **Verify all suggested dependencies** before installing
+- **Verify all suggested dependencies** before installing (check npm registry, GitHub stars, last update date)
 - **Never blindly trust AI-suggested URLs or external resources**
-- **Review generated code for injection vulnerabilities**
-- **Check for supply chain attacks**
-- Be aware of **prompt injection** in any user input that may be processed by AI
+- **Review generated code for injection vulnerabilities** (eval, innerHTML, SQL, shell commands, command injection in spawn args)
+- **Check for supply chain attacks** — verify package names are spelled correctly (typosquatting)
+- **Validate security-sensitive logic** — auth, authorization, file I/O paths, PICT argument construction
+- Be aware of **prompt injection** in any user input that may be processed by AI (low risk in MVP since AI is OFF by default; revisit when UR-007 lands)
 
 ## Licensing
 
@@ -142,11 +153,28 @@ When using AI assistance for code generation:
 
 ### Dependency License Policy
 
-**CRITICAL**: Before adding any new dependency:
-1. **Check the license** - Only MIT, Apache-2.0, BSD, ISC, or similarly permissive licenses
-2. **Avoid GPL/LGPL/AGPL** - These are NOT compatible with MIT for this project
-3. **Record in requirements spec** - All dependencies must be listed in `Doc/requirements/system_requirements.yaml`
-4. **Verify package authenticity** - Check npm registry, GitHub stars, last update date
+**CRITICAL**: Before adding any new dependency (direct or transitive):
+1. **Check the license** — Only MIT, Apache-2.0, BSD-2-Clause / BSD-3-Clause, ISC, BlueOak-1.0.0, or similarly permissive licenses
+2. **Avoid GPL/LGPL/AGPL** — These are NOT compatible with MIT for this project
+3. **Run `npx license-checker --summary`** after install to verify the full transitive set
+4. **Verify package authenticity** — Check npm registry, GitHub stars, last update date (typosquatting defense)
+5. **Record in requirements spec** — Dependencies of consequence are listed in `Doc/requirements/system_requirements.yaml`
+
+### Prohibited
+
+- GPL / LGPL / AGPL licensed code（コピーレフト感染）
+- Code copied from Stack Overflow or other sources without license verification
+- Proprietary or unclear-license packages
+- Dependencies with missing or "UNLICENSED" license fields (private packages excepted)
+
+### Vetted Non-Standard License Exceptions
+
+These transitive deps surface non-typical licenses but are vetted as MIT-compatible / acceptable:
+
+| Package | License | Reason |
+|---------|---------|--------|
+| `argparse` | Python-2.0 | OSI-approved permissive license, MIT-compatible |
+| `caniuse-lite` | CC-BY-4.0 | Build-time browser-compat data; not redistributed in bundle |
 
 ### External Tool Dependency
 
