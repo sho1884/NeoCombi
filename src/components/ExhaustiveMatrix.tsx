@@ -51,8 +51,11 @@ export function ExhaustiveMatrix() {
     )
   }
 
+  const stats = computeStats(visibleFactors, occurrenceMap, forbiddenMap)
+
   return (
     <div className="matrix">
+      <CoverageSummary stats={stats} hasTestSuite={testSuite !== null} />
       <table className="matrix__table" role="grid">
         <thead>
           <tr>
@@ -169,6 +172,103 @@ export function ExhaustiveMatrix() {
           )}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+// =============================================================================
+// Coverage summary band: legend + counts so users can read the colors and
+// see at a glance how much of the pair space is covered (SR-040 / SR-042 /
+// SR-043). Without an imported test suite the summary still shows total
+// pair count and forbidden count derived from the DSL alone.
+// =============================================================================
+
+type Stats = {
+  totalPairs: number
+  forbiddenPairs: number
+  coveredPairs: number
+  missedPairs: number
+  /** covered / (total - forbidden); null when denominator is 0 */
+  coverageRate: number | null
+}
+
+function computeStats(
+  visibleFactors: ParameterDecl[],
+  occurrenceMap: OccurrenceMap | null,
+  forbiddenMap: ForbiddenMap | null,
+): Stats {
+  let total = 0
+  let forbidden = 0
+  let covered = 0
+  for (let i = 0; i < visibleFactors.length; i++) {
+    for (let j = i + 1; j < visibleFactors.length; j++) {
+      const a = visibleFactors[i]!
+      const b = visibleFactors[j]!
+      for (const al of a.levels) {
+        for (const bl of b.levels) {
+          total++
+          const va = String(al.value)
+          const vb = String(bl.value)
+          const isF = forbiddenMap
+            ? isForbidden(forbiddenMap, a.name, va, b.name, vb)
+            : false
+          if (isF) {
+            forbidden++
+            continue
+          }
+          if (occurrenceMap) {
+            const occ = occurrenceCount(occurrenceMap, a.name, va, b.name, vb)
+            if (occ > 0) covered++
+          }
+        }
+      }
+    }
+  }
+  const missed = Math.max(0, total - forbidden - covered)
+  const denom = total - forbidden
+  const rate = denom > 0 ? covered / denom : null
+  return {
+    totalPairs: total,
+    forbiddenPairs: forbidden,
+    coveredPairs: covered,
+    missedPairs: missed,
+    coverageRate: rate,
+  }
+}
+
+type CoverageSummaryProps = {
+  stats: Stats
+  hasTestSuite: boolean
+}
+
+function CoverageSummary({ stats, hasTestSuite }: CoverageSummaryProps) {
+  const ratePct = stats.coverageRate === null
+    ? null
+    : Math.round(stats.coverageRate * 1000) / 10
+  return (
+    <div className="matrix__summary" role="status">
+      <span className="matrix__legend matrix__legend--covered">
+        <span className="matrix__legend-swatch" /> covered: {hasTestSuite ? stats.coveredPairs : '—'}
+      </span>
+      <span className="matrix__legend matrix__legend--missed">
+        <span className="matrix__legend-swatch" /> missed: {hasTestSuite ? stats.missedPairs : '—'}
+      </span>
+      <span className="matrix__legend matrix__legend--forbidden">
+        <span className="matrix__legend-swatch" /> forbidden: {stats.forbiddenPairs}
+      </span>
+      <span className="matrix__summary-total">
+        total pairs: {stats.totalPairs}
+      </span>
+      {hasTestSuite && ratePct !== null && (
+        <span className="matrix__summary-rate">
+          coverage: {ratePct}%
+        </span>
+      )}
+      {!hasTestSuite && (
+        <span className="matrix__summary-hint">
+          Import test cases to populate the coverage / missed columns.
+        </span>
+      )}
     </div>
   )
 }
