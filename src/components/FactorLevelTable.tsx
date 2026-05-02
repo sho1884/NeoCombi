@@ -16,7 +16,12 @@ declare global {
 }
 
 export function FactorLevelTable() {
-  const model = useProjectStore(s => s.parseResult.model)
+  // Subscribe to parseResult itself, then read .model. Zustand's default
+  // referential equality compares the SELECTED value; pulling the parseResult
+  // (which is replaced wholesale on every setSource) guarantees a re-render
+  // even if some future refactor accidentally returns a structurally-shared
+  // model object from the parser.
+  const parseResult = useProjectStore(s => s.parseResult)
   const factorVisibility = useProjectStore(s => s.view.factorVisibility)
   const setFactorVisibility = useProjectStore(s => s.setFactorVisibility)
   const renameFactor = useProjectStore(s => s.renameFactor)
@@ -32,6 +37,7 @@ export function FactorLevelTable() {
 
   const [dragOverFactorIdx, setDragOverFactorIdx] = useState<number | null>(null)
 
+  const model = parseResult.model
   const factors = model?.parameters ?? []
 
   return (
