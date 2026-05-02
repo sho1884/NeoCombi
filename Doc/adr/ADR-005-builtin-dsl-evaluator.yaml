@@ -1,0 +1,59 @@
+id: ADR-005
+title: "DSL 評価器を内製し、禁則ビューを PICT 非依存で計算する"
+date: "2026-05-02"
+status: proposed
+superseded_by: null
+
+participants:
+  author: "sho1884"
+  approver: "sho1884"
+  last_updated: "2026-05-02"
+
+context:
+  problem: |
+    禁則の参照ビュー（多項間禁則表）の計算をどこで行うか。候補は (a) PICT に DSL を渡して
+    結果を逆算、(b) NeoCombi 自身が DSL 評価器を実装、の 2 つ。前者は PICT のプロセス起動・
+    ファイル I/O が編集ごとに発生し、レスポンス性が悪く、PICT 結果の挙動変動にも依存する。
+  drivers:
+    - "DSL 編集中の即時フィードバック（リアルタイム禁則可視化）"
+    - "決定論性：PICT 結果の挙動差に依存しない"
+    - "DSL は intensional form、禁則表は extensional form という関係を素直に表現したい"
+
+decision:
+  summary: "DSL の semantic evaluator を NeoCombi 自身に実装し、禁則表は内製評価器のみで計算する"
+  detail: |
+    NeoCombi は DSL parser に加え、AST を評価する semantic evaluator を持つ。ユーザが N（>=2）と
+    「条件因子 N-1 個 + 被制約因子 1 個」のスライスを選ぶと、評価器がスライス内の全水準組合せを
+    列挙し、各組合せに対し DSL の制約を評価して禁則 / 許可を判定する（SR-030..031）。
+    PICT は呼び出さない。対応構文は MVP の DSL サブセット（ADR-001）と一致：=, <>, >, >=, <, <=,
+    AND/OR/NOT, IF/THEN/ELSE, IN { }。LIKE / submodel / weight / negative value は対象外。
+    一方、テストケース生成は引き続き PICT が担う（ADR-002）。つまり「DSL → 禁則表」は内製、
+    「DSL → テストケース」は PICT、という二経路。
+
+neglected:
+  - option: "PICT に DSL を渡し、結果を逆算して 2D マトリクスに表示"
+    because: "編集ごとの PICT 起動はレイテンシが大きく、即時フィードバックにならない。また PICT 結果の挙動変動に依存する非決定論性が生じる"
+  - option: "禁則ビューを提供せず、ユーザが PICT 出力を見て手作業確認"
+    because: "PICT-PAPP からの主要モダナイズポイントが失われる。HAYST 規模で破綻"
+  - option: "PICT BNF 全構文を評価器対応"
+    because: "MVP の実装スコープを超える。LIKE は特に重い"
+
+consequences:
+  positive:
+    - "編集中のリアルタイム禁則可視化が可能"
+    - "決定論的（同じ DSL → 同じ禁則集合）"
+    - "PICT の挙動変動から本ビューが独立"
+  negative:
+    - "DSL parser に加えて evaluator を実装する追加コスト"
+    - "PICT との挙動一致をテストで担保する必要（同じ DSL → 同じ禁則）"
+  risks:
+    - "PICT が将来の version で意味論を微変更した場合、評価器との整合性検証が再び必要"
+    - "大規模因子（HAYST 100〜300 因子）でのスライス計算量が問題化する可能性 → 早期にプロファイリング"
+
+references:
+  - "Doc/PROJECT_KICKOFF.md §4 「NeoCombi 内製 DSL 評価器」"
+  - "Doc/requirements/user_requirements.yaml UR-003"
+  - "Doc/requirements/system_requirements.yaml SR-030..033"
+  - "ADR-001"
+  - "ADR-002"
+  - "ADR-007"

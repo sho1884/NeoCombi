@@ -1,0 +1,60 @@
+id: ADR-009
+title: "プロジェクトファイル拡張子を .tmodel とする"
+date: "2026-05-02"
+status: proposed
+superseded_by: null
+
+participants:
+  author: "sho1884"
+  approver: "sho1884"
+  last_updated: "2026-05-02"
+
+context:
+  problem: |
+    NeoCombi のプロジェクトファイル（DSL + 期待値 + ビュー状態を含む）の拡張子をどう決めるか。
+    候補として .ncombi, .combi, .pict, .pwise, .cit, .tmodel などが挙がった。当初提案の .ncombi
+    は (1) 長い、(2) 'n-' プレフィックスが否定接頭辞のように読めて 'combi（組合せ）を否定』と
+    解釈されうる、という指摘がユーザから入った。
+  drivers:
+    - "ファイル内容を意味論的に正確に表現する"
+    - "他フォーマットと衝突しない"
+    - "短く読みやすい"
+    - "肯定的・中立的な意味（否定読みを誘発しない）"
+
+decision:
+  summary: "プロジェクトファイル拡張子を .tmodel（test model）に決定する"
+  detail: |
+    ファイルが保持する内容は組合せ（テストケース）そのものではなく、組合せを導出する
+    因子・水準・制約関係の model である（テストケースは PICT が都度生成する派生物で
+    ファイルには記録されない、SR-070）。よって拡張子は組合せを示唆する `combi` 系では
+    意味論的に不正確であり、より忠実な表現として PICT 自身も使う "model" という語を採用する。
+    .tmodel（test model）は (1) 因子・水準・制約を記述する model という性格に忠実、
+    (2) PICT 文化圏で "model" が通用する語、(3) 否定読み・短すぎ・他フォーマット衝突なし、
+    という 3 点で選択した。
+
+neglected:
+  - option: ".ncombi"
+    because: "n + combi で『combi（組合せ）を否定』と読まれうる。長い"
+  - option: ".combi"
+    because: "ファイル内容は組合せそのものではなく、因子・水準・制約の model。意味論的に不正確"
+  - option: ".pict"
+    because: "Apple 旧画像形式 PICT との衝突。NeoCombi project file は raw PICT input より richer で誤解を招く"
+  - option: ".pwise"
+    because: "pairwise だけでなく N-wise も扱える。pairwise 由来は将来の意味的ズレを生む"
+  - option: ".cit"
+    because: "Combinatorial Interaction Testing の略として正確だが、英語圏で 'citation' と読まれる懸念"
+
+consequences:
+  positive:
+    - "意味論的に正確（組合せではなく model）"
+    - "PICT 用語と整合し、ユーザの語彙体系に乗る"
+    - "他フォーマットと衝突しない"
+  negative:
+    - "5 文字で短くはない（.cit などより 2 文字長い）"
+    - "test model という語は CT 業界外には馴染みが薄い"
+  risks:
+    - "将来 NeoCEG 側のファイル拡張子（現在 .nceg）との対称性が崩れる（NeoCEG が .cegmodel に揃える可能性は別判断）"
+
+references:
+  - "Doc/requirements/system_requirements.yaml SR-070..071"
+  - "ADR-008"

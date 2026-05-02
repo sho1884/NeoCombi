@@ -1,0 +1,58 @@
+id: ADR-004
+title: "CLI と GUI の二刀流（エンジン層を共有）"
+date: "2026-05-02"
+status: proposed
+superseded_by: null
+
+participants:
+  author: "sho1884"
+  approver: "sho1884"
+  last_updated: "2026-05-02"
+
+context:
+  problem: |
+    NeoCombi は個人 authoring 用の即時プレビュー機能と、CI/CD パイプラインからの決定論的
+    呼び出しの両方が必要。GUI のみ・CLI のみ・両方提供のいずれを取るか。PICT-PAPP は実質
+    Excel 限定で CI/CD 統合できなかった反省がある。
+  drivers:
+    - "対話的 authoring の体験は GUI が優位"
+    - "CI/CD パイプライン用途は GUI 不要、headless 必須"
+    - "実装コードベースを 1 つに保ちたい"
+    - "GUI / CLI 間で挙動ドリフトを起こさない"
+
+decision:
+  summary: "GUI と CLI の両方を提供。共通エンジン層（DSL parser / evaluator / PICT 連携）を共有する"
+  detail: |
+    NeoCombi をエンジン層 + GUI 層 + CLI 層の 3 レイヤで構築する。エンジン層は DSL parse、
+    内製評価器、PICT 連携、出力整形を担い、GUI / CLI のどちらからも同じインターフェースで
+    呼ばれる。CLI は GUI に依存せず headless 環境（CI ランナー）で起動可能（SR-082）。
+    GUI は React アプリとして配布、CLI は同じ TypeScript コードベースから別 entry point として
+    bundle する（NeoCEG と同じ構成、PROJECT_KICKOFF.md §7 / §8 のディレクトリ計画と一致）。
+    決定論的 exit code を CLI に持たせる（SR-081）。
+
+neglected:
+  - option: "GUI のみ提供（CLI は省略）"
+    because: "PICT-PAPP も実質 Excel 限定だった反省。CI/CD 統合できないと組織導入が困難"
+  - option: "CLI のみ提供"
+    because: "個人 authoring の UX が貧弱。HAYST 法の試行錯誤に向かない"
+  - option: "GUI と CLI を別コードベースで実装"
+    because: "DSL parser / evaluator の重複維持コスト、挙動ドリフトのリスク"
+
+consequences:
+  positive:
+    - "個人と CI/CD 両方のユースケースをカバー"
+    - "エンジン層の振る舞いが GUI / CLI 間で一致（決定論性の保証）"
+    - "CI で .tmodel をテスト・回帰検出できる"
+  negative:
+    - "ビルド構成が 2 つ（GUI / CLI）必要、tsconfig も分離"
+    - "依存関係を慎重に分離する必要（CLI が GUI 関連 dep を引き込むと headless で動かない）"
+  risks:
+    - "GUI と CLI で機能差が広がると、ユーザが混乱する可能性"
+    - "エンジン層の API 変更時、両 entry point を同時メンテする必要"
+
+references:
+  - "Doc/PROJECT_KICKOFF.md §6, §7, §8"
+  - "Doc/requirements/user_requirements.yaml UR-006"
+  - "Doc/requirements/system_requirements.yaml SR-080..082"
+  - "ADR-002"
+  - "ADR-005"

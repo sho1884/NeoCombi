@@ -1,0 +1,56 @@
+id: ADR-008
+title: "テストケース表に期待値カラムを持ち、再生成跨ぎで保持する"
+date: "2026-05-02"
+status: proposed
+superseded_by: null
+
+participants:
+  author: "sho1884"
+  approver: "sho1884"
+  last_updated: "2026-05-02"
+
+context:
+  problem: |
+    PICT が生成するテストケースには「入力組合せ」だけがあり、期待値（出力 / 判定基準）は含まれない。
+    実務では各テストケースに対して期待値を別途記入する必要がある。PICT-PAPP は期待値カラムを
+    持たず、ユーザは別シートで管理していた。一方 NeoCombi では DSL 編集 → PICT 再生成のサイクル
+    が頻繁に発生し、再生成のたびに期待値がリセットされると実用にならない。
+  drivers:
+    - "テストケースは『入力 + 期待値』が揃って実行可能になる"
+    - "DSL 編集 → 再生成サイクルでも期待値が失われない継続性が必要"
+    - "再生成時にテストケースが微変動する（行の順序や追加 / 削除）"
+
+decision:
+  summary: "テストケース表に期待値カラムを持ち、再生成跨ぎで stable id によって期待値を保持する"
+  detail: |
+    PICT 生成結果に期待値カラムを追加し、ユーザが各行に自由テキストで期待値を入力できる
+    （SR-051）。再生成時、各テストケース行を「factor / level の組み合わせ」をキーとした
+    stable id で識別し、再生成前後で同じ id の行の期待値を引き継ぐ（SR-052）。stable id は
+    表示名ではなく内部 id ベースで、factor / level が改名されても期待値が維持される。
+    新規行は期待値が空、削除された行の期待値は silently 破棄（undo で復元可能）。.tmodel
+    ファイルにも期待値を stable id 付きで保存する（SR-070）。CSV / JSON エクスポートにも
+    期待値カラムを含める（SR-053）。
+
+neglected:
+  - option: "期待値カラムを持たない（PICT-PAPP と同じ）"
+    because: "実務で必須機能、別シート / 別ツール管理は再生成と整合せず非実用"
+  - option: "再生成のたびに期待値をリセット"
+    because: "DSL 編集サイクルで期待値が失われ、ユーザが入力を躊躇する"
+  - option: "行番号で期待値を紐づけ"
+    because: "PICT 出力の行順は決定論だが、DSL 変更で行構成が変動する。行番号紐づけは fragile"
+
+consequences:
+  positive:
+    - "テストケースが入力 + 期待値の完全な単位として扱える"
+    - "DSL 編集サイクルが現実的に高速化（期待値が失われない）"
+    - "PICT-PAPP と比較した明確な機能向上"
+  negative:
+    - "stable id の生成・保持・migration 設計が必要"
+    - ".tmodel フォーマットが期待値分だけ複雑化"
+  risks:
+    - "factor / level の大規模変更時に stable id の解釈が曖昧になる可能性 → migration ルールを早期に策定"
+
+references:
+  - "Doc/requirements/user_requirements.yaml UR-005"
+  - "Doc/requirements/system_requirements.yaml SR-050..053, SR-070"
+  - "ADR-009"

@@ -1,0 +1,62 @@
+id: ADR-001
+title: "PICT BNF を最小サブセットとして mirror する"
+date: "2026-05-02"
+status: proposed
+superseded_by: null
+
+participants:
+  author: "sho1884"
+  approver: "sho1884"
+  last_updated: "2026-05-02"
+
+context:
+  problem: |
+    NeoCombi の制約 DSL の文法をどう設計するかの判断。候補は (a) PICT 制約言語をそのまま 1:1 で
+    mirror、(b) NeoCEG と同じ独自語彙（ONE/EXCL/INCL/REQ/MASK）を採用、(c) 完全独自 DSL を新設、
+    の 3 つ。対象ユーザは HAYST 法の現場で PICT に親しんだ層が中心であり、PICT を内部エンジン
+    として呼び出す方針も既に決まっている（ADR-002 参照）。一方 PICT BNF は LIKE / サブモデル /
+    weight / negative value など冗長または生成方略寄りの構文も含むため、すべてを採用すると
+    評価器・UI ともに肥大化する。
+  drivers:
+    - "PICT 既存ユーザの学習コストを最小化する"
+    - "内部で PICT を呼ぶときの DSL → PICT input の変換を薄く保つ"
+    - "MVP の実装スコープを締める"
+    - "AI が DSL を生成しやすい構造（最終ビジョン UR-007）を意識する"
+
+decision:
+  summary: "PICT BNF を 1:1 で mirror するが、MVP 採用は最小サブセットに限定する"
+  detail: |
+    NeoCombi の DSL は PICT 制約言語の構文を一文字も変えずに mirror することにした。
+    ただし MVP の採用範囲は意味論的に必要な最小サブセットに限定する：
+      採用：IF/THEN/ELSE、比較演算子（=, <>, >, >=, <, <=）、AND/OR/NOT、IN { }、パラメータ宣言
+      落とす：LIKE、サブモデル（{f1,f2}@N）、weight、negative value（~）
+    LIKE は実装コストが高くワイルドカードマッチが MVP の評価器に重い。サブモデル / weight /
+    negative value は制約意味論ではなく PICT の生成方略チューニングであり、内製評価器の責務外。
+    これらは v2 以降で個別に追加可否を判断する。EBNF として独立定義し
+    （Doc/DSL_Grammar_Specification.md）、PICT BNF からの差分（捨てた要素）を明示的に記載する。
+
+neglected:
+  - option: "PICT BNF を全構文採用"
+    because: "実装コストが MVP の人員・期間で回収できない。LIKE と submodel は特に重い"
+  - option: "NeoCEG 独自語彙（ONE/EXCL/INCL/REQ/MASK）を採用"
+    because: "PICT 親しみのあるユーザ層に追加学習コストを強いる。PICT 入力への変換も厚くなる"
+  - option: "完全独自 DSL を新設"
+    because: "学習コスト最大、利点なし"
+
+consequences:
+  positive:
+    - "PICT 公式ドキュメントを NeoCombi ユーザがそのまま参照できる"
+    - "MVP 実装スコープが締まり、評価器も最小実装で済む"
+    - "AI 生成（UR-007）時のターゲット文法が単純で、生成成功率が上がりやすい"
+  negative:
+    - "PICT で書ける一部のテストモデルが NeoCombi MVP では表現不能（LIKE 依存など）"
+    - "ユーザが採用外構文を書いた場合は 'unsupported in MVP' エラーで止まる（学習が必要）"
+  risks:
+    - "v2 で LIKE / submodel を追加したとき、評価器の API 互換が崩れる可能性"
+    - "PICT が将来の version で構文を拡張した場合、追従判断が都度必要になる"
+
+references:
+  - "Doc/PROJECT_KICKOFF.md §4"
+  - "Doc/DSL_Grammar_Specification.md (起草予定)"
+  - "ADR-002"
+  - "ADR-005"

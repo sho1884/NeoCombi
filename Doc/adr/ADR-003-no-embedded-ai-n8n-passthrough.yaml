@@ -1,0 +1,56 @@
+id: ADR-003
+title: "AI を内蔵せず、連携は n8n 経由のパススルーに限定する"
+date: "2026-05-02"
+status: proposed
+superseded_by: null
+
+participants:
+  author: "sho1884"
+  approver: "sho1884"
+  last_updated: "2026-05-02"
+
+context:
+  problem: |
+    NeoCombi の AI 機能をどう扱うか。最終ビジョン（UR-007）では自然言語要求仕様 → AI → DSL の
+    レビュー駆動オーサリングを目指すが、AI を本体に内蔵すると CI/CD の決定論性、レイテンシ、
+    コスト、プロバイダ依存等が崩れる。兄弟ツール ModelLogue は同じ問題に対し「AI ロジックを
+    内蔵せず n8n でパススルー」で対応しており、運用ノウハウが共有可能。
+  drivers:
+    - "決定論性（CI/CD で同じ入力 → 同じ出力）を本体ロジックで保証する"
+    - "AI 依存のレイテンシ・コスト・プロバイダ・信頼性問題を本体に持ち込まない"
+    - "兄弟ツール ModelLogue が n8n 連携方式を採用済みで、運用知見の共有が可能"
+
+decision:
+  summary: "AI ロジックは NeoCombi に内蔵せず、n8n を介した外部パススルーに限定する"
+  detail: |
+    本体は決定論変換器のまま据え置き、AI 連携は n8n エンドポイントへの通信という薄いレイヤと
+    してのみ実装する。連携 OFF では NeoCEG と区別がつかない単独動作、連携 ON では右ペーンに
+    チャット、下ペーンに「自然言語要求仕様」タブが追加される（SR-020 future_extension）。
+    MVP では n8n 連携の通信仕様は保留し、ModelLogue の連携実装が成熟したら同パターンに追従する。
+    AI モデル名・プロンプト戦略・コスト試算は NeoCombi リポジトリでは管理しない（n8n ワークフロー側の責務）。
+
+neglected:
+  - option: "OpenAI / Anthropic などの SDK を直接 NeoCombi に組み込む"
+    because: "プロバイダ依存とコスト管理を本体が抱える。CI/CD 利用との両立が崩れる"
+  - option: "AI 機能を一切持たない"
+    because: "最終ビジョン（UR-007）の自然言語 → DSL 生成が実現できない"
+  - option: "外部 AI を独自に呼び出すサーバを NeoCombi に持つ"
+    because: "n8n がすでに同じ役割を ModelLogue で担っており、車輪の再発明"
+
+consequences:
+  positive:
+    - "本体ロジックが AI フリーで決定論的、CLI モードでも安定稼働"
+    - "AI プロバイダ切替・プロンプト改善が n8n 側で完結"
+    - "ModelLogue と運用知見が共有できる"
+  negative:
+    - "ユーザは AI 機能を使うために n8n をセットアップする必要がある"
+    - "MVP では実機能化されないため UR-007 はビジョン記述のみ"
+  risks:
+    - "ModelLogue の連携実装が成熟するまで、最終ビジョンが未検証のまま MVP が進む"
+    - "n8n 自体の運用 / トラブルシューティングが、ユーザに新しい知識を要求する"
+
+references:
+  - "Doc/PROJECT_KICKOFF.md §5"
+  - "Doc/requirements/user_requirements.yaml UR-007"
+  - "Doc/requirements/system_requirements.yaml SR-020"
+  - "ADR-006"

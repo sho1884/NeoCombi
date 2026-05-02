@@ -1,0 +1,55 @@
+id: ADR-007
+title: "禁則マトリクスは入力源ではなく、DSL から導出した参照ビューとする"
+date: "2026-05-02"
+status: proposed
+superseded_by: null
+
+participants:
+  author: "sho1884"
+  approver: "sho1884"
+  last_updated: "2026-05-02"
+
+context:
+  problem: |
+    PICT-PAPP では禁則マトリクスに「×」を直接入力し、Step2 で逆方向に DSL（PICT 入力）を
+    生成していた。NeoCombi の MVP でも同様の入力 UX を踏襲するか、それとも DSL 入力を一次と
+    して禁則マトリクスを参照ビューに格下げするか。
+  drivers:
+    - "DSL（intensional）と禁則表（extensional）の責務を一方向に固定して整合性を保ちたい"
+    - "AI 連携（UR-007）では DSL が AI 生成の出口となるため、DSL 一次の方がフローと整合する"
+    - "PICT-PAPP では『マトリクス入力 → DSL 自動生成 → 結果を再度マトリクスで確認』という双方向同期があり実装が複雑だった"
+
+decision:
+  summary: "DSL を一次入力源とし、禁則マトリクスは DSL から導出する参照ビュー（read-only）とする"
+  detail: |
+    ユーザは制約を DSL 文法で直接書く（SR-001..003）。禁則マトリクスは内製評価器（ADR-005）が
+    DSL から計算する extensional 表現で、ユーザがマトリクスのセルを直接編集することはできない。
+    マトリクスは「DSL の意図通りに禁則が出ているか」の検証用途で、編集の操作可能性を取り除く
+    ことで DSL とマトリクスが食い違う状態を構造的に発生させない。PICT-PAPP の Step2「マトリクス
+    → DSL 自動生成」は MVP では提供しない。なお HAYST 法の現場で「マトリクス入力に慣れている」
+    ユーザがいる可能性は認識しているが、DSL の学習コストは PICT 公式ドキュメントを参照可能
+    （ADR-001）であり、追加負担は限定的。
+
+neglected:
+  - option: "PICT-PAPP 同様、マトリクス入力 → DSL 自動生成の双方向同期"
+    because: "実装複雑度高く、双方向同期の整合性バグが発生しやすい。MVP のスコープを超える"
+  - option: "マトリクスを完全に廃止"
+    because: "DSL の制約意図が正しく N 因子組合せに反映されているかの確認手段が失われる"
+
+consequences:
+  positive:
+    - "DSL ↔ マトリクスの整合性が構造的に保証される（一方向）"
+    - "実装複雑度が下がる（双方向同期不要）"
+    - "AI 生成 DSL のレビューフロー（UR-007）と整合"
+  negative:
+    - "PICT-PAPP のマトリクス入力 UX に慣れたユーザは DSL 直書きに移行する必要"
+    - "視覚的に禁則を組み立てる操作感は失われる"
+  risks:
+    - "DSL 直書きへの心理的障壁が PICT-PAPP からの移行を阻害する可能性"
+
+references:
+  - "Doc/requirements/user_requirements.yaml UR-003"
+  - "Doc/requirements/system_requirements.yaml SR-030..033"
+  - "ADR-001"
+  - "ADR-005"
+  - "ADR-006"

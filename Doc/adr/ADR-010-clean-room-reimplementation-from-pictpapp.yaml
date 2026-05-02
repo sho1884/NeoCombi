@@ -1,0 +1,59 @@
+id: ADR-010
+title: "PICT-PAPP からの clean-room 再実装"
+date: "2026-05-02"
+status: proposed
+superseded_by: null
+
+participants:
+  author: "sho1884"
+  approver: "sho1884"
+  last_updated: "2026-05-02"
+
+context:
+  problem: |
+    NeoCombi は著者 sho1884 自身の旧 Excel VBA ツール PICT-PAPP の機能的後継として位置づけられる。
+    PICT-PAPP は GPL-3.0 ライセンス、NeoCombi は MIT ライセンスで公開予定。GPL コードを MIT
+    プロジェクトに混入させるとプロジェクト全体が GPL に感染する。さらに AI 補助開発下では
+    「VBA をちょっと参考に」が容易に GPL 感染の事故を起こす。
+  drivers:
+    - "MIT ライセンスでの公開を維持（NeoCombi の方針）"
+    - "PICT-PAPP のユーザ層に機能的同等品を提供する（最終目標）"
+    - "AI 補助下で意図せず GPL 感染するリスクを排除する"
+    - "兄弟ツール NeoCEG / ModelLogue が MIT で、ライセンス分裂は配布・統合の障害"
+
+decision:
+  summary: "PICT-PAPP の VBA ソースは行レベルで一切参照せず、clean-room で再実装する"
+  detail: |
+    NeoCombi の実装にあたり、PICT-PAPP の VBA ソース（src/PICT-PAPP.xlsm/*.bas）は
+    読み込み・引用・模写のいずれも禁止。許される参照源は以下のみ：
+      1. 著者 sho1884 自身による Qiita 解説記事（https://qiita.com/sho1884/items/db1662e75dbf84fccc94）
+      2. README、画面キャプチャ、サンプル xlsm を Excel で動かして得る挙動観察
+      3. 著者本人（リポジトリオーナー）からのチャット指示
+    VBA モジュール名（`制約式生成.bas` 等）は機能カタログとして利用してよいが、コードの中身は
+    開かない。挙動の不明点が発生したら「ソースを読む」のではなく「ユーザに聞く」「サンプル
+    xlsm を Excel で動かして観察する」を優先する。本ルールは memory にも保存済み
+    （`license_pictpapp_cleanroom.md`）。
+
+neglected:
+  - option: "PICT-PAPP の VBA ロジックを TS / React に翻訳"
+    because: "GPL 感染で NeoCombi 全体が GPL 化する。MIT 公開方針と矛盾"
+  - option: "NeoCombi も GPL-3.0 で公開"
+    because: "兄弟ツール NeoCEG / ModelLogue が MIT で、ライセンス分裂は配布・統合の障害"
+  - option: "PICT-PAPP の挙動を一切参考にせず、ゼロから再設計"
+    because: "PICT-PAPP のユーザ層に対する機能的同等性が損なわれ、移行が促進されない"
+
+consequences:
+  positive:
+    - "MIT ライセンスを維持しつつ、PICT-PAPP の概念・UX を継承可能"
+    - "PROJECT_KICKOFF.md §10 の方針が運用ルールとして明文化される"
+    - "AI 補助開発時の GPL 事故リスクが構造的に低減"
+  negative:
+    - "細かい挙動の確認が VBA を読めば即解決する場合でも、毎回 Excel で動作確認が必要"
+    - "ユーザへの質問回数が増える"
+  risks:
+    - "意図せず VBA を読みに行く誘惑が将来発生する可能性 → memory に記録、頻繁にチェック"
+
+references:
+  - "Doc/PROJECT_KICKOFF.md §10"
+  - "https://github.com/sho1884/PICT-PAPP (GPL-3.0)"
+  - "https://qiita.com/sho1884/items/db1662e75dbf84fccc94"

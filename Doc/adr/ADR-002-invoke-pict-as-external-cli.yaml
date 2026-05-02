@@ -1,0 +1,57 @@
+id: ADR-002
+title: "PICT を外部 CLI として呼び出し、バンドルしない"
+date: "2026-05-02"
+status: proposed
+superseded_by: null
+
+participants:
+  author: "sho1884"
+  approver: "sho1884"
+  last_updated: "2026-05-02"
+
+context:
+  problem: |
+    NeoCombi の pairwise / N-wise 生成アルゴリズムをどう実装するか。候補は (a) NeoCombi に PICT
+    バイナリをバンドル、(b) 外部 CLI として実行時呼び出し（ユーザが別途インストール）、(c) 自前
+    実装、の 3 つ。NeoCombi 自身は決定論変換器であり、生成エンジンの再発明は MVP のスコープ外。
+  drivers:
+    - "MVP は決定論変換器の責務に集中し、車輪の再発明をしない"
+    - "PICT は実績ある業界デファクト・スタンダード"
+    - "MIT ライセンスを維持するためのディストリビューション戦略"
+    - "PICT 本体のメンテに NeoCombi が引きずられない構造"
+
+decision:
+  summary: "PICT を外部 CLI として実行時に呼び出し、NeoCombi のバンドルには含めない"
+  detail: |
+    NeoCombi は PICT を spawn する子プロセスとして扱い、stdout を parse する形で結果を取得する
+    （SR-060..063）。PICT 本体はユーザがプラットフォームに応じて事前にインストールする：
+    Linux: `apt install pict` または source ビルド、macOS: `brew install pict`、
+    Windows: 公式 GitHub から DL。NeoCombi の設定 UI で PICT 実行可能ファイルへのパスを指定する
+    （SR-061）。CLI モードでも同じ engine 層を共有するため挙動は GUI / CLI で一致する（ADR-004）。
+
+neglected:
+  - option: "PICT バイナリをバンドル"
+    because: "プラットフォーム別バイナリの管理コスト、PICT 更新の追従負担、配布サイズ増、再配布の表記責任が発生する"
+  - option: "pairwise アルゴリズムを自前実装"
+    because: "PICT は数十年の実装・チューニング蓄積があり、再実装は MVP のスコープを外れる"
+  - option: "別の pairwise ツール（CIT-BACH 等）を採用 / 同梱"
+    because: "PICT-PAPP のユーザ層がそのまま PICT に親しんでいる。複数ツール対応は v2 以降"
+
+consequences:
+  positive:
+    - "ユーザは PICT の最新版を独立して使える"
+    - "NeoCombi の配布サイズが小さい"
+    - "PICT 本体のメンテ負担が NeoCombi に来ない"
+  negative:
+    - "ユーザがインストール手順を踏む必要がある（GUI で path 設定 UI を提供）"
+    - "PICT が見つからない / 実行不能なときのエラーハンドリング設計が必要"
+  risks:
+    - "ユーザ環境の PICT バージョン違いによる挙動差"
+    - "Windows ユーザは公式 GitHub からの手動 DL が必要で、心理的障壁になる可能性"
+
+references:
+  - "Doc/PROJECT_KICKOFF.md §1, §10"
+  - "Doc/requirements/system_requirements.yaml SR-060..063"
+  - "ADR-001"
+  - "ADR-004"
+  - "ADR-005"
