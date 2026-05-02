@@ -19,9 +19,20 @@ export type ExpectedValueEntry = {
 
 export type BottomPaneTab = 'factors' | 'dsl' | 'testcases'
 
+export type TopPaneTab = 'coverage' | 'forbidden'
+
+/**
+ * Configuration for one forbidden-matrix slice.
+ *
+ * Layout convention (SR-031): condition factors form the row axis (their
+ * Cartesian product), the constrained factor forms the column axis. The
+ * evaluator does not care about this distinction — it just enumerates the
+ * Cartesian product of [...conditionFactors, constrainedFactor] — but the
+ * UI renders the matrix asymmetrically based on the role each factor plays.
+ */
 export type ForbiddenSliceConfig = {
-  /** Ordered list of factor display names participating in the slice. */
-  factors: string[]
+  conditionFactors: string[]
+  constrainedFactor: string | null
 }
 
 /**
@@ -29,6 +40,7 @@ export type ForbiddenSliceConfig = {
  * defaults each time a project is opened).
  */
 export type ViewState = {
+  topPaneTab: TopPaneTab
   bottomPaneTab: BottomPaneTab
   /** Map factor name -> visible in the top-pane matrix (default true). */
   factorVisibility: Record<string, boolean>

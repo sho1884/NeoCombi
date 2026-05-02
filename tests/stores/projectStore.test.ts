@@ -92,11 +92,65 @@ describe('projectStore / view state', () => {
     expect(useProjectStore.getState().view.factorVisibility['OS']).toBe(false)
   })
 
-  it('adds a forbidden slice and sets it as active', () => {
-    useProjectStore.getState().addForbiddenSlice(['OS', 'Browser'])
+  it('adds an empty forbidden slice and sets it as active', () => {
+    useProjectStore.getState().addForbiddenSlice()
     const v = useProjectStore.getState().view
     expect(v.forbiddenSlices).toHaveLength(1)
+    expect(v.forbiddenSlices[0]).toEqual({
+      conditionFactors: [],
+      constrainedFactor: null,
+    })
     expect(v.activeSliceIndex).toBe(0)
+  })
+
+  it('adds a slice with provided configuration', () => {
+    useProjectStore.getState().addForbiddenSlice({
+      conditionFactors: ['OS'],
+      constrainedFactor: 'Browser',
+    })
+    expect(useProjectStore.getState().view.forbiddenSlices[0]).toEqual({
+      conditionFactors: ['OS'],
+      constrainedFactor: 'Browser',
+    })
+  })
+
+  it('updates the active slice in place', () => {
+    const store = useProjectStore.getState()
+    store.addForbiddenSlice()
+    store.updateActiveSlice({
+      conditionFactors: ['OS', 'Memory'],
+      constrainedFactor: 'Browser',
+    })
+    expect(useProjectStore.getState().view.forbiddenSlices[0]).toEqual({
+      conditionFactors: ['OS', 'Memory'],
+      constrainedFactor: 'Browser',
+    })
+  })
+
+  it('removes a slice and shifts active index', () => {
+    const store = useProjectStore.getState()
+    store.addForbiddenSlice({ conditionFactors: ['A'], constrainedFactor: 'B' })
+    store.addForbiddenSlice({ conditionFactors: ['C'], constrainedFactor: 'D' })
+    store.setActiveSliceIndex(1)
+    store.removeForbiddenSlice(0)
+    const v = useProjectStore.getState().view
+    expect(v.forbiddenSlices).toHaveLength(1)
+    expect(v.forbiddenSlices[0]?.conditionFactors).toEqual(['C'])
+    expect(v.activeSliceIndex).toBe(0)
+  })
+
+  it('clears active index when the last slice is removed', () => {
+    const store = useProjectStore.getState()
+    store.addForbiddenSlice()
+    store.removeForbiddenSlice(0)
+    expect(useProjectStore.getState().view.activeSliceIndex).toBe(-1)
+  })
+
+  it('switches the top-pane tab between coverage and forbidden', () => {
+    useProjectStore.getState().setTopPaneTab('forbidden')
+    expect(useProjectStore.getState().view.topPaneTab).toBe('forbidden')
+    useProjectStore.getState().setTopPaneTab('coverage')
+    expect(useProjectStore.getState().view.topPaneTab).toBe('coverage')
   })
 })
 

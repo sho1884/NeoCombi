@@ -5,6 +5,7 @@ import type {
   ExpectedValueEntry,
   ForbiddenSliceConfig,
   ProjectState,
+  TopPaneTab,
   ViewState,
 } from '../types/project'
 import { deserialize, serialize } from '../services/tmodelFile'
@@ -12,6 +13,7 @@ import { deserialize, serialize } from '../services/tmodelFile'
 const DEFAULT_PICT_ORDER = 2
 
 const DEFAULT_VIEW: ViewState = {
+  topPaneTab: 'coverage',
   bottomPaneTab: 'factors',
   factorVisibility: {},
   forbiddenSlices: [],
@@ -52,9 +54,15 @@ type Actions = {
   setExpectedValue(assignment: Record<string, string>, value: string): void
   /** Remove the expected value matching the given assignment, if any. */
   clearExpectedValue(assignment: Record<string, string>): void
+  setTopPaneTab(tab: TopPaneTab): void
   setBottomPaneTab(tab: BottomPaneTab): void
   setFactorVisibility(factor: string, visible: boolean): void
-  addForbiddenSlice(factors: string[]): void
+  /** Append a new forbidden-slice configuration and select it as active. */
+  addForbiddenSlice(slice?: ForbiddenSliceConfig): void
+  /** Replace the active slice's configuration. No-op when no slice is active. */
+  updateActiveSlice(slice: ForbiddenSliceConfig): void
+  /** Remove a slice by index. Adjusts activeSliceIndex if needed. */
+  removeForbiddenSlice(index: number): void
   setActiveSliceIndex(index: number): void
   /** Replace project state from a .tmodel file's contents. Resets dirty flag. */
   loadFromTmodel(content: string, filePath?: string | null): void
@@ -104,6 +112,10 @@ export const useProjectStore = create<Store>()((set, get) => ({
     })
   },
 
+  setTopPaneTab(tab) {
+    set(state => ({ view: { ...state.view, topPaneTab: tab } }))
+  },
+
   setBottomPaneTab(tab) {
     set(state => ({ view: { ...state.view, bottomPaneTab: tab } }))
   },
@@ -117,16 +129,46 @@ export const useProjectStore = create<Store>()((set, get) => ({
     }))
   },
 
-  addForbiddenSlice(factors) {
+  addForbiddenSlice(slice) {
     set(state => {
-      const slice: ForbiddenSliceConfig = { factors: [...factors] }
-      const nextSlices = [...state.view.forbiddenSlices, slice]
+      const newSlice: ForbiddenSliceConfig =
+        slice ?? { conditionFactors: [], constrainedFactor: null }
+      const nextSlices = [...state.view.forbiddenSlices, newSlice]
       return {
         view: {
           ...state.view,
           forbiddenSlices: nextSlices,
           activeSliceIndex: nextSlices.length - 1,
         },
+      }
+    })
+  },
+
+  updateActiveSlice(slice) {
+    set(state => {
+      const idx = state.view.activeSliceIndex
+      if (idx < 0 || idx >= state.view.forbiddenSlices.length) return state
+      const next = state.view.forbiddenSlices.slice()
+      next[idx] = slice
+      return { view: { ...state.view, forbiddenSlices: next } }
+    })
+  },
+
+  removeForbiddenSlice(index) {
+    set(state => {
+      if (index < 0 || index >= state.view.forbiddenSlices.length) return state
+      const next = state.view.forbiddenSlices.slice()
+      next.splice(index, 1)
+      let active = state.view.activeSliceIndex
+      if (next.length === 0) {
+        active = -1
+      } else if (active === index) {
+        active = Math.max(0, index - 1)
+      } else if (active > index) {
+        active = active - 1
+      }
+      return {
+        view: { ...state.view, forbiddenSlices: next, activeSliceIndex: active },
       }
     })
   },

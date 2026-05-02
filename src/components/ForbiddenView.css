@@ -1,0 +1,248 @@
+.forbidden-view {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.forbidden-view__empty {
+  padding: 1.5rem;
+  background: #fff;
+  border: 1px dashed #cfd8dc;
+  border-radius: 4px;
+  color: #607d8b;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.forbidden-view__hint {
+  padding: 0.75rem 1rem;
+  background: #fff;
+  border: 1px dashed #cfd8dc;
+  border-radius: 4px;
+  color: #607d8b;
+  font-size: 0.85rem;
+}
+
+.forbidden-view__error {
+  padding: 0.75rem 1rem;
+  background: #ffebee;
+  border: 1px solid #ef9a9a;
+  border-radius: 4px;
+  color: #b71c1c;
+  font-size: 0.85rem;
+}
+
+/* --- Slice tabs (saved-slice strip) ------------------------------------- */
+
+.forbidden-view__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.forbidden-view__tab {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid #cfd8dc;
+  border-radius: 3px;
+  background: #eceff1;
+  overflow: hidden;
+  font-size: 0.78rem;
+}
+
+.forbidden-view__tab--active {
+  background: #fff;
+  border-color: #37474f;
+  font-weight: 600;
+}
+
+.forbidden-view__tab-button {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 0.25rem 0.55rem;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.forbidden-view__tab-close {
+  appearance: none;
+  border: none;
+  border-left: 1px solid #cfd8dc;
+  background: transparent;
+  padding: 0 0.4rem;
+  cursor: pointer;
+  color: #90a4ae;
+}
+
+.forbidden-view__tab-close:hover {
+  color: #b71c1c;
+  background: #ffebee;
+}
+
+.forbidden-view__tab-add {
+  appearance: none;
+  border: 1px dashed #b0bec5;
+  border-radius: 3px;
+  background: #fafafa;
+  color: #455a64;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.forbidden-view__tab-add:hover {
+  background: #fff;
+  border-color: #37474f;
+}
+
+/* --- Slice editor ------------------------------------------------------- */
+
+.forbidden-view__editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.6rem 0.75rem;
+  background: #fff;
+  border: 1px solid #cfd8dc;
+  border-radius: 4px;
+}
+
+.forbidden-view__editor-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.forbidden-view__editor-label {
+  font-weight: 600;
+  color: #455a64;
+  min-width: 9rem;
+}
+
+.forbidden-view__editor-select {
+  padding: 0.2rem 0.4rem;
+  font-size: 0.85rem;
+  border: 1px solid #cfd8dc;
+  border-radius: 3px;
+  background: #fff;
+}
+
+.forbidden-view__editor-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  flex: 1;
+}
+
+.forbidden-view__editor-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1rem 0.45rem;
+  background: #f5f7f8;
+  border: 1px solid #cfd8dc;
+  border-radius: 3px;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.forbidden-view__editor-chip:hover {
+  background: #eceff1;
+}
+
+.forbidden-view__editor-hint {
+  font-size: 0.78rem;
+  color: #90a4ae;
+  font-style: italic;
+}
+
+/* --- Forbidden matrix --------------------------------------------------- */
+
+.forbidden-view__matrix-wrap {
+  background: #fff;
+  border: 1px solid #cfd8dc;
+  border-radius: 4px;
+  padding: 0.5rem;
+  overflow: auto;
+}
+
+.forbidden-view__matrix {
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.forbidden-view__factor-th {
+  background: #cfd8dc;
+  color: #263238;
+  font-weight: 700;
+  padding: 0.3rem 0.5rem;
+  text-align: center;
+  border: 1px solid #b0bec5;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.forbidden-view__factor-th--constrained {
+  border-bottom: 2px solid #90a4ae;
+}
+
+.forbidden-view__corner {
+  background: #f5f7f8;
+  border: 1px solid #cfd8dc;
+}
+
+.forbidden-view__level-th {
+  background: #eceff1;
+  color: #455a64;
+  font-weight: 500;
+  border: 1px solid #cfd8dc;
+  font-size: 0.74rem;
+  white-space: nowrap;
+}
+
+.forbidden-view__level-th--col {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  padding: 0.3rem 0;
+  height: 5em;
+  width: 2em;
+  min-width: 2em;
+  vertical-align: bottom;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.forbidden-view__level-th--row {
+  padding: 0 0.5rem;
+  text-align: right;
+  background: #f5f7f8;
+  white-space: nowrap;
+  max-width: 8em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.forbidden-view__cell {
+  width: 2em;
+  height: 2em;
+  min-width: 2em;
+  border: 1px solid #eceff1;
+  text-align: center;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.forbidden-view__cell--allowed {
+  background: #fff;
+  color: #cfd8dc;
+}
+
+.forbidden-view__cell--forbidden {
+  background: #ffcdd2;
+  color: #b71c1c;
+  font-weight: 700;
+}
