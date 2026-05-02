@@ -116,6 +116,23 @@
   text-align: center;
   background: #fff;
   font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.matrix__cell--placeholder .matrix__cell-content {
+  color: #cfd8dc;
+}
+
+.matrix__cell--covered {
+  background: #e8f5e9;
+  color: #1b5e20;
+  font-weight: 600;
+}
+
+.matrix__cell--missed {
+  background: #fff8e1;
+  color: #e65100;
+  font-weight: 700;
 }
 
 .matrix__cell--pair {

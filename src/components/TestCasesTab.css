@@ -1,0 +1,162 @@
+.test-cases-tab {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.test-cases-tab__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #f5f7f8;
+  border-bottom: 1px solid #cfd8dc;
+  flex-shrink: 0;
+  font-size: 0.82rem;
+}
+
+.test-cases-tab__count {
+  font-weight: 600;
+  color: #455a64;
+}
+
+.test-cases-tab__import,
+.test-cases-tab__clear {
+  appearance: none;
+  border: 1px solid #37474f;
+  background: #37474f;
+  color: #fff;
+  padding: 0.2rem 0.7rem;
+  font: inherit;
+  font-size: 0.78rem;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.test-cases-tab__import:hover,
+.test-cases-tab__clear:hover {
+  background: #263238;
+}
+
+.test-cases-tab__clear {
+  background: #fff;
+  color: #455a64;
+}
+
+.test-cases-tab__clear:hover {
+  background: #ffebee;
+  border-color: #ef9a9a;
+  color: #b71c1c;
+}
+
+.test-cases-tab__error {
+  color: #b71c1c;
+  background: #ffebee;
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.78rem;
+}
+
+.test-cases-tab__empty {
+  padding: 1.25rem;
+  color: #607d8b;
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.test-cases-tab__example {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem;
+  background: #f5f7f8;
+  padding: 0.6rem 0.8rem;
+  border-left: 3px solid #cfd8dc;
+  border-radius: 0 4px 4px 0;
+  margin: 0.6rem 0;
+  white-space: pre;
+  overflow: auto;
+}
+
+.test-cases-tab__hint {
+  margin-top: 0.75rem;
+  font-style: italic;
+  color: #90a4ae;
+  font-size: 0.82rem;
+}
+
+.test-cases-tab__table-wrap {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+
+.test-cases-tab__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.test-cases-tab__table th,
+.test-cases-tab__table td {
+  border-bottom: 1px solid #eceff1;
+  padding: 0.3rem 0.5rem;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.test-cases-tab__table thead th {
+  background: #f5f7f8;
+  color: #455a64;
+  font-weight: 600;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.test-cases-tab__col-idx {
+  text-align: right !important;
+  color: #90a4ae;
+  font-variant-numeric: tabular-nums;
+  width: 2.5rem;
+}
+
+.test-cases-tab__col-expected {
+  width: auto;
+  min-width: 18rem;
+}
+
+.test-cases-tab__cell {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  color: #1a1a1a;
+}
+
+.test-cases-tab__expected-input {
+  width: 100%;
+  padding: 0.15rem 0.35rem;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  font: inherit;
+  font-size: 0.82rem;
+  color: #1a1a1a;
+}
+
+.test-cases-tab__expected-input:hover {
+  background: #f5f7f8;
+  border-color: #cfd8dc;
+}
+
+.test-cases-tab__expected-input:focus {
+  outline: none;
+  background: #fff;
+  border-color: #37474f;
+}
+
+.test-cases-tab__expected-input::placeholder {
+  color: #b0bec5;
+  font-style: italic;
+}

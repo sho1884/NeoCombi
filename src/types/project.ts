@@ -3,6 +3,7 @@
 // src/services/tmodelFile.ts for the file ↔ memory translation.
 
 import type { ParseResult } from './dsl'
+import type { TestSuite } from './testCase'
 
 /**
  * One expected value attached to a specific factor / level combination.
@@ -60,6 +61,12 @@ export type ProjectState = {
   /** Cached parse output; recomputed whenever source changes. */
   parseResult: ParseResult
   expectedValues: ExpectedValueEntry[]
+  /**
+   * Imported test cases (most recent CLI generation result). Session-only:
+   * not persisted in .tmodel because PICT can re-generate them deterministically
+   * from the DSL. null when the user has not imported anything yet.
+   */
+  testSuite: TestSuite | null
   /** PICT generation order (N-wise); default 2 (pairwise). Persisted. */
   pictOrder: number
   /** Session-only. */

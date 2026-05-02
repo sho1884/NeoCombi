@@ -8,6 +8,7 @@ import type {
   TopPaneTab,
   ViewState,
 } from '../types/project'
+import type { TestSuite } from '../types/testCase'
 import { deserialize, serialize } from '../services/tmodelFile'
 import {
   addFactor as editAddFactor,
@@ -34,6 +35,7 @@ function emptyState(): ProjectState {
     source,
     parseResult: parse(source),
     expectedValues: [],
+    testSuite: null,
     pictOrder: DEFAULT_PICT_ORDER,
     view: { ...DEFAULT_VIEW },
     isDirty: false,
@@ -51,6 +53,22 @@ function assignmentEquals(
     if (a[k] !== b[k]) return false
   }
   return true
+}
+
+function allKeysMatch(
+  a: Record<string, string>,
+  b: Record<string, string>,
+): boolean {
+  // Same as assignmentEquals but tolerates extra keys in `b`. Used when
+  // matching a stored expected entry's assignment against a full test case
+  // (the test case row has all factor values; the entry has the subset
+  // the user keyed against).
+  for (const [k, v] of Object.entries(a)) {
+    if (b[k] !== v) return false
+  }
+  return Object.keys(a).length === Object.keys(b).length
+    ? true
+    : Object.keys(a).every(k => b[k] === a[k])
 }
 
 type Actions = {
@@ -85,6 +103,10 @@ type Actions = {
   loadFromTmodel(content: string, filePath?: string | null): void
   /** Serialize the persistable subset of state to .tmodel format. */
   toTmodel(): string
+  /** Replace the current test suite (e.g., from CSV import). null clears it. */
+  setTestSuite(suite: TestSuite | null): void
+  /** Update the expected value of a single test case by row index. */
+  setTestCaseExpected(index: number, value: string): void
   /** Mark the project as saved (clears dirty flag and updates filePath). */
   markSaved(filePath?: string | null): void
   resetToEmpty(): void
@@ -230,6 +252,7 @@ export const useProjectStore = create<Store>()((set, get) => ({
       source: result.source,
       parseResult: parse(result.source),
       expectedValues: result.expectedValues,
+      testSuite: null,
       pictOrder: result.pictOrder,
       view: { ...DEFAULT_VIEW },
       isDirty: false,
@@ -242,6 +265,74 @@ export const useProjectStore = create<Store>()((set, get) => ({
       source: state.source,
       expectedValues: state.expectedValues,
       pictOrder: state.pictOrder,
+    })
+  },
+
+  setTestSuite(suite) {
+    // Drop / replace the test suite in place. Importing CSV should also
+    // surface any expected values the user already maintained: walk the
+    // imported rows and attach matching expected entries.
+    set(state => {
+      if (suite === null) return { testSuite: null }
+      const enriched: TestSuite = {
+        factorOrder: suite.factorOrder.slice(),
+        rows: suite.rows.map(row => {
+          if (row.expected !== undefined) return row
+          for (const ev of state.expectedValues) {
+            let matches = true
+            for (const [k, v] of Object.entries(ev.assignment)) {
+              if (row.values[k] !== v) {
+                matches = false
+                break
+              }
+            }
+            if (matches) return { ...row, expected: ev.value }
+          }
+          return row
+        }),
+      }
+      return { testSuite: enriched }
+    })
+  },
+
+  setTestCaseExpected(index, value) {
+    set(state => {
+      if (!state.testSuite) return state
+      if (index < 0 || index >= state.testSuite.rows.length) return state
+      const rows = state.testSuite.rows.slice()
+      const target = rows[index]!
+      const trimmed = value
+      const updated = trimmed.length > 0
+        ? { ...target, expected: trimmed }
+        : (() => {
+            const { expected: _ignored, ...rest } = target
+            void _ignored
+            return rest
+          })()
+      rows[index] = updated
+      // Mirror the user's edit into expectedValues so the next save
+      // captures it (UR-005 / SR-052).
+      const assignment = state.testSuite.factorOrder.reduce<Record<string, string>>(
+        (acc, name) => {
+          acc[name] = target.values[name] ?? ''
+          return acc
+        },
+        {},
+      )
+      const evCopy = state.expectedValues.slice()
+      const existingIdx = evCopy.findIndex(ev => allKeysMatch(ev.assignment, assignment))
+      if (trimmed.length > 0) {
+        const entry: ExpectedValueEntry = { assignment, value: trimmed }
+        if (existingIdx >= 0) evCopy[existingIdx] = entry
+        else evCopy.push(entry)
+      } else if (existingIdx >= 0) {
+        evCopy.splice(existingIdx, 1)
+      }
+      return {
+        testSuite: { ...state.testSuite, rows },
+        expectedValues: evCopy,
+        isDirty: true,
+      }
     })
   },
 

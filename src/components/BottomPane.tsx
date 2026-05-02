@@ -2,6 +2,7 @@ import { useProjectStore } from '../stores/projectStore'
 import type { BottomPaneTab } from '../types/project'
 import { DslEditor } from './DslEditor'
 import { FactorLevelTable } from './FactorLevelTable'
+import { TestCasesTab } from './TestCasesTab'
 import './BottomPane.css'
 
 const TABS: Array<{ id: BottomPaneTab; label: string }> = [
@@ -38,11 +39,7 @@ export function BottomPane() {
       <div className="bottom-pane__content">
         {tab === 'factors' && <FactorLevelTable />}
         {tab === 'dsl' && <DslEditor />}
-        {tab === 'testcases' && (
-          <div className="bottom-pane__placeholder">
-            Test cases tab is empty until PICT integration lands (SR-050..063).
-          </div>
-        )}
+        {tab === 'testcases' && <TestCasesTab />}
       </div>
     </section>
   )

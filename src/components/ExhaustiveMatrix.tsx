@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useProjectStore } from '../stores/projectStore'
 import type { ParameterDecl } from '../types/dsl'
+import type { TestSuite } from '../types/testCase'
 import './ExhaustiveMatrix.css'
 
 /**
@@ -12,11 +13,17 @@ import './ExhaustiveMatrix.css'
 export function ExhaustiveMatrix() {
   const model = useProjectStore(s => s.parseResult.model)
   const factorVisibility = useProjectStore(s => s.view.factorVisibility)
+  const testSuite = useProjectStore(s => s.testSuite)
 
   const visibleFactors = useMemo<ParameterDecl[]>(() => {
     const params = model?.parameters ?? []
     return params.filter(p => factorVisibility[p.name] !== false)
   }, [model, factorVisibility])
+
+  const occurrenceMap = useMemo(
+    () => buildOccurrenceMap(testSuite),
+    [testSuite],
+  )
 
   if (visibleFactors.length === 0) {
     return (
@@ -95,18 +102,46 @@ export function ExhaustiveMatrix() {
                     const cellLabel =
                       `${rowFactor.name}=${String(rowLevel.value)}, ` +
                       `${colFactor.name}=${String(colLevel.value)}`
+                    if (sameFactor) {
+                      return (
+                        <td
+                          key={`cell-${colFactor.name}::${String(colLevel.value)}`}
+                          className="matrix__cell matrix__cell--blocked"
+                          aria-label="same factor (blocked)"
+                        />
+                      )
+                    }
+                    const occ = occurrenceMap
+                      ? occurrenceCount(
+                          occurrenceMap,
+                          rowFactor.name,
+                          String(rowLevel.value),
+                          colFactor.name,
+                          String(colLevel.value),
+                        )
+                      : null
+                    let display: string
+                    let cellClass = 'matrix__cell matrix__cell--pair'
+                    if (occ === null) {
+                      display = '·'
+                      cellClass += ' matrix__cell--placeholder'
+                    } else if (occ === 0) {
+                      display = '?'
+                      cellClass += ' matrix__cell--missed'
+                    } else {
+                      display = String(occ)
+                      cellClass += ' matrix__cell--covered'
+                    }
                     return (
                       <td
                         key={`cell-${colFactor.name}::${String(colLevel.value)}`}
-                        className={
-                          'matrix__cell ' +
-                          (sameFactor
-                            ? 'matrix__cell--blocked'
-                            : 'matrix__cell--pair')
+                        className={cellClass}
+                        aria-label={
+                          cellLabel +
+                          (occ === null ? '' : `, occurrences: ${occ}`)
                         }
-                        aria-label={sameFactor ? 'same factor (blocked)' : cellLabel}
                       >
-                        {sameFactor ? '' : <span className="matrix__cell-placeholder">·</span>}
+                        <span className="matrix__cell-content">{display}</span>
                       </td>
                     )
                   }),
@@ -118,4 +153,47 @@ export function ExhaustiveMatrix() {
       </table>
     </div>
   )
+}
+
+// =============================================================================
+// Occurrence map: count how many test cases include each (factor, level) pair
+// of distinct factors. Returns null when there is no test suite, so the
+// matrix can render placeholder cells.
+// =============================================================================
+
+type OccurrenceMap = Map<string, number>
+
+function buildOccurrenceMap(suite: TestSuite | null): OccurrenceMap | null {
+  if (!suite || suite.rows.length === 0) return null
+  const map: OccurrenceMap = new Map()
+  for (const row of suite.rows) {
+    const factors = suite.factorOrder
+    for (let i = 0; i < factors.length; i++) {
+      for (let j = 0; j < factors.length; j++) {
+        if (i === j) continue
+        const fa = factors[i]!
+        const fb = factors[j]!
+        const va = row.values[fa]
+        const vb = row.values[fb]
+        if (va === undefined || vb === undefined) continue
+        const key = pairKey(fa, va, fb, vb)
+        map.set(key, (map.get(key) ?? 0) + 1)
+      }
+    }
+  }
+  return map
+}
+
+function pairKey(fa: string, va: string, fb: string, vb: string): string {
+  return `${fa}${va}${fb}${vb}`
+}
+
+function occurrenceCount(
+  map: OccurrenceMap,
+  rowFactor: string,
+  rowLevel: string,
+  colFactor: string,
+  colLevel: string,
+): number {
+  return map.get(pairKey(rowFactor, rowLevel, colFactor, colLevel)) ?? 0
 }
