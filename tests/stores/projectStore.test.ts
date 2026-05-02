@@ -1,0 +1,162 @@
+import { describe, it, expect, beforeEach } from 'vitest'
+import { useProjectStore } from '../../src/stores/projectStore'
+
+beforeEach(() => {
+  useProjectStore.getState().resetToEmpty()
+})
+
+describe('projectStore / source and parsing', () => {
+  it('starts empty with a successful parse of an empty source', () => {
+    const s = useProjectStore.getState()
+    expect(s.source).toBe('')
+    expect(s.parseResult.diagnostics).toEqual([])
+    expect(s.parseResult.model?.parameters).toEqual([])
+    expect(s.isDirty).toBe(false)
+  })
+
+  it('reparses on setSource and marks the project dirty', () => {
+    useProjectStore.getState().setSource('OS: Linux, Windows')
+    const s = useProjectStore.getState()
+    expect(s.source).toBe('OS: Linux, Windows')
+    expect(s.parseResult.model?.parameters).toHaveLength(1)
+    expect(s.isDirty).toBe(true)
+  })
+})
+
+describe('projectStore / pictOrder', () => {
+  it('sets order and marks dirty', () => {
+    useProjectStore.getState().setPictOrder(3)
+    expect(useProjectStore.getState().pictOrder).toBe(3)
+    expect(useProjectStore.getState().isDirty).toBe(true)
+  })
+
+  it('does not flip dirty when setting the same order', () => {
+    expect(useProjectStore.getState().isDirty).toBe(false)
+    useProjectStore.getState().setPictOrder(2)  // 2 is the default
+    expect(useProjectStore.getState().isDirty).toBe(false)
+  })
+})
+
+describe('projectStore / expected values', () => {
+  it('adds a new expected value', () => {
+    useProjectStore
+      .getState()
+      .setExpectedValue({ OS: 'Linux', Browser: 'Chrome' }, 'OK')
+    const s = useProjectStore.getState()
+    expect(s.expectedValues).toEqual([
+      { assignment: { OS: 'Linux', Browser: 'Chrome' }, value: 'OK' },
+    ])
+  })
+
+  it('updates an existing entry that matches by exact assignment', () => {
+    const store = useProjectStore.getState()
+    store.setExpectedValue({ OS: 'Linux', Browser: 'Chrome' }, 'first')
+    store.setExpectedValue({ OS: 'Linux', Browser: 'Chrome' }, 'second')
+    const s = useProjectStore.getState()
+    expect(s.expectedValues).toHaveLength(1)
+    expect(s.expectedValues[0]?.value).toBe('second')
+  })
+
+  it('treats different assignments as separate entries', () => {
+    const store = useProjectStore.getState()
+    store.setExpectedValue({ OS: 'Linux' }, 'a')
+    store.setExpectedValue({ OS: 'Windows' }, 'b')
+    expect(useProjectStore.getState().expectedValues).toHaveLength(2)
+  })
+
+  it('clears an entry by exact match', () => {
+    const store = useProjectStore.getState()
+    store.setExpectedValue({ OS: 'Linux' }, 'a')
+    store.clearExpectedValue({ OS: 'Linux' })
+    expect(useProjectStore.getState().expectedValues).toEqual([])
+    expect(useProjectStore.getState().isDirty).toBe(true)
+  })
+
+  it('does not flip dirty when clearing a non-existent assignment', () => {
+    expect(useProjectStore.getState().isDirty).toBe(false)
+    useProjectStore.getState().clearExpectedValue({ Bogus: 'X' })
+    expect(useProjectStore.getState().isDirty).toBe(false)
+  })
+})
+
+describe('projectStore / view state', () => {
+  it('switches the bottom-pane tab without marking dirty (session-only)', () => {
+    useProjectStore.getState().setBottomPaneTab('dsl')
+    const s = useProjectStore.getState()
+    expect(s.view.bottomPaneTab).toBe('dsl')
+    expect(s.isDirty).toBe(false)
+  })
+
+  it('toggles factor visibility by name', () => {
+    useProjectStore.getState().setFactorVisibility('OS', false)
+    expect(useProjectStore.getState().view.factorVisibility['OS']).toBe(false)
+  })
+
+  it('adds a forbidden slice and sets it as active', () => {
+    useProjectStore.getState().addForbiddenSlice(['OS', 'Browser'])
+    const v = useProjectStore.getState().view
+    expect(v.forbiddenSlices).toHaveLength(1)
+    expect(v.activeSliceIndex).toBe(0)
+  })
+})
+
+describe('projectStore / load and save', () => {
+  it('loads a .tmodel file and resets dirty', () => {
+    const tmodel = [
+      '# @neocombi:order 3',
+      'OS: Linux, Windows',
+      '# @neocombi:expected OS=Linux | runs OK',
+      '',
+    ].join('\n')
+    useProjectStore.getState().loadFromTmodel(tmodel, '/tmp/example.tmodel')
+    const s = useProjectStore.getState()
+    expect(s.filePath).toBe('/tmp/example.tmodel')
+    expect(s.pictOrder).toBe(3)
+    expect(s.source).toBe('OS: Linux, Windows\n')
+    expect(s.expectedValues).toEqual([
+      { assignment: { OS: 'Linux' }, value: 'runs OK' },
+    ])
+    expect(s.isDirty).toBe(false)
+  })
+
+  it('serializes back to a .tmodel string via toTmodel', () => {
+    const store = useProjectStore.getState()
+    store.setSource('OS: Linux, Windows\n')
+    store.setPictOrder(3)
+    store.setExpectedValue({ OS: 'Linux' }, 'OK')
+    const text = useProjectStore.getState().toTmodel()
+    expect(text).toContain('OS: Linux, Windows')
+    expect(text).toContain('# @neocombi:order 3')
+    expect(text).toContain('# @neocombi:expected OS=Linux | OK')
+  })
+
+  it('round-trips load -> save -> load to identical structured state', () => {
+    const initial = [
+      '# @neocombi:order 3',
+      'OS: Linux, Windows',
+      'Browser: Chrome, Safari',
+      'IF [OS] = "Linux" THEN [Browser] <> "Safari";',
+      '# @neocombi:expected OS=Linux Browser=Chrome | renders OK',
+      '',
+    ].join('\n')
+    useProjectStore.getState().loadFromTmodel(initial)
+    const text = useProjectStore.getState().toTmodel()
+    useProjectStore.getState().resetToEmpty()
+    useProjectStore.getState().loadFromTmodel(text)
+    const s = useProjectStore.getState()
+    expect(s.pictOrder).toBe(3)
+    expect(s.expectedValues).toEqual([
+      { assignment: { OS: 'Linux', Browser: 'Chrome' }, value: 'renders OK' },
+    ])
+    expect(s.source).toContain('OS: Linux, Windows')
+    expect(s.source).toContain('IF [OS] = "Linux"')
+  })
+
+  it('markSaved clears the dirty flag and updates the file path when given', () => {
+    useProjectStore.getState().setSource('OS: Linux')
+    expect(useProjectStore.getState().isDirty).toBe(true)
+    useProjectStore.getState().markSaved('/projects/x.tmodel')
+    expect(useProjectStore.getState().isDirty).toBe(false)
+    expect(useProjectStore.getState().filePath).toBe('/projects/x.tmodel')
+  })
+})
