@@ -60,6 +60,27 @@
   color: #90a4ae;
 }
 
+.matrix__no-suite-banner {
+  padding: 0.5rem 0.8rem;
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-left: 3px solid #ffb300;
+  border-radius: 0 4px 4px 0;
+  color: #5d4037;
+  font-size: 0.82rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.5;
+}
+
+.matrix__no-suite-banner-marker {
+  display: inline-block;
+  background: #ffcdd2;
+  color: #b71c1c;
+  border-radius: 2px;
+  padding: 0 0.25rem;
+  font-weight: 700;
+}
+
 .matrix__empty {
   padding: 1.5rem;
   background: #fff;

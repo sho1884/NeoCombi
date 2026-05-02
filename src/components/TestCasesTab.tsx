@@ -7,8 +7,11 @@ export function TestCasesTab() {
   const testSuite = useProjectStore(s => s.testSuite)
   const setTestSuite = useProjectStore(s => s.setTestSuite)
   const setTestCaseExpected = useProjectStore(s => s.setTestCaseExpected)
+  const filePath = useProjectStore(s => s.filePath)
+  const isDirty = useProjectStore(s => s.isDirty)
 
   const [error, setError] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   const onImport = () => {
     const input = document.createElement('input')
@@ -53,6 +56,19 @@ export function TestCasesTab() {
   }
 
   if (!testSuite || testSuite.rows.length === 0) {
+    const projectName = filePath ?? 'YOUR_PROJECT.tmodel'
+    const cliCommand = `node bin/neocombi.mjs generate ${projectName} --output cases.csv`
+
+    const onCopy = async () => {
+      try {
+        await navigator.clipboard.writeText(cliCommand)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 1800)
+      } catch {
+        setError('Could not copy to clipboard. Select the command manually.')
+      }
+    }
+
     return (
       <div className="test-cases-tab">
         <div className="test-cases-tab__toolbar">
@@ -61,20 +77,79 @@ export function TestCasesTab() {
           </button>
           {error ? <span className="test-cases-tab__error">{error}</span> : null}
         </div>
-        <div className="test-cases-tab__empty">
-          <p>
-            No test cases yet. Generate them via the CLI and import the result here:
+        <div className="test-cases-tab__no-suite">
+          <h2 className="test-cases-tab__no-suite-title">
+            No test cases yet
+          </h2>
+          <p className="test-cases-tab__no-suite-lede">
+            NeoCombi&apos;s GUI does not run PICT directly today. To generate
+            test cases you run the CLI in a terminal and bring the result back
+            here.
           </p>
-          <pre className="test-cases-tab__example">
-{`# in your terminal:
-neocombi generate yourproject.tmodel --format csv --output cases.csv
 
-# then click "Import CSV…" above and pick cases.csv`}
-          </pre>
-          <p className="test-cases-tab__hint">
-            Direct in-GUI PICT execution requires a desktop wrapper (Tauri /
-            Electron) or a local backend; that ADR is still pending. The CLI
-            path works today.
+          <ol className="test-cases-tab__steps">
+            <li>
+              <strong>Save your project</strong>{' '}
+              {filePath ? (
+                isDirty ? (
+                  <span className="test-cases-tab__step-note">
+                    (you have unsaved changes — click <em>Save</em> in the
+                    header before running the command below)
+                  </span>
+                ) : (
+                  <span className="test-cases-tab__step-note">
+                    (saved as <code>{filePath}</code>)
+                  </span>
+                )
+              ) : (
+                <span className="test-cases-tab__step-note">
+                  (use <em>Save As…</em> in the header — an unsaved project
+                  has no path the CLI can read)
+                </span>
+              )}
+            </li>
+            <li>
+              <strong>Make sure PICT is installed</strong> — run{' '}
+              <code>apt install pict</code> on Linux,{' '}
+              <code>brew install pict</code> on macOS, or download a build
+              from{' '}
+              <a
+                href="https://github.com/microsoft/pict"
+                target="_blank"
+                rel="noreferrer"
+              >
+                microsoft/pict
+              </a>
+              {' '}for Windows.
+            </li>
+            <li>
+              <strong>Run this command</strong> in a terminal at the NeoCombi
+              repo:
+              <div className="test-cases-tab__command">
+                <code>{cliCommand}</code>
+                <button
+                  type="button"
+                  className="test-cases-tab__copy"
+                  onClick={onCopy}
+                >
+                  {copied ? '✓ Copied' : 'Copy'}
+                </button>
+              </div>
+            </li>
+            <li>
+              <strong>
+                Click <em>Import CSV…</em> above
+              </strong>{' '}
+              and pick the <code>cases.csv</code> file the command produced.
+            </li>
+          </ol>
+
+          <p className="test-cases-tab__why">
+            <strong>Why is there no &ldquo;Generate&rdquo; button here?</strong>{' '}
+            Browsers cannot spawn external programs (PICT) directly. Adding
+            in-GUI generation requires either bundling NeoCombi as a desktop
+            app (Tauri / Electron) or compiling PICT to WebAssembly. Both
+            paths are tracked for v1.0; today the CLI is the supported route.
           </p>
         </div>
       </div>

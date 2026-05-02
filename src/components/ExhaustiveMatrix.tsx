@@ -52,10 +52,20 @@ export function ExhaustiveMatrix() {
   }
 
   const stats = computeStats(visibleFactors, occurrenceMap, forbiddenMap)
+  const hasTestSuite = testSuite !== null
 
   return (
     <div className="matrix">
-      <CoverageSummary stats={stats} hasTestSuite={testSuite !== null} />
+      {!hasTestSuite && (
+        <div className="matrix__no-suite-banner" role="status">
+          <strong>No test cases imported.</strong> Cells show only the pair
+          structure and DSL-derived forbidden marks (
+          <span className="matrix__no-suite-banner-marker">✗</span>). Import
+          a CSV in the <strong>Test cases</strong> tab to populate occurrence
+          counts.
+        </div>
+      )}
+      <CoverageSummary stats={stats} hasTestSuite={hasTestSuite} />
       <table className="matrix__table" role="grid">
         <thead>
           <tr>
