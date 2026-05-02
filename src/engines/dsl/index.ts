@@ -4,6 +4,15 @@
 export { lex } from './lexer'
 export type { Token, TokenKind } from './lexer'
 export { parse } from './parser'
+export {
+  buildTypeInfo,
+  evalPredicate,
+  isConstraintSatisfied,
+  isAssignmentValid,
+  isPartiallyForbidden,
+  computeForbiddenSlice,
+  DEFAULT_ENUMERATION_LIMIT,
+} from './evaluator'
 export type {
   Model,
   ParameterDecl,
@@ -30,4 +39,13 @@ export type {
   ParseResult,
   Position,
   Range,
+  Assignment,
+  LevelValue,
+  FactorType,
+  FactorTypeInfo,
+  ModelTypeInfo,
+  ForbiddenSliceCell,
+  ForbiddenSliceResult,
+  EvaluationOutcome,
+  EvaluationFailureReason,
 } from '../../types/dsl'

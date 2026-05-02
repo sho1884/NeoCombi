@@ -147,3 +147,63 @@ export type ParseResult = {
   model: Model | null
   diagnostics: Diagnostic[]
 }
+
+// =============================================================================
+// Evaluation runtime (used by the built-in DSL evaluator, ADR-005)
+// =============================================================================
+
+/** Concrete value a factor takes in a test case: either a string label or a number. */
+export type LevelValue = string | number
+
+/** Mapping factor name -> its assigned level value. */
+export type Assignment = Record<string, LevelValue>
+
+/** Inferred type of a factor based on its declared levels (PICT-compatible). */
+export type FactorType = 'numeric' | 'string'
+
+export type FactorTypeInfo = {
+  name: string
+  type: FactorType
+  levels: LevelValue[]
+}
+
+/** Pre-computed type / level info for fast lookup during evaluation. */
+export type ModelTypeInfo = {
+  factors: FactorTypeInfo[]
+  byName: Map<string, FactorTypeInfo>
+}
+
+/**
+ * Result of a forbidden-slice computation. Each cell records the slice
+ * combination (factor name -> level value) and whether it is forbidden by
+ * the model's constraints.
+ */
+export type ForbiddenSliceCell = {
+  assignment: Assignment
+  forbidden: boolean
+}
+
+export type ForbiddenSliceResult = {
+  cells: ForbiddenSliceCell[]
+  /** Names of the factors whose Cartesian product the cells enumerate, in order. */
+  factors: string[]
+}
+
+/** Reasons the evaluator may bail out without producing a full result. */
+export type EvaluationFailureReason =
+  | 'unknown-factor'
+  | 'too-large'
+  | 'invalid-model'
+
+export type EvaluationFailure = {
+  ok: false
+  reason: EvaluationFailureReason
+  message: string
+}
+
+export type EvaluationSuccess<T> = {
+  ok: true
+  value: T
+}
+
+export type EvaluationOutcome<T> = EvaluationSuccess<T> | EvaluationFailure
