@@ -1,0 +1,19 @@
+# Run the pict-service alongside the NeoCombi GUI for in-browser test case
+# generation. The GUI talks to http://localhost:8765 by default; override
+# with the VITE_PICT_API_URL env var when starting the dev server.
+#
+#   docker compose up --build pict-service
+#
+# Then `npm run dev` separately to run the GUI.
+
+services:
+  pict-service:
+    build: ./pict-service
+    ports:
+      - "8765:8765"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:8765/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

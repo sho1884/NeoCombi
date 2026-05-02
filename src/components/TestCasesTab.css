@@ -21,6 +21,7 @@
   color: #455a64;
 }
 
+.test-cases-tab__generate,
 .test-cases-tab__import,
 .test-cases-tab__clear {
   appearance: none;
@@ -32,6 +33,23 @@
   font-size: 0.78rem;
   border-radius: 3px;
   cursor: pointer;
+}
+
+.test-cases-tab__generate {
+  background: #2e7d32;
+  border-color: #2e7d32;
+  font-weight: 600;
+}
+
+.test-cases-tab__generate:hover:not(:disabled) {
+  background: #1b5e20;
+}
+
+.test-cases-tab__generate:disabled {
+  background: #cfd8dc;
+  border-color: #cfd8dc;
+  color: #fff;
+  cursor: not-allowed;
 }
 
 .test-cases-tab__import:hover,
@@ -155,6 +173,18 @@
   border-radius: 0 4px 4px 0;
   color: #5d4037;
   font-size: 0.85rem;
+}
+
+.test-cases-tab__service-cmd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  background: #263238;
+  color: #eceff1;
+  padding: 0.6rem 0.8rem;
+  border-radius: 4px;
+  margin: 0.6rem 0 1rem;
+  white-space: pre;
+  overflow: auto;
 }
 
 .test-cases-tab__table-wrap {

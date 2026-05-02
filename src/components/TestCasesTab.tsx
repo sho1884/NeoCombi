@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useProjectStore } from '../stores/projectStore'
 import { parseCsv } from '../services/csvImport'
+import { generateTestCases } from '../services/pictApi'
 import './TestCasesTab.css'
 
 export function TestCasesTab() {
@@ -9,9 +10,45 @@ export function TestCasesTab() {
   const setTestCaseExpected = useProjectStore(s => s.setTestCaseExpected)
   const filePath = useProjectStore(s => s.filePath)
   const isDirty = useProjectStore(s => s.isDirty)
+  const source = useProjectStore(s => s.source)
+  const pictOrder = useProjectStore(s => s.pictOrder)
+  const diagnostics = useProjectStore(s => s.parseResult.diagnostics)
 
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [generating, setGenerating] = useState(false)
+
+  const dslHasErrors = diagnostics.some(d => d.severity === 'error')
+
+  const onGenerate = async () => {
+    setGenerating(true)
+    setError(null)
+    try {
+      const result = await generateTestCases(source, { order: pictOrder })
+      if (!result.ok) {
+        if (result.error.kind === 'network') {
+          setError(
+            `Cannot reach the PICT service: ${result.error.message}. Start it with \`docker compose up pict-service\` (or run via the CLI as a fallback).`,
+          )
+        } else if (result.error.kind === 'pict-error') {
+          setError(`PICT rejected the model: ${result.error.message}${result.error.stderr ? ' — ' + result.error.stderr : ''}`)
+        } else {
+          setError(`Service error (${result.error.status}): ${result.error.message}`)
+        }
+        return
+      }
+      const { suite } = parseCsv(result.value)
+      if (suite.factorOrder.length === 0) {
+        setError('PICT returned an empty result.')
+        return
+      }
+      setTestSuite(suite)
+    } catch (e) {
+      setError(`Unexpected error while generating: ${(e as Error).message}`)
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   const onImport = () => {
     const input = document.createElement('input')
@@ -72,6 +109,21 @@ export function TestCasesTab() {
     return (
       <div className="test-cases-tab">
         <div className="test-cases-tab__toolbar">
+          <button
+            type="button"
+            className="test-cases-tab__generate"
+            onClick={onGenerate}
+            disabled={generating || dslHasErrors || source.length === 0}
+            title={
+              dslHasErrors
+                ? 'Fix DSL errors before generating'
+                : source.length === 0
+                  ? 'Write some DSL first'
+                  : 'Generate test cases via the pict-service Docker container'
+            }
+          >
+            {generating ? 'Generating…' : 'Generate'}
+          </button>
           <button type="button" className="test-cases-tab__import" onClick={onImport}>
             Import CSV…
           </button>
@@ -82,9 +134,19 @@ export function TestCasesTab() {
             No test cases yet
           </h2>
           <p className="test-cases-tab__no-suite-lede">
-            NeoCombi&apos;s GUI does not run PICT directly today. To generate
-            test cases you run the CLI in a terminal and bring the result back
-            here.
+            Click <strong>Generate</strong> above to run PICT via the
+            <code> pict-service </code>Docker container and populate the table.
+            If the service is not running yet:
+          </p>
+
+          <pre className="test-cases-tab__service-cmd">
+{`# from the repo root, in a terminal:
+docker compose up --build pict-service`}
+          </pre>
+
+          <p className="test-cases-tab__no-suite-lede">
+            Don&apos;t want Docker? You can fall back to the CLI workflow
+            instead:
           </p>
 
           <ol className="test-cases-tab__steps">
@@ -103,28 +165,13 @@ export function TestCasesTab() {
                 )
               ) : (
                 <span className="test-cases-tab__step-note">
-                  (use <em>Save As…</em> in the header — an unsaved project
-                  has no path the CLI can read)
+                  (use <em>Save As…</em> in the header)
                 </span>
               )}
             </li>
             <li>
-              <strong>Make sure PICT is installed</strong> — run{' '}
-              <code>apt install pict</code> on Linux,{' '}
-              <code>brew install pict</code> on macOS, or download a build
-              from{' '}
-              <a
-                href="https://github.com/microsoft/pict"
-                target="_blank"
-                rel="noreferrer"
-              >
-                microsoft/pict
-              </a>
-              {' '}for Windows.
-            </li>
-            <li>
-              <strong>Run this command</strong> in a terminal at the NeoCombi
-              repo:
+              <strong>Run the CLI</strong> in a terminal at the NeoCombi repo
+              (PICT must be installed locally):
               <div className="test-cases-tab__command">
                 <code>{cliCommand}</code>
                 <button
@@ -140,17 +187,9 @@ export function TestCasesTab() {
               <strong>
                 Click <em>Import CSV…</em> above
               </strong>{' '}
-              and pick the <code>cases.csv</code> file the command produced.
+              and pick the <code>cases.csv</code> file.
             </li>
           </ol>
-
-          <p className="test-cases-tab__why">
-            <strong>Why is there no &ldquo;Generate&rdquo; button here?</strong>{' '}
-            Browsers cannot spawn external programs (PICT) directly. Adding
-            in-GUI generation requires either bundling NeoCombi as a desktop
-            app (Tauri / Electron) or compiling PICT to WebAssembly. Both
-            paths are tracked for v1.0; today the CLI is the supported route.
-          </p>
         </div>
       </div>
     )
@@ -165,8 +204,16 @@ export function TestCasesTab() {
           {testSuite.factorOrder.length} factor
           {testSuite.factorOrder.length === 1 ? '' : 's'}
         </span>
+        <button
+          type="button"
+          className="test-cases-tab__generate"
+          onClick={onGenerate}
+          disabled={generating || dslHasErrors || source.length === 0}
+        >
+          {generating ? 'Generating…' : 'Re-generate'}
+        </button>
         <button type="button" className="test-cases-tab__import" onClick={onImport}>
-          Re-import…
+          Import CSV…
         </button>
         <button
           type="button"

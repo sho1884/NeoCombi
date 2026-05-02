@@ -2,7 +2,7 @@
 #
 # Run from the repo root:
 #   node bin/neocombi.mjs generate examples/browsers.tmodel
-# or open this file from the GUI's "Open…" button.
+# or open this file from the GUI's "Open..." button.
 
 OS:      Linux, Windows, macOS
 Browser: Chrome, Firefox, Safari
