@@ -1,7 +1,6 @@
 .matrix {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
+  display: inline-block;
+  min-width: 100%;
 }
 
 .matrix__empty {
@@ -14,62 +13,89 @@
   line-height: 1.5;
 }
 
-.pair-grid {
+.matrix__table {
+  border-collapse: collapse;
+  font-size: 0.78rem;
   background: #fff;
   border: 1px solid #cfd8dc;
-  border-radius: 4px;
-  padding: 0.5rem 0.75rem 0.75rem;
 }
 
-.pair-grid__caption {
-  display: flex;
-  align-items: baseline;
-  gap: 0.4rem;
-  margin-bottom: 0.4rem;
-  font-size: 0.85rem;
+.matrix__corner {
+  background: #f5f7f8;
+  border: 1px solid #cfd8dc;
 }
 
-.pair-grid__factor {
+.matrix__factor-header {
+  background: #cfd8dc;
+  color: #263238;
+  font-weight: 700;
+  border: 1px solid #b0bec5;
+  padding: 0.3rem 0.5rem;
+  text-align: center;
+}
+
+.matrix__factor-header--col {
+  /* Span across this factor's level columns (colSpan handled in JSX). */
+  border-bottom: 2px solid #90a4ae;
+}
+
+.matrix__factor-header--row {
+  /* Span down this factor's level rows (rowSpan handled in JSX). */
+  border-right: 2px solid #90a4ae;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: nowrap;
+  padding: 0.5rem 0.3rem;
+}
+
+.matrix__level-header {
+  background: #eceff1;
+  color: #455a64;
   font-weight: 600;
-  color: #37474f;
-}
-
-.pair-grid__caption-sep {
-  color: #90a4ae;
-}
-
-.pair-grid__table {
-  border-collapse: collapse;
-  font-size: 0.82rem;
-  table-layout: auto;
-}
-
-.pair-grid__table th,
-.pair-grid__table td {
-  border: 1px solid #eceff1;
+  border: 1px solid #cfd8dc;
   padding: 0.25rem 0.5rem;
   text-align: center;
   white-space: nowrap;
-  min-width: 2.5rem;
+  min-width: 2.4rem;
 }
 
-.pair-grid__table thead th {
-  background: #f5f7f8;
-  color: #455a64;
-  font-weight: 600;
+.matrix__level-header--col {
+  /* Sticky-ish narrow header at top */
+  font-size: 0.75rem;
 }
 
-.pair-grid__table tbody th {
-  background: #f5f7f8;
-  color: #455a64;
-  font-weight: 500;
+.matrix__level-header--row {
   text-align: right;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: #f5f7f8;
 }
 
-.pair-grid__cell {
+.matrix__cell {
+  border: 1px solid #eceff1;
+  padding: 0.25rem 0.4rem;
+  text-align: center;
+  min-width: 2.4rem;
   background: #fff;
 }
 
-.pair-grid__cell-placeholder {
+.matrix__cell--pair {
+  /* Pair-coverage cell. Once test cases are wired in, occurrence counts
+     will replace the placeholder dot here (SR-042 / SR-043). */
+}
+
+.matrix__cell--blocked {
+  background:
+    repeating-linear-gradient(
+      45deg,
+      #eceff1,
+      #eceff1 4px,
+      #f5f7f8 4px,
+      #f5f7f8 8px
+    );
+  color: transparent;
+}
+
+.matrix__cell-placeholder {
   color: #cfd8dc;
 }

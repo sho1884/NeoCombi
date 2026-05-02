@@ -3,6 +3,12 @@ import { useProjectStore } from '../stores/projectStore'
 import type { ParameterDecl } from '../types/dsl'
 import './ExhaustiveMatrix.css'
 
+/**
+ * Single cross-tabulation matrix in the PICT-PAPP "総当たり表" style:
+ * one large square table whose rows and columns are every (factor, level)
+ * pair across the visible factors. Diagonal blocks (same factor on both
+ * axes) are blocked. Off-diagonal cells are the level-pair intersections.
+ */
 export function ExhaustiveMatrix() {
   const model = useProjectStore(s => s.parseResult.model)
   const factorVisibility = useProjectStore(s => s.view.factorVisibility)
@@ -15,9 +21,9 @@ export function ExhaustiveMatrix() {
   if (visibleFactors.length === 0) {
     return (
       <div className="matrix__empty">
-        Declare factors in the DSL editor or Factors &amp; Levels tab to populate the
-        cross-tabulation matrix here. Use the checkboxes above to hide factors
-        from this view (SR-041).
+        Declare factors in the DSL editor or Factors &amp; Levels tab to populate
+        the exhaustive cross-tabulation matrix here. Use the checkboxes above to
+        hide factors from this view (SR-041).
       </div>
     )
   }
@@ -26,68 +32,88 @@ export function ExhaustiveMatrix() {
     return (
       <div className="matrix__empty">
         Only one factor is visible — pair coverage requires at least two
-        factors. Add another factor (or check more boxes above) to see the
+        factors. Check more boxes above (or add factors) to see the
         cross-tabulation matrix.
       </div>
     )
   }
 
-  // Generate ordered factor pairs (i &lt; j) once.
-  const pairs: Array<[ParameterDecl, ParameterDecl]> = []
-  for (let i = 0; i < visibleFactors.length; i++) {
-    for (let j = i + 1; j < visibleFactors.length; j++) {
-      pairs.push([visibleFactors[i]!, visibleFactors[j]!])
-    }
-  }
-
   return (
     <div className="matrix">
-      {pairs.map(([row, col]) => (
-        <PairGrid key={`${row.name}::${col.name}`} row={row} col={col} />
-      ))}
-    </div>
-  )
-}
-
-type PairGridProps = {
-  row: ParameterDecl
-  col: ParameterDecl
-}
-
-function PairGrid({ row, col }: PairGridProps) {
-  return (
-    <div className="pair-grid">
-      <div className="pair-grid__caption">
-        <span className="pair-grid__factor pair-grid__factor--row">{row.name}</span>
-        <span className="pair-grid__caption-sep">×</span>
-        <span className="pair-grid__factor pair-grid__factor--col">{col.name}</span>
-      </div>
-      <table className="pair-grid__table" role="grid">
+      <table className="matrix__table" role="grid">
         <thead>
           <tr>
-            <th aria-label={`${row.name} levels (rows) × ${col.name} levels (columns)`} />
-            {col.levels.map(lv => (
-              <th key={String(lv.value)} scope="col">
-                {String(lv.value)}
+            <th className="matrix__corner" colSpan={2} aria-hidden="true" />
+            {visibleFactors.map(f => (
+              <th
+                key={`col-factor-${f.name}`}
+                className="matrix__factor-header matrix__factor-header--col"
+                colSpan={Math.max(f.levels.length, 1)}
+                scope="colgroup"
+              >
+                {f.name}
               </th>
             ))}
           </tr>
+          <tr>
+            <th className="matrix__corner" colSpan={2} aria-hidden="true" />
+            {visibleFactors.flatMap(f =>
+              f.levels.map(lv => (
+                <th
+                  key={`col-level-${f.name}::${String(lv.value)}`}
+                  className="matrix__level-header matrix__level-header--col"
+                  scope="col"
+                >
+                  {String(lv.value)}
+                </th>
+              )),
+            )}
+          </tr>
         </thead>
         <tbody>
-          {row.levels.map(rl => (
-            <tr key={String(rl.value)}>
-              <th scope="row">{String(rl.value)}</th>
-              {col.levels.map(cl => (
-                <td
-                  key={String(cl.value)}
-                  className="pair-grid__cell"
-                  aria-label={`${row.name}=${String(rl.value)}, ${col.name}=${String(cl.value)}`}
+          {visibleFactors.flatMap(rowFactor =>
+            rowFactor.levels.map((rowLevel, rowLevelIdx) => (
+              <tr key={`row-${rowFactor.name}::${String(rowLevel.value)}`}>
+                {rowLevelIdx === 0 && (
+                  <th
+                    className="matrix__factor-header matrix__factor-header--row"
+                    rowSpan={rowFactor.levels.length}
+                    scope="rowgroup"
+                  >
+                    {rowFactor.name}
+                  </th>
+                )}
+                <th
+                  className="matrix__level-header matrix__level-header--row"
+                  scope="row"
                 >
-                  <span className="pair-grid__cell-placeholder">·</span>
-                </td>
-              ))}
-            </tr>
-          ))}
+                  {String(rowLevel.value)}
+                </th>
+                {visibleFactors.flatMap(colFactor =>
+                  colFactor.levels.map(colLevel => {
+                    const sameFactor = rowFactor.name === colFactor.name
+                    const cellLabel =
+                      `${rowFactor.name}=${String(rowLevel.value)}, ` +
+                      `${colFactor.name}=${String(colLevel.value)}`
+                    return (
+                      <td
+                        key={`cell-${colFactor.name}::${String(colLevel.value)}`}
+                        className={
+                          'matrix__cell ' +
+                          (sameFactor
+                            ? 'matrix__cell--blocked'
+                            : 'matrix__cell--pair')
+                        }
+                        aria-label={sameFactor ? 'same factor (blocked)' : cellLabel}
+                      >
+                        {sameFactor ? '' : <span className="matrix__cell-placeholder">·</span>}
+                      </td>
+                    )
+                  }),
+                )}
+              </tr>
+            )),
+          )}
         </tbody>
       </table>
     </div>
