@@ -23,5 +23,5 @@
     "noUncheckedSideEffectImports": true
   },
   "include": ["src"],
-  "exclude": ["src/cli.ts"]
+  "exclude": ["src/cli.ts", "src/services/pictRunner.ts"]
 }
