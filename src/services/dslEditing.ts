@@ -7,8 +7,10 @@
 import { parse } from '../engines/dsl'
 import type {
   ConstraintNode,
+  LevelNode,
   ParameterRef,
   Predicate,
+  ValueLiteral,
 } from '../types/dsl'
 
 type Edit = { start: number; end: number; text: string }
@@ -163,6 +165,169 @@ export function addLevelToFactor(
   }
   const insertAt = factor.range.end.offset
   return source.slice(0, insertAt) + ', ' + newLevel + source.slice(insertAt)
+}
+
+/**
+ * Rename a level value across the source. Updates the level token in the
+ * factor's declaration AND any references in constraint clauses
+ * (`[Factor] = "oldValue"`, `[Factor] IN { "oldValue", ... }`, and
+ * parameter-to-value comparisons in either direction).
+ *
+ * The token type ('string' / 'identifier' / 'number') of each occurrence is
+ * preserved when re-emitting the new value: a quoted-string occurrence stays
+ * quoted, a bare-identifier occurrence stays bare, etc.
+ */
+export function renameLevel(
+  source: string,
+  factorName: string,
+  oldValue: string,
+  newValue: string,
+): string {
+  if (oldValue === newValue) return source
+  const { model } = parse(source)
+  if (!model) return source
+  const factor = model.parameters.find(p => p.name === factorName)
+  if (!factor) return source
+  const target = factor.levels.find(l => String(l.value) === oldValue)
+  if (!target) return source
+
+  const edits: Edit[] = []
+  edits.push({
+    start: target.range.start.offset,
+    end: target.range.end.offset,
+    text: formatValueAs(target, newValue),
+  })
+
+  // Walk constraints and rewrite every value literal that refers to this
+  // factor's old level. Track the "host" parameter of each comparison /
+  // IN-clause so we know whether the literal targets our factor.
+  for (const c of model.constraints) {
+    forEachValueLiteralWithHost(c, (hostFactor, value) => {
+      if (hostFactor !== factorName) return
+      if (String(value.value) !== oldValue) return
+      edits.push({
+        start: value.range.start.offset,
+        end: value.range.end.offset,
+        text: formatValueAs(value, newValue),
+      })
+    })
+  }
+  return applyEdits(source, edits)
+}
+
+/**
+ * Swap a parameter declaration with its neighbour in declaration order.
+ * Returns the source unchanged when the move is impossible (already at
+ * an end, factor missing).
+ */
+export function moveFactor(
+  source: string,
+  factorName: string,
+  direction: 'up' | 'down',
+): string {
+  const { model } = parse(source)
+  if (!model) return source
+  const idx = model.parameters.findIndex(p => p.name === factorName)
+  if (idx < 0) return source
+  if (direction === 'up' && idx === 0) return source
+  if (direction === 'down' && idx === model.parameters.length - 1) return source
+
+  const earlier =
+    direction === 'up' ? model.parameters[idx - 1]! : model.parameters[idx]!
+  const later =
+    direction === 'up' ? model.parameters[idx]! : model.parameters[idx + 1]!
+  return swapTextRanges(source, earlier.range.start.offset, earlier.range.end.offset, later.range.start.offset, later.range.end.offset)
+}
+
+/**
+ * Swap a level with its neighbour inside a factor's level list.
+ */
+export function moveLevel(
+  source: string,
+  factorName: string,
+  levelValue: string,
+  direction: 'up' | 'down',
+): string {
+  const { model } = parse(source)
+  if (!model) return source
+  const factor = model.parameters.find(p => p.name === factorName)
+  if (!factor) return source
+  const idx = factor.levels.findIndex(l => String(l.value) === levelValue)
+  if (idx < 0) return source
+  if (direction === 'up' && idx === 0) return source
+  if (direction === 'down' && idx === factor.levels.length - 1) return source
+
+  const earlier = direction === 'up' ? factor.levels[idx - 1]! : factor.levels[idx]!
+  const later = direction === 'up' ? factor.levels[idx]! : factor.levels[idx + 1]!
+  return swapTextRanges(source, earlier.range.start.offset, earlier.range.end.offset, later.range.start.offset, later.range.end.offset)
+}
+
+function swapTextRanges(
+  source: string,
+  aStart: number,
+  aEnd: number,
+  bStart: number,
+  bEnd: number,
+): string {
+  if (aStart > bStart) {
+    return swapTextRanges(source, bStart, bEnd, aStart, aEnd)
+  }
+  // a comes before b; reassemble with their texts swapped.
+  const aText = source.slice(aStart, aEnd)
+  const bText = source.slice(bStart, bEnd)
+  return (
+    source.slice(0, aStart) +
+    bText +
+    source.slice(aEnd, bStart) +
+    aText +
+    source.slice(bEnd)
+  )
+}
+
+function formatValueAs(
+  template: LevelNode | ValueLiteral,
+  newValue: string,
+): string {
+  if (template.type === 'string') {
+    return '"' + newValue.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"'
+  }
+  // Numeric literals: emit the new value as-is. The caller is responsible for
+  // ensuring the value parses as a number when the factor was numeric;
+  // otherwise PICT will surface the type mismatch on the next parse.
+  // Identifier literals: emit bare.
+  return newValue
+}
+
+function forEachValueLiteralWithHost(
+  node: ConstraintNode | Predicate,
+  visit: (hostFactor: string, value: ValueLiteral) => void,
+): void {
+  switch (node.type) {
+    case 'if':
+      forEachValueLiteralWithHost(node.condition, visit)
+      forEachValueLiteralWithHost(node.then, visit)
+      if (node.else) forEachValueLiteralWithHost(node.else, visit)
+      return
+    case 'unconditional':
+      forEachValueLiteralWithHost(node.predicate, visit)
+      return
+    case 'or':
+    case 'and':
+      forEachValueLiteralWithHost(node.left, visit)
+      forEachValueLiteralWithHost(node.right, visit)
+      return
+    case 'not':
+      forEachValueLiteralWithHost(node.operand, visit)
+      return
+    case 'comparison':
+      if (node.right.type !== 'paramRef') {
+        visit(node.left.name, node.right)
+      }
+      return
+    case 'in':
+      for (const v of node.values) visit(node.left.name, v)
+      return
+  }
 }
 
 /**

@@ -168,9 +168,12 @@ export function ExhaustiveMatrix() {
                           (info.count === 1 ? '' : 's') +
                           ` (rows ${info.ids.join(', ')})`
                       } else {
-                        display = info.ids.join(',')
+                        // Lower-left half: which test rows contain this pair.
+                        // Prefix with # so the numbers read as references
+                        // rather than as ordinary digits.
+                        display = info.ids.map(id => '#' + id).join(', ')
                         cellClass += ' matrix__cell--ids'
-                        extraLabel = `: covered by rows ${info.ids.join(', ')}`
+                        extraLabel = `: covered by ${info.ids.map(id => '#' + id).join(', ')}`
                       }
                     }
 
@@ -310,7 +313,7 @@ function matrixToTsv(
           } else if (colFactorIdx > rowFactorIdx) {
             cells.push(String(info.count))
           } else {
-            cells.push(info.ids.join(','))
+            cells.push(info.ids.map(id => '#' + id).join(', '))
           }
         }
       }

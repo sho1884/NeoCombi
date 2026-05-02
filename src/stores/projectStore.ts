@@ -13,9 +13,12 @@ import { deserialize, serialize } from '../services/tmodelFile'
 import {
   addFactor as editAddFactor,
   addLevelToFactor as editAddLevel,
+  moveFactor as editMoveFactor,
+  moveLevel as editMoveLevel,
   removeFactor as editRemoveFactor,
   removeLevelFromFactor as editRemoveLevel,
   renameFactor as editRenameFactor,
+  renameLevel as editRenameLevel,
 } from '../services/dslEditing'
 
 const DEFAULT_PICT_ORDER = 2
@@ -82,6 +85,12 @@ type Actions = {
   addLevelToFactor(factorName: string, levelValue: string): void
   /** Remove a level from a factor's level list (refuses to empty the list). */
   removeLevelFromFactor(factorName: string, levelValue: string): void
+  /** Rename a level across declaration and all matching constraint references. */
+  renameLevel(factorName: string, oldValue: string, newValue: string): void
+  /** Move a factor up / down in declaration order. */
+  moveFactor(factorName: string, direction: 'up' | 'down'): void
+  /** Move a level up / down within its factor's level list. */
+  moveLevel(factorName: string, levelValue: string, direction: 'up' | 'down'): void
   setPictOrder(order: number): void
   /** Add or update an expected value matched by exact assignment. */
   setExpectedValue(assignment: Record<string, string>, value: string): void
@@ -145,6 +154,24 @@ export const useProjectStore = create<Store>()((set, get) => ({
 
   removeLevelFromFactor(factorName, levelValue) {
     const next = editRemoveLevel(get().source, factorName, levelValue)
+    if (next === get().source) return
+    set({ source: next, parseResult: parse(next), isDirty: true })
+  },
+
+  renameLevel(factorName, oldValue, newValue) {
+    const next = editRenameLevel(get().source, factorName, oldValue, newValue)
+    if (next === get().source) return
+    set({ source: next, parseResult: parse(next), isDirty: true })
+  },
+
+  moveFactor(factorName, direction) {
+    const next = editMoveFactor(get().source, factorName, direction)
+    if (next === get().source) return
+    set({ source: next, parseResult: parse(next), isDirty: true })
+  },
+
+  moveLevel(factorName, levelValue, direction) {
+    const next = editMoveLevel(get().source, factorName, levelValue, direction)
     if (next === get().source) return
     set({ source: next, parseResult: parse(next), isDirty: true })
   },

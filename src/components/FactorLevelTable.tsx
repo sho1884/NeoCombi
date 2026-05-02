@@ -11,6 +11,9 @@ export function FactorLevelTable() {
   const addFactor = useProjectStore(s => s.addFactor)
   const addLevelToFactor = useProjectStore(s => s.addLevelToFactor)
   const removeLevelFromFactor = useProjectStore(s => s.removeLevelFromFactor)
+  const renameLevel = useProjectStore(s => s.renameLevel)
+  const moveFactor = useProjectStore(s => s.moveFactor)
+  const moveLevel = useProjectStore(s => s.moveLevel)
 
   const factors = model?.parameters ?? []
 
@@ -20,14 +23,15 @@ export function FactorLevelTable() {
         <thead>
           <tr>
             <th className="factor-level-table__col-show" scope="col">Show</th>
+            <th className="factor-level-table__col-order" scope="col" aria-label="Reorder" />
             <th className="factor-level-table__col-name" scope="col">Factor</th>
             <th className="factor-level-table__col-count" scope="col">#</th>
             <th className="factor-level-table__col-levels" scope="col">Levels</th>
-            <th className="factor-level-table__col-actions" scope="col" aria-label="Actions" />
+            <th className="factor-level-table__col-actions" scope="col" aria-label="Remove" />
           </tr>
         </thead>
         <tbody>
-          {factors.map(p => {
+          {factors.map((p, idx) => {
             const visible = factorVisibility[p.name] !== false
             return (
               <tr key={p.name}>
@@ -39,11 +43,29 @@ export function FactorLevelTable() {
                     onChange={e => setFactorVisibility(p.name, e.target.checked)}
                   />
                 </td>
+                <td className="factor-level-table__col-order">
+                  <button
+                    type="button"
+                    className="factor-level-table__order-btn"
+                    onClick={() => moveFactor(p.name, 'up')}
+                    disabled={idx === 0}
+                    title="Move factor up"
+                    aria-label={`Move ${p.name} up`}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    className="factor-level-table__order-btn"
+                    onClick={() => moveFactor(p.name, 'down')}
+                    disabled={idx === factors.length - 1}
+                    title="Move factor down"
+                    aria-label={`Move ${p.name} down`}
+                  >
+                    ↓
+                  </button>
+                </td>
                 <td className="factor-level-table__col-name">
-                  {/* `key` forces a fresh mount when the name changes
-                      (e.g., after a successful rename), so the inline
-                      input's local draft state initializes from the new
-                      prop without an effect. */}
                   <FactorNameCell
                     key={p.name}
                     name={p.name}
@@ -56,16 +78,24 @@ export function FactorLevelTable() {
                 <td className="factor-level-table__col-levels">
                   <LevelChips
                     factorName={p.name}
-                    levels={p.levels.map(l => ({ type: l.type, value: String(l.value) }))}
+                    levels={p.levels.map((l, levelIdx) => ({
+                      type: l.type,
+                      value: String(l.value),
+                      idx: levelIdx,
+                    }))}
                     onAdd={value => addLevelToFactor(p.name, value)}
                     onRemove={value => removeLevelFromFactor(p.name, value)}
+                    onRename={(oldValue, newValue) =>
+                      renameLevel(p.name, oldValue, newValue)
+                    }
+                    onMove={(value, direction) => moveLevel(p.name, value, direction)}
                   />
                 </td>
                 <td className="factor-level-table__col-actions">
                   <button
                     type="button"
                     className="factor-level-table__remove"
-                    title="Remove this factor"
+                    title={`Remove factor ${p.name}`}
                     aria-label={`Remove factor ${p.name}`}
                     onClick={() => {
                       if (window.confirm(
@@ -75,14 +105,14 @@ export function FactorLevelTable() {
                       }
                     }}
                   >
-                    ✕
+                    ✕ Remove
                   </button>
                 </td>
               </tr>
             )
           })}
           <tr className="factor-level-table__add-row">
-            <td colSpan={5}>
+            <td colSpan={6}>
               <AddFactorRow onAdd={addFactor} existingNames={factors.map(f => f.name)} />
             </td>
           </tr>
@@ -95,9 +125,9 @@ export function FactorLevelTable() {
         </p>
       ) : (
         <p className="factor-level-table__hint">
-          Rename a factor to update all <code>[refs]</code> in constraints
-          automatically. Level renames must currently be done in the DSL tab
-          (constraint references aren&apos;t auto-rewritten yet).
+          Click a factor or level name to rename it; constraint references
+          update automatically. Use ↑ / ↓ to reorder, ← / → on a level chip to
+          shuffle within a factor, and × to remove.
         </p>
       )}
     </div>
@@ -105,7 +135,7 @@ export function FactorLevelTable() {
 }
 
 // =============================================================================
-// Factor name cell with inline edit
+// Inline factor-name editor
 // =============================================================================
 
 type FactorNameCellProps = {
@@ -146,17 +176,32 @@ function FactorNameCell({ name, onCommit }: FactorNameCellProps) {
 }
 
 // =============================================================================
-// Level chips with add / remove
+// Level chips: rename / move / remove
 // =============================================================================
+
+type LevelEntry = {
+  type: 'string' | 'number' | 'identifier'
+  value: string
+  idx: number
+}
 
 type LevelChipsProps = {
   factorName: string
-  levels: Array<{ type: 'string' | 'number' | 'identifier'; value: string }>
-  onAdd: (levelValue: string) => void
-  onRemove: (levelValue: string) => void
+  levels: LevelEntry[]
+  onAdd: (value: string) => void
+  onRemove: (value: string) => void
+  onRename: (oldValue: string, newValue: string) => void
+  onMove: (value: string, direction: 'up' | 'down') => void
 }
 
-function LevelChips({ factorName, levels, onAdd, onRemove }: LevelChipsProps) {
+function LevelChips({
+  factorName,
+  levels,
+  onAdd,
+  onRemove,
+  onRename,
+  onMove,
+}: LevelChipsProps) {
   const [adding, setAdding] = useState(false)
   const [draft, setDraft] = useState('')
 
@@ -175,24 +220,17 @@ function LevelChips({ factorName, levels, onAdd, onRemove }: LevelChipsProps) {
   return (
     <div className="factor-level-table__levels">
       {levels.map(lv => (
-        <span
+        <LevelChip
           key={`${factorName}::${lv.value}`}
-          className={
-            'factor-level-table__level factor-level-table__level--' + lv.type
-          }
-        >
-          <span className="factor-level-table__level-text">{lv.value}</span>
-          <button
-            type="button"
-            className="factor-level-table__level-remove"
-            title="Remove this level"
-            aria-label={`Remove level ${lv.value} from ${factorName}`}
-            disabled={levels.length <= 1}
-            onClick={() => onRemove(lv.value)}
-          >
-            ×
-          </button>
-        </span>
+          factorName={factorName}
+          level={lv}
+          isFirst={lv.idx === 0}
+          isLast={lv.idx === levels.length - 1}
+          canRemove={levels.length > 1}
+          onRename={onRename}
+          onRemove={onRemove}
+          onMove={onMove}
+        />
       ))}
       {adding ? (
         <span className="factor-level-table__level factor-level-table__level--editing">
@@ -225,6 +263,111 @@ function LevelChips({ factorName, levels, onAdd, onRemove }: LevelChipsProps) {
         </button>
       )}
     </div>
+  )
+}
+
+type LevelChipProps = {
+  factorName: string
+  level: LevelEntry
+  isFirst: boolean
+  isLast: boolean
+  canRemove: boolean
+  onRename: (oldValue: string, newValue: string) => void
+  onRemove: (value: string) => void
+  onMove: (value: string, direction: 'up' | 'down') => void
+}
+
+function LevelChip({
+  factorName,
+  level,
+  isFirst,
+  isLast,
+  canRemove,
+  onRename,
+  onRemove,
+  onMove,
+}: LevelChipProps) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(level.value)
+
+  const commitEdit = () => {
+    const trimmed = draft.trim()
+    setEditing(false)
+    if (trimmed.length === 0 || trimmed === level.value) {
+      setDraft(level.value)
+      return
+    }
+    onRename(level.value, trimmed)
+  }
+
+  return (
+    <span
+      className={
+        'factor-level-table__level factor-level-table__level--' + level.type
+      }
+    >
+      <button
+        type="button"
+        className="factor-level-table__level-move"
+        onClick={() => onMove(level.value, 'up')}
+        disabled={isFirst}
+        title="Move left"
+        aria-label={`Move level ${level.value} left in ${factorName}`}
+      >
+        ‹
+      </button>
+      {editing ? (
+        <input
+          type="text"
+          className="factor-level-table__level-input"
+          value={draft}
+          autoFocus
+          onChange={e => setDraft(e.target.value)}
+          onBlur={commitEdit}
+          onKeyDown={e => {
+            if (e.key === 'Enter') {
+              ;(e.target as HTMLInputElement).blur()
+            } else if (e.key === 'Escape') {
+              setDraft(level.value)
+              setEditing(false)
+            }
+          }}
+          aria-label={`Rename level ${level.value} of ${factorName}`}
+        />
+      ) : (
+        <button
+          type="button"
+          className="factor-level-table__level-text"
+          onClick={() => {
+            setDraft(level.value)
+            setEditing(true)
+          }}
+          title="Click to rename"
+        >
+          {level.value}
+        </button>
+      )}
+      <button
+        type="button"
+        className="factor-level-table__level-move"
+        onClick={() => onMove(level.value, 'down')}
+        disabled={isLast}
+        title="Move right"
+        aria-label={`Move level ${level.value} right in ${factorName}`}
+      >
+        ›
+      </button>
+      <button
+        type="button"
+        className="factor-level-table__level-remove"
+        title="Remove this level"
+        aria-label={`Remove level ${level.value} from ${factorName}`}
+        disabled={!canRemove}
+        onClick={() => onRemove(level.value)}
+      >
+        ×
+      </button>
+    </span>
   )
 }
 

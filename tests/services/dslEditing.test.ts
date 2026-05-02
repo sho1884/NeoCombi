@@ -2,9 +2,12 @@ import { describe, it, expect } from 'vitest'
 import {
   addFactor,
   addLevelToFactor,
+  moveFactor,
+  moveLevel,
   removeFactor,
   removeLevelFromFactor,
   renameFactor,
+  renameLevel,
 } from '../../src/services/dslEditing'
 import { parse } from '../../src/engines/dsl'
 
@@ -140,5 +143,114 @@ describe('dslEditing / removeLevelFromFactor', () => {
   it('refuses to empty the level list', () => {
     const src = 'OS: Linux\n'
     expect(removeLevelFromFactor(src, 'OS', 'Linux')).toBe(src)
+  })
+})
+
+describe('dslEditing / renameLevel', () => {
+  it('renames the level in the declaration', () => {
+    const src = 'OS: Linux, Windows\n'
+    const next = renameLevel(src, 'OS', 'Linux', 'Ubuntu')
+    expect(next).toContain('OS: Ubuntu, Windows')
+  })
+
+  it('rewrites = "oldValue" references in constraints', () => {
+    const src = [
+      'OS: Linux, Windows',
+      'Browser: Chrome, Safari',
+      'IF [OS] = "Linux" THEN [Browser] <> "Safari";',
+      '',
+    ].join('\n')
+    const next = renameLevel(src, 'OS', 'Linux', 'Ubuntu')
+    expect(next).toContain('"Ubuntu"')
+    expect(next).not.toContain('"Linux"')
+    // Other factor's level untouched.
+    expect(next).toContain('"Safari"')
+  })
+
+  it('rewrites IN { ... } references', () => {
+    const src = [
+      'OS: Linux, Windows, macOS',
+      'Cloud: AWS, Azure',
+      'IF [OS] IN { "Linux", "macOS" } THEN [Cloud] = "AWS";',
+      '',
+    ].join('\n')
+    const next = renameLevel(src, 'OS', 'Linux', 'Ubuntu')
+    expect(next).toContain('IN { "Ubuntu", "macOS" }')
+  })
+
+  it('does not touch matching values that belong to a different factor', () => {
+    const src = [
+      'A: Linux, Windows',
+      'B: Linux, Mac',
+      'IF [A] = "Linux" THEN [B] = "Linux";',
+      '',
+    ].join('\n')
+    const next = renameLevel(src, 'A', 'Linux', 'Ubuntu')
+    expect(next).toContain('A: Ubuntu, Windows')
+    expect(next).toContain('B: Linux, Mac')
+    expect(next).toContain('IF [A] = "Ubuntu" THEN [B] = "Linux";')
+  })
+
+  it('preserves the original token type (identifier vs string)', () => {
+    const src = 'OS: Linux, Windows\nIF [OS] = "Linux" THEN [OS] = "Linux";\n'
+    const next = renameLevel(src, 'OS', 'Linux', 'Ubuntu')
+    // Declaration uses identifier form, constraint uses string form.
+    expect(next).toContain('OS: Ubuntu, Windows')
+    expect(next).toContain('"Ubuntu"')
+  })
+
+  it('returns source unchanged when oldValue equals newValue', () => {
+    const src = 'OS: Linux, Windows\n'
+    expect(renameLevel(src, 'OS', 'Linux', 'Linux')).toBe(src)
+  })
+})
+
+describe('dslEditing / moveFactor', () => {
+  it('moves a factor up by swapping with the previous one', () => {
+    const src = 'A: 1, 2\nB: x, y\nC: p, q\n'
+    const next = moveFactor(src, 'B', 'up')
+    const names = parse(next).model?.parameters.map(p => p.name)
+    expect(names).toEqual(['B', 'A', 'C'])
+  })
+
+  it('moves a factor down by swapping with the next one', () => {
+    const src = 'A: 1, 2\nB: x, y\nC: p, q\n'
+    const next = moveFactor(src, 'B', 'down')
+    const names = parse(next).model?.parameters.map(p => p.name)
+    expect(names).toEqual(['A', 'C', 'B'])
+  })
+
+  it('does nothing at the boundaries', () => {
+    const src = 'A: 1\nB: 2\n'
+    expect(moveFactor(src, 'A', 'up')).toBe(src)
+    expect(moveFactor(src, 'B', 'down')).toBe(src)
+  })
+
+  it('preserves the constraint section after a swap', () => {
+    const src = 'A: 1, 2\nB: x, y\nIF [A] = 1 THEN [B] = "x";\n'
+    const next = moveFactor(src, 'B', 'up')
+    expect(next).toContain('IF [A] = 1 THEN [B] = "x";')
+  })
+})
+
+describe('dslEditing / moveLevel', () => {
+  it('moves a level up within the factor list', () => {
+    const src = 'OS: Linux, Windows, macOS\n'
+    const next = moveLevel(src, 'OS', 'macOS', 'up')
+    expect(parse(next).model?.parameters[0]?.levels.map(l => String(l.value)))
+      .toEqual(['Linux', 'macOS', 'Windows'])
+  })
+
+  it('moves a level down within the factor list', () => {
+    const src = 'OS: Linux, Windows, macOS\n'
+    const next = moveLevel(src, 'OS', 'Linux', 'down')
+    expect(parse(next).model?.parameters[0]?.levels.map(l => String(l.value)))
+      .toEqual(['Windows', 'Linux', 'macOS'])
+  })
+
+  it('does nothing at the boundaries', () => {
+    const src = 'OS: Linux, Windows\n'
+    expect(moveLevel(src, 'OS', 'Linux', 'up')).toBe(src)
+    expect(moveLevel(src, 'OS', 'Windows', 'down')).toBe(src)
   })
 })
