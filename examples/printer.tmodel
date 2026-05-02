@@ -1,0 +1,15 @@
+# NeoCombi sample: small printer-options model with multiple constraints
+# illustrating IF/THEN/ELSE and IN { ... }.
+
+PaperSize: A4, Letter, Legal
+Orientation: Portrait, Landscape
+DuplexMode: None, LongEdge, ShortEdge
+ColorMode: Color, BlackAndWhite, Auto
+
+# Legal-size paper does not support landscape duplex on this device.
+IF [PaperSize] = "Legal" AND [Orientation] = "Landscape" THEN [DuplexMode] = "None";
+
+# Auto color mode requires a non-Letter paper size on the test device.
+IF [ColorMode] = "Auto" THEN [PaperSize] IN { "A4", "Legal" };
+
+# @neocombi:order 3

@@ -1,0 +1,16 @@
+# NeoCombi sample: classic browser / OS / memory matrix with one constraint.
+#
+# Run from the repo root:
+#   node bin/neocombi.mjs generate examples/browsers.tmodel
+# or open this file from the GUI's "Open…" button.
+
+OS:      Linux, Windows, macOS
+Browser: Chrome, Firefox, Safari
+Memory:  4, 8, 16
+
+# Safari is only available on macOS.
+IF [Browser] = "Safari" THEN [OS] = "macOS";
+
+# ===== NeoCombi annotations (auto-generated; do not edit) =====
+# @neocombi:expected OS=Linux Browser=Chrome | Renders correctly with default theme
+# @neocombi:expected OS=Linux Browser=Firefox | Renders correctly; check font fallback
