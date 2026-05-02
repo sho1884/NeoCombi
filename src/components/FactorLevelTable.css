@@ -1,0 +1,104 @@
+.factor-level-table {
+  padding: 0.75rem 1rem 1rem;
+}
+
+.factor-level-table__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.factor-level-table__table th,
+.factor-level-table__table td {
+  border-bottom: 1px solid #eceff1;
+  padding: 0.4rem 0.5rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.factor-level-table__table thead th {
+  background: #f5f7f8;
+  color: #455a64;
+  font-weight: 600;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.factor-level-table__col-show {
+  width: 3rem;
+  text-align: center !important;
+}
+
+.factor-level-table__col-name {
+  width: 12rem;
+}
+
+.factor-level-table__col-count {
+  width: 3rem;
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.factor-level-table__col-levels {
+  width: auto;
+}
+
+.factor-level-table__name {
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.factor-level-table__levels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.factor-level-table__level {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: #eceff1;
+  color: #37474f;
+  font-size: 0.78rem;
+  border: 1px solid #cfd8dc;
+}
+
+.factor-level-table__level--number {
+  background: #e8f5e9;
+  color: #1b5e20;
+  border-color: #c8e6c9;
+  font-variant-numeric: tabular-nums;
+}
+
+.factor-level-table__level--string {
+  background: #fff3e0;
+  color: #bf360c;
+  border-color: #ffe0b2;
+}
+
+.factor-level-table__empty {
+  padding: 1.25rem;
+  color: #607d8b;
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.factor-level-table__example {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem;
+  background: #f5f7f8;
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid #cfd8dc;
+  border-radius: 0 4px 4px 0;
+  margin: 0.6rem 0;
+  white-space: pre;
+}
+
+.factor-level-table__hint {
+  margin: 0.75rem 0 0;
+  color: #90a4ae;
+  font-size: 0.8rem;
+  font-style: italic;
+}
