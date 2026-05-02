@@ -10,14 +10,18 @@ export function TestCasesTab() {
 
   const [error, setError] = useState<string | null>(null)
 
-  const onImport = async () => {
+  const onImport = () => {
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = '.csv,.tsv,text/csv,text/plain'
-    input.onchange = async () => {
-      const file = input.files?.[0]
-      if (!file) return
+    input.style.display = 'none'
+    const cleanup = () => {
+      if (input.parentNode) input.parentNode.removeChild(input)
+    }
+    input.addEventListener('change', async () => {
       try {
+        const file = input.files?.[0]
+        if (!file) return
         const text = await file.text()
         const { suite, warnings } = parseCsv(text)
         if (suite.factorOrder.length === 0) {
@@ -32,8 +36,12 @@ export function TestCasesTab() {
         }
       } catch (e) {
         setError(`Failed to import: ${(e as Error).message}`)
+      } finally {
+        cleanup()
       }
-    }
+    })
+    // Some browsers require the input be in the DOM to trigger the picker.
+    document.body.appendChild(input)
     input.click()
   }
 

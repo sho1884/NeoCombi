@@ -154,6 +154,86 @@ describe('projectStore / view state', () => {
   })
 })
 
+describe('projectStore / test suite + expected values', () => {
+  it('attaches a partial-key expected entry to every matching test case row', () => {
+    const store = useProjectStore.getState()
+    store.setExpectedValue({ OS: 'Linux' }, 'hello')
+    store.setTestSuite({
+      factorOrder: ['OS', 'Browser'],
+      rows: [
+        { values: { OS: 'Linux', Browser: 'Chrome' } },
+        { values: { OS: 'Linux', Browser: 'Firefox' } },
+        { values: { OS: 'Windows', Browser: 'Chrome' } },
+      ],
+    })
+    const suite = useProjectStore.getState().testSuite
+    expect(suite?.rows[0]?.expected).toBe('hello')
+    expect(suite?.rows[1]?.expected).toBe('hello')
+    expect(suite?.rows[2]?.expected).toBeUndefined()
+  })
+
+  it('a more-specific expected entry wins over a partial one on auto-attach', () => {
+    const store = useProjectStore.getState()
+    store.setExpectedValue({ OS: 'Linux' }, 'partial')
+    store.setExpectedValue({ OS: 'Linux', Browser: 'Chrome' }, 'specific')
+    store.setTestSuite({
+      factorOrder: ['OS', 'Browser'],
+      rows: [
+        { values: { OS: 'Linux', Browser: 'Chrome' } },
+        { values: { OS: 'Linux', Browser: 'Firefox' } },
+      ],
+    })
+    const suite = useProjectStore.getState().testSuite
+    expect(suite?.rows[0]?.expected).toBe('specific')
+    expect(suite?.rows[1]?.expected).toBe('partial')
+  })
+
+  it('editing one row does not lose the partial-key entry that drives others', () => {
+    // Reproduces the bug fixed by introducing full-key matching for edits:
+    // a partial entry "OS=Linux | hello" used to be REPLACED by a full-key
+    // entry on edit, which orphaned the other Linux rows.
+    const store = useProjectStore.getState()
+    store.setExpectedValue({ OS: 'Linux' }, 'hello')
+    store.setTestSuite({
+      factorOrder: ['OS', 'Browser'],
+      rows: [
+        { values: { OS: 'Linux', Browser: 'Chrome' } },
+        { values: { OS: 'Linux', Browser: 'Firefox' } },
+      ],
+    })
+    store.setTestCaseExpected(0, 'override-for-chrome')
+    const after = useProjectStore.getState()
+    // Row 0 has the override.
+    expect(after.testSuite?.rows[0]?.expected).toBe('override-for-chrome')
+    // Row 1 still tracks the partial entry's value (no in-suite override yet).
+    expect(after.testSuite?.rows[1]?.expected).toBe('hello')
+    // expectedValues now contains BOTH the partial (OS=Linux | hello) and
+    // the full-key override (OS=Linux Browser=Chrome | override-for-chrome).
+    const partial = after.expectedValues.find(
+      ev => Object.keys(ev.assignment).length === 1,
+    )
+    const full = after.expectedValues.find(
+      ev => Object.keys(ev.assignment).length === 2,
+    )
+    expect(partial?.value).toBe('hello')
+    expect(full?.value).toBe('override-for-chrome')
+  })
+
+  it('clearing a row expected value drops only the matching full-key entry', () => {
+    const store = useProjectStore.getState()
+    store.setTestSuite({
+      factorOrder: ['OS', 'Browser'],
+      rows: [
+        { values: { OS: 'Linux', Browser: 'Chrome' }, expected: 'first' },
+      ],
+    })
+    store.setTestCaseExpected(0, '')
+    const after = useProjectStore.getState()
+    expect(after.testSuite?.rows[0]?.expected).toBeUndefined()
+    expect(after.expectedValues).toEqual([])
+  })
+})
+
 describe('projectStore / load and save', () => {
   it('loads a .tmodel file and resets dirty', () => {
     const tmodel = [

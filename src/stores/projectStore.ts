@@ -55,20 +55,18 @@ function assignmentEquals(
   return true
 }
 
-function allKeysMatch(
-  a: Record<string, string>,
-  b: Record<string, string>,
+function assignmentSubsetMatches(
+  needle: Record<string, string>,
+  haystack: Record<string, string>,
 ): boolean {
-  // Same as assignmentEquals but tolerates extra keys in `b`. Used when
-  // matching a stored expected entry's assignment against a full test case
-  // (the test case row has all factor values; the entry has the subset
-  // the user keyed against).
-  for (const [k, v] of Object.entries(a)) {
-    if (b[k] !== v) return false
+  // Returns true when every key/value in `needle` is also present in
+  // `haystack` with the same value. Extra keys in `haystack` are ignored.
+  // Used to match a possibly-partial stored expected-value entry against
+  // a full test-case row.
+  for (const [k, v] of Object.entries(needle)) {
+    if (haystack[k] !== v) return false
   }
-  return Object.keys(a).length === Object.keys(b).length
-    ? true
-    : Object.keys(a).every(k => b[k] === a[k])
+  return true
 }
 
 type Actions = {
@@ -271,22 +269,22 @@ export const useProjectStore = create<Store>()((set, get) => ({
   setTestSuite(suite) {
     // Drop / replace the test suite in place. Importing CSV should also
     // surface any expected values the user already maintained: walk the
-    // imported rows and attach matching expected entries.
+    // imported rows and attach matching expected entries. More-specific
+    // entries (more keys in the assignment) override less-specific ones.
     set(state => {
       if (suite === null) return { testSuite: null }
+      const sortedEntries = [...state.expectedValues].sort(
+        (a, b) =>
+          Object.keys(b.assignment).length - Object.keys(a.assignment).length,
+      )
       const enriched: TestSuite = {
         factorOrder: suite.factorOrder.slice(),
         rows: suite.rows.map(row => {
-          if (row.expected !== undefined) return row
-          for (const ev of state.expectedValues) {
-            let matches = true
-            for (const [k, v] of Object.entries(ev.assignment)) {
-              if (row.values[k] !== v) {
-                matches = false
-                break
-              }
+          if (row.expected !== undefined && row.expected.length > 0) return row
+          for (const ev of sortedEntries) {
+            if (assignmentSubsetMatches(ev.assignment, row.values)) {
+              return { ...row, expected: ev.value }
             }
-            if (matches) return { ...row, expected: ev.value }
           }
           return row
         }),
@@ -302,17 +300,19 @@ export const useProjectStore = create<Store>()((set, get) => ({
       const rows = state.testSuite.rows.slice()
       const target = rows[index]!
       const trimmed = value
-      const updated = trimmed.length > 0
-        ? { ...target, expected: trimmed }
-        : (() => {
-            const { expected: _ignored, ...rest } = target
-            void _ignored
-            return rest
-          })()
-      rows[index] = updated
-      // Mirror the user's edit into expectedValues so the next save
-      // captures it (UR-005 / SR-052).
-      const assignment = state.testSuite.factorOrder.reduce<Record<string, string>>(
+
+      // Replace the test-case row (clear vs set).
+      rows[index] = trimmed.length > 0
+        ? { values: target.values, expected: trimmed }
+        : { values: target.values }
+
+      // Mirror the user's edit into expectedValues using a full-keys
+      // assignment so it scopes to exactly this row. Pre-existing entries
+      // with fewer keys (e.g., loaded from a `# @neocombi:expected OS=Linux`
+      // annotation) are left untouched — they continue to attach to other
+      // rows that match their subset, while this specific row now has its
+      // own override.
+      const fullAssignment = state.testSuite.factorOrder.reduce<Record<string, string>>(
         (acc, name) => {
           acc[name] = target.values[name] ?? ''
           return acc
@@ -320,9 +320,9 @@ export const useProjectStore = create<Store>()((set, get) => ({
         {},
       )
       const evCopy = state.expectedValues.slice()
-      const existingIdx = evCopy.findIndex(ev => allKeysMatch(ev.assignment, assignment))
+      const existingIdx = evCopy.findIndex(ev => assignmentEquals(ev.assignment, fullAssignment))
       if (trimmed.length > 0) {
-        const entry: ExpectedValueEntry = { assignment, value: trimmed }
+        const entry: ExpectedValueEntry = { assignment: fullAssignment, value: trimmed }
         if (existingIdx >= 0) evCopy[existingIdx] = entry
         else evCopy.push(entry)
       } else if (existingIdx >= 0) {
