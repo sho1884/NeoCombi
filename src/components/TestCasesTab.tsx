@@ -1,37 +1,57 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useProjectStore } from '../stores/projectStore'
 import { parseCsv } from '../services/csvImport'
 import { generateTestCases } from '../services/pictApi'
+import { formatTestSuite } from '../engines/pict'
+import type { OutputFormat } from '../engines/pict'
 import './TestCasesTab.css'
+
+const AUTO_REGEN_DEBOUNCE_MS = 900
 
 export function TestCasesTab() {
   const testSuite = useProjectStore(s => s.testSuite)
-  const setTestSuite = useProjectStore(s => s.setTestSuite)
   const setTestCaseExpected = useProjectStore(s => s.setTestCaseExpected)
-  const filePath = useProjectStore(s => s.filePath)
-  const isDirty = useProjectStore(s => s.isDirty)
   const source = useProjectStore(s => s.source)
   const pictOrder = useProjectStore(s => s.pictOrder)
   const diagnostics = useProjectStore(s => s.parseResult.diagnostics)
+  const parameterCount = useProjectStore(
+    s => s.parseResult.model?.parameters.length ?? 0,
+  )
 
   const [error, setError] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
   const [generating, setGenerating] = useState(false)
+  const [format, setFormat] = useState<OutputFormat>('csv')
+  const [copied, setCopied] = useState(false)
+  // Track the last generation we kicked off so debounced auto-regen can
+  // skip if the source has not actually changed since.
+  const lastGeneratedSource = useRef<string | null>(null)
 
   const dslHasErrors = diagnostics.some(d => d.severity === 'error')
 
-  const onGenerate = async () => {
+  const runGenerate = async (reason: 'manual' | 'auto') => {
+    // Always read latest source / order via getState() so the request reflects
+    // edits made right up to the click — avoids stale-closure surprises.
+    const state = useProjectStore.getState()
+    const liveSource = state.source
+    const liveOrder = state.pictOrder
+    if (liveSource.length === 0) return
+    if (state.parseResult.diagnostics.some(d => d.severity === 'error')) return
+    if ((state.parseResult.model?.parameters.length ?? 0) < 1) return
+
     setGenerating(true)
-    setError(null)
+    if (reason === 'manual') setError(null)
     try {
-      const result = await generateTestCases(source, { order: pictOrder })
+      const result = await generateTestCases(liveSource, { order: liveOrder })
       if (!result.ok) {
         if (result.error.kind === 'network') {
           setError(
-            `Cannot reach the PICT service: ${result.error.message}. Start it with \`docker compose up pict-service\` (or run via the CLI as a fallback).`,
+            `Cannot reach the PICT service: ${result.error.message}. Start it with \`docker compose up pict-service\`.`,
           )
         } else if (result.error.kind === 'pict-error') {
-          setError(`PICT rejected the model: ${result.error.message}${result.error.stderr ? ' — ' + result.error.stderr : ''}`)
+          setError(
+            `PICT rejected the model: ${result.error.message}` +
+              (result.error.stderr ? ' — ' + result.error.stderr : ''),
+          )
         } else {
           setError(`Service error (${result.error.status}): ${result.error.message}`)
         }
@@ -42,7 +62,10 @@ export function TestCasesTab() {
         setError('PICT returned an empty result.')
         return
       }
-      setTestSuite(suite)
+      // Re-read the active store action in case the store mutated mid-flight.
+      useProjectStore.getState().setTestSuite(suite)
+      lastGeneratedSource.current = liveSource
+      if (reason === 'manual') setError(null)
     } catch (e) {
       setError(`Unexpected error while generating: ${(e as Error).message}`)
     } finally {
@@ -50,69 +73,70 @@ export function TestCasesTab() {
     }
   }
 
-  const onImport = () => {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = '.csv,.tsv,text/csv,text/tab-separated-values,text/plain'
-    input.style.display = 'none'
-    const cleanup = () => {
-      if (input.parentNode) input.parentNode.removeChild(input)
-    }
-    // Modern browsers fire 'cancel' when the picker is dismissed without
-    // a selection. Without this, the hidden <input> would leak forever
-    // because `change` never fires.
-    input.addEventListener('cancel', cleanup)
-    input.addEventListener('change', async () => {
+  // Auto-regenerate when DSL source / order changes, debounced so a flurry of
+  // edits in the editor only kicks off one request after the user pauses.
+  // Only triggers when the model is parseable and has at least one parameter,
+  // i.e. when there is something meaningful for PICT to chew on.
+  useEffect(() => {
+    if (dslHasErrors) return
+    if (source.length === 0) return
+    if (parameterCount === 0) return
+    if (lastGeneratedSource.current === source) return
+
+    const handle = window.setTimeout(() => {
+      void runGenerate('auto')
+    }, AUTO_REGEN_DEBOUNCE_MS)
+    return () => window.clearTimeout(handle)
+  }, [source, pictOrder, dslHasErrors, parameterCount])
+
+  // ---------------------------------------------------------------------------
+  // Export / copy actions (only meaningful when there is a suite to export)
+  // ---------------------------------------------------------------------------
+
+  const exportSuite = async (mode: 'copy' | 'download') => {
+    if (!testSuite) return
+    const text = formatTestSuite(testSuite, format)
+    if (mode === 'copy') {
       try {
-        const file = input.files?.[0]
-        if (!file) return
-        const text = await file.text()
-        const { suite, warnings, separator } = parseCsv(text)
-        if (suite.factorOrder.length === 0) {
-          setError('No header row found in the imported file.')
-          return
-        }
-        setTestSuite(suite)
-        const sepLabel = separator === '\t' ? 'TSV' : 'CSV'
-        if (warnings.length > 0) {
-          setError(
-            `${warnings.length} row(s) had warnings; imported the rest as ${sepLabel}.`,
-          )
-        } else {
-          setError(null)
-        }
-      } catch (e) {
-        setError(`Failed to import: ${(e as Error).message}`)
-      } finally {
-        cleanup()
+        await navigator.clipboard.writeText(text)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 1500)
+      } catch {
+        setError('Could not copy to clipboard.')
       }
-    })
-    // Some browsers require the input be in the DOM to trigger the picker.
-    document.body.appendChild(input)
-    input.click()
+      return
+    }
+    const ext = format === 'json' ? 'json' : format === 'tsv' ? 'tsv' : 'csv'
+    const mime =
+      format === 'json'
+        ? 'application/json;charset=utf-8'
+        : format === 'tsv'
+          ? 'text/tab-separated-values;charset=utf-8'
+          : 'text/csv;charset=utf-8'
+    const blob = new Blob([text], { type: mime })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `cases.${ext}`
+    a.style.display = 'none'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 100)
   }
 
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
+
   if (!testSuite || testSuite.rows.length === 0) {
-    const projectName = filePath ?? 'YOUR_PROJECT.tmodel'
-    const cliCommand = `node bin/neocombi.mjs generate ${projectName} --output cases.csv`
-
-    const onCopy = async () => {
-      try {
-        await navigator.clipboard.writeText(cliCommand)
-        setCopied(true)
-        setTimeout(() => setCopied(false), 1800)
-      } catch {
-        setError('Could not copy to clipboard. Select the command manually.')
-      }
-    }
-
     return (
       <div className="test-cases-tab">
         <div className="test-cases-tab__toolbar">
           <button
             type="button"
             className="test-cases-tab__generate"
-            onClick={onGenerate}
+            onClick={() => void runGenerate('manual')}
             disabled={generating || dslHasErrors || source.length === 0}
             title={
               dslHasErrors
@@ -124,72 +148,23 @@ export function TestCasesTab() {
           >
             {generating ? 'Generating…' : 'Generate'}
           </button>
-          <button type="button" className="test-cases-tab__import" onClick={onImport}>
-            Import CSV…
-          </button>
           {error ? <span className="test-cases-tab__error">{error}</span> : null}
         </div>
         <div className="test-cases-tab__no-suite">
-          <h2 className="test-cases-tab__no-suite-title">
-            No test cases yet
-          </h2>
+          <h2 className="test-cases-tab__no-suite-title">No test cases yet</h2>
           <p className="test-cases-tab__no-suite-lede">
-            Click <strong>Generate</strong> above to run PICT via the
-            <code> pict-service </code>Docker container and populate the table.
+            Add factors and levels (DSL or Factors &amp; Levels tab); test cases
+            will be generated automatically once the DSL parses cleanly. Or click{' '}
+            <strong>Generate</strong> to run PICT immediately via the
+            <code> pict-service </code>Docker container.
+          </p>
+          <p className="test-cases-tab__no-suite-lede">
             If the service is not running yet:
           </p>
-
           <pre className="test-cases-tab__service-cmd">
 {`# from the repo root, in a terminal:
 docker compose up --build pict-service`}
           </pre>
-
-          <p className="test-cases-tab__no-suite-lede">
-            Don&apos;t want Docker? You can fall back to the CLI workflow
-            instead:
-          </p>
-
-          <ol className="test-cases-tab__steps">
-            <li>
-              <strong>Save your project</strong>{' '}
-              {filePath ? (
-                isDirty ? (
-                  <span className="test-cases-tab__step-note">
-                    (you have unsaved changes — click <em>Save</em> in the
-                    header before running the command below)
-                  </span>
-                ) : (
-                  <span className="test-cases-tab__step-note">
-                    (saved as <code>{filePath}</code>)
-                  </span>
-                )
-              ) : (
-                <span className="test-cases-tab__step-note">
-                  (use <em>Save As…</em> in the header)
-                </span>
-              )}
-            </li>
-            <li>
-              <strong>Run the CLI</strong> in a terminal at the NeoCombi repo
-              (PICT must be installed locally):
-              <div className="test-cases-tab__command">
-                <code>{cliCommand}</code>
-                <button
-                  type="button"
-                  className="test-cases-tab__copy"
-                  onClick={onCopy}
-                >
-                  {copied ? '✓ Copied' : 'Copy'}
-                </button>
-              </div>
-            </li>
-            <li>
-              <strong>
-                Click <em>Import CSV…</em> above
-              </strong>{' '}
-              and pick the <code>cases.csv</code> file.
-            </li>
-          </ol>
         </div>
       </div>
     )
@@ -207,18 +182,44 @@ docker compose up --build pict-service`}
         <button
           type="button"
           className="test-cases-tab__generate"
-          onClick={onGenerate}
+          onClick={() => void runGenerate('manual')}
           disabled={generating || dslHasErrors || source.length === 0}
         >
           {generating ? 'Generating…' : 'Re-generate'}
         </button>
-        <button type="button" className="test-cases-tab__import" onClick={onImport}>
-          Import CSV…
+        <span className="test-cases-tab__divider" aria-hidden="true" />
+        <label className="test-cases-tab__format">
+          Format:{' '}
+          <select
+            value={format}
+            onChange={e => setFormat(e.target.value as OutputFormat)}
+          >
+            <option value="csv">CSV</option>
+            <option value="tsv">TSV</option>
+            <option value="json">JSON</option>
+          </select>
+        </label>
+        <button
+          type="button"
+          className="test-cases-tab__copy-btn"
+          onClick={() => void exportSuite('copy')}
+          title="Copy the rendered table to the clipboard"
+        >
+          {copied ? '✓ Copied' : 'Copy'}
         </button>
         <button
           type="button"
+          className="test-cases-tab__download"
+          onClick={() => void exportSuite('download')}
+          title="Download the rendered table as a file"
+        >
+          Download
+        </button>
+        <span className="test-cases-tab__divider" aria-hidden="true" />
+        <button
+          type="button"
           className="test-cases-tab__clear"
-          onClick={() => setTestSuite(null)}
+          onClick={() => useProjectStore.getState().setTestSuite(null)}
         >
           Clear
         </button>

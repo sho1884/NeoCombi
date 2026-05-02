@@ -57,6 +57,50 @@
   background: #263238;
 }
 
+.test-cases-tab__divider {
+  display: inline-block;
+  width: 1px;
+  height: 1.2em;
+  background: #cfd8dc;
+  margin: 0 0.25rem;
+}
+
+.test-cases-tab__format {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  color: #455a64;
+}
+
+.test-cases-tab__format select {
+  padding: 0.15rem 0.3rem;
+  font: inherit;
+  font-size: 0.78rem;
+  border: 1px solid #cfd8dc;
+  border-radius: 3px;
+  background: #fff;
+}
+
+.test-cases-tab__copy-btn,
+.test-cases-tab__download {
+  appearance: none;
+  border: 1px solid #cfd8dc;
+  background: #fff;
+  color: #37474f;
+  padding: 0.2rem 0.6rem;
+  font: inherit;
+  font-size: 0.78rem;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.test-cases-tab__copy-btn:hover,
+.test-cases-tab__download:hover {
+  background: #f5f7f8;
+  border-color: #37474f;
+}
+
 .test-cases-tab__clear {
   background: #fff;
   color: #455a64;

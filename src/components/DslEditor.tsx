@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useProjectStore } from '../stores/projectStore'
 import type { Diagnostic } from '../types/dsl'
 import './DslEditor.css'
@@ -7,8 +8,34 @@ export function DslEditor() {
   const diagnostics = useProjectStore(s => s.parseResult.diagnostics)
   const setSource = useProjectStore(s => s.setSource)
 
+  const [copied, setCopied] = useState(false)
+
+  const onCopy = async () => {
+    if (source.length === 0) return
+    try {
+      await navigator.clipboard.writeText(source)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // Fallback: select-all in the textarea so the user can Ctrl-C manually.
+      const ta = document.querySelector<HTMLTextAreaElement>('.dsl-editor__textarea')
+      ta?.select()
+    }
+  }
+
   return (
     <div className="dsl-editor">
+      <div className="dsl-editor__toolbar">
+        <button
+          type="button"
+          className="dsl-editor__copy"
+          onClick={onCopy}
+          disabled={source.length === 0}
+          title="Copy the DSL source to the clipboard"
+        >
+          {copied ? '✓ Copied' : 'Copy DSL'}
+        </button>
+      </div>
       <textarea
         className="dsl-editor__textarea"
         value={source}
