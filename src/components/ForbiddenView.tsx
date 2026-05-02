@@ -279,22 +279,20 @@ function ForbiddenExportToolbar({
   const [copied, setCopied] = useState(false)
   const onCopy = async () => {
     const html = forbiddenSliceToHtml(conditionFactors, constrainedFactor, cells)
-    const tsv = forbiddenSliceToTsv(conditionFactors, constrainedFactor, cells)
-    const result = await copyTableToClipboard(html, tsv)
+    const csv = forbiddenSliceToCsv(conditionFactors, constrainedFactor, cells)
+    const result = await copyTableToClipboard(html, csv)
     if (result.ok) {
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     }
   }
   const onDownload = () => {
-    const tsv = forbiddenSliceToTsv(conditionFactors, constrainedFactor, cells)
-    const blob = new Blob([tsv], {
-      type: 'text/tab-separated-values;charset=utf-8',
-    })
+    const csv = forbiddenSliceToCsv(conditionFactors, constrainedFactor, cells)
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `forbidden-${constrainedFactor}.tsv`
+    a.download = `forbidden-${constrainedFactor}.csv`
     a.style.display = 'none'
     document.body.appendChild(a)
     a.click()
@@ -307,12 +305,12 @@ function ForbiddenExportToolbar({
         type="button"
         className="forbidden-view__export-btn"
         onClick={onCopy}
-        title="Copy as HTML table + TSV"
+        title="Copy as HTML table + CSV"
       >
         {copied ? '✓ Copied' : 'Copy'}
       </button>
       <button type="button" className="forbidden-view__export-btn" onClick={onDownload}>
-        Download TSV
+        Download CSV
       </button>
     </div>
   )
@@ -375,11 +373,13 @@ function forbiddenSliceToHtml(
   )
 }
 
-function forbiddenSliceToTsv(
+function forbiddenSliceToCsv(
   conditionFactors: string[],
   constrainedFactor: string,
   cells: ForbiddenSliceCell[],
 ): string {
+  const escape = (s: string): string =>
+    /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
   const constrainedLevels: string[] = []
   for (const c of cells) {
     const v = String(c.assignment[constrainedFactor])
@@ -398,25 +398,13 @@ function forbiddenSliceToTsv(
   }
   const rows = Array.from(rowMap.values())
 
-  const headerFactors = [
-    ...conditionFactors,
-    constrainedFactor,
-  ]
-  const lines: string[] = [headerFactors.join('\t')]
-  // Sub-header for the constrained columns.
-  const subHeader = [
-    ...conditionFactors.map(() => ''),
-    ...constrainedLevels,
-  ]
-  // Replace last conditionFactors slot count + add column-level labels.
-  // Actually, render two header rows: factor names then level labels.
+  // Two header rows: factor names then level labels.
   const factorRow = [...conditionFactors, constrainedFactor + ' levels →']
   const levelRow = [...conditionFactors.map(() => ''), ...constrainedLevels]
-  void subHeader
-  void headerFactors
-  lines.length = 0
-  lines.push(factorRow.join('\t'))
-  lines.push(levelRow.join('\t'))
+  const lines: string[] = [
+    factorRow.map(escape).join(','),
+    levelRow.map(escape).join(','),
+  ]
   for (const row of rows) {
     const cells_: string[] = [...row.tuple]
     for (const colLv of constrainedLevels) {
@@ -425,7 +413,7 @@ function forbiddenSliceToTsv(
       )
       cells_.push(cell?.forbidden ? '✗' : '·')
     }
-    lines.push(cells_.join('\t'))
+    lines.push(cells_.map(escape).join(','))
   }
   return lines.join('\n') + '\n'
 }

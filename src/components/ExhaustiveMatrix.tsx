@@ -223,8 +223,8 @@ function MatrixExportToolbar({
 
   const onCopy = async () => {
     const html = matrixToHtml(visibleFactors, occurrenceMap, forbiddenMap)
-    const tsv = matrixToTsv(visibleFactors, occurrenceMap, forbiddenMap)
-    const result = await copyTableToClipboard(html, tsv)
+    const csv = matrixToCsv(visibleFactors, occurrenceMap, forbiddenMap)
+    const result = await copyTableToClipboard(html, csv)
     if (result.ok) {
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
@@ -232,14 +232,12 @@ function MatrixExportToolbar({
   }
 
   const onDownload = () => {
-    const tsv = matrixToTsv(visibleFactors, occurrenceMap, forbiddenMap)
-    const blob = new Blob([tsv], {
-      type: 'text/tab-separated-values;charset=utf-8',
-    })
+    const csv = matrixToCsv(visibleFactors, occurrenceMap, forbiddenMap)
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'coverage-matrix.tsv'
+    a.download = 'coverage-matrix.csv'
     a.style.display = 'none'
     document.body.appendChild(a)
     a.click()
@@ -253,7 +251,7 @@ function MatrixExportToolbar({
         type="button"
         className="matrix__export-btn"
         onClick={onCopy}
-        title="Copy as HTML table + TSV (paste-friendly to Excel and plain-text editors)"
+        title="Copy as HTML table + CSV (paste-friendly to Excel and plain-text editors / IDEs)"
       >
         {copied ? '✓ Copied' : 'Copy'}
       </button>
@@ -261,9 +259,9 @@ function MatrixExportToolbar({
         type="button"
         className="matrix__export-btn"
         onClick={onDownload}
-        title="Download as TSV"
+        title="Download as CSV"
       >
-        Download TSV
+        Download CSV
       </button>
     </div>
   )
@@ -342,11 +340,17 @@ function matrixToHtml(
   )
 }
 
-function matrixToTsv(
+function matrixToCsv(
   visibleFactors: ParameterDecl[],
   occurrenceMap: OccurrenceMap | null,
   forbiddenMap: ForbiddenMap | null,
 ): string {
+  // RFC 4180 escaping: wrap cells containing comma / quote / newline in
+  // double quotes, double up embedded quotes. The lower-left ID list
+  // ("#1, #5, #12") contains commas and so always gets quoted.
+  const escape = (s: string): string =>
+    /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
+
   // Two header rows: factor names spanning, then per-level labels.
   const factorHeader: string[] = ['', '']
   const levelHeader: string[] = ['', '']
@@ -356,7 +360,10 @@ function matrixToTsv(
       levelHeader.push(String(f.levels[i]!.value))
     }
   }
-  const lines: string[] = [factorHeader.join('\t'), levelHeader.join('\t')]
+  const lines: string[] = [
+    factorHeader.map(escape).join(','),
+    levelHeader.map(escape).join(','),
+  ]
 
   for (let rowFactorIdx = 0; rowFactorIdx < visibleFactors.length; rowFactorIdx++) {
     const rowF = visibleFactors[rowFactorIdx]!
@@ -392,7 +399,7 @@ function matrixToTsv(
           }
         }
       }
-      lines.push(cells.join('\t'))
+      lines.push(cells.map(escape).join(','))
     }
   }
   return lines.join('\n') + '\n'

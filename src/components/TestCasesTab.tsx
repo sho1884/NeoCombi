@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useProjectStore } from '../stores/projectStore'
 import { runGenerate } from '../services/runGenerate'
 import { formatTestSuite, testSuiteToHtml } from '../engines/pict'
-import type { OutputFormat } from '../engines/pict'
 import { copyTableToClipboard } from '../services/clipboardWrite'
 import './TestCasesTab.css'
 
@@ -14,7 +13,10 @@ export function TestCasesTab() {
 
   const [error, setError] = useState<string | null>(null)
   const [generating, setGenerating] = useState(false)
-  const [format, setFormat] = useState<OutputFormat>('csv')
+  // GUI exposes only the two formats engineers actually paste / commit:
+  // CSV for code editors and test-automation tooling, JSON for parametrised
+  // test runners. TSV stays available in the CLI for spreadsheet pipelines.
+  const [format, setFormat] = useState<'csv' | 'json'>('csv')
   const [copied, setCopied] = useState(false)
 
   const dslHasErrors = diagnostics.some(d => d.severity === 'error')
@@ -78,13 +80,11 @@ export function TestCasesTab() {
   const onDownload = () => {
     if (!testSuite) return
     const text = formatTestSuite(testSuite, format)
-    const ext = format === 'json' ? 'json' : format === 'tsv' ? 'tsv' : 'csv'
+    const ext = format === 'json' ? 'json' : 'csv'
     const mime =
       format === 'json'
         ? 'application/json;charset=utf-8'
-        : format === 'tsv'
-          ? 'text/tab-separated-values;charset=utf-8'
-          : 'text/csv;charset=utf-8'
+        : 'text/csv;charset=utf-8'
     const blob = new Blob([text], { type: mime })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -170,13 +170,12 @@ docker compose up --build pict-service`}
         </button>
         <span className="test-cases-tab__divider" aria-hidden="true" />
         <label className="test-cases-tab__format">
-          Download as:{' '}
+          Format:{' '}
           <select
             value={format}
-            onChange={e => setFormat(e.target.value as OutputFormat)}
+            onChange={e => setFormat(e.target.value as 'csv' | 'json')}
           >
             <option value="csv">CSV</option>
-            <option value="tsv">TSV</option>
             <option value="json">JSON</option>
           </select>
         </label>
