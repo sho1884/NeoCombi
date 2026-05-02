@@ -1,0 +1,450 @@
+# NeoCombi System Requirements
+# Format: function = Verb + Object. Scenarios = Context -> Action -> Outcome (not Gherkin).
+# parent: list of UR ids that this SR realizes.
+# Categories (group by 10s):
+#   dsl_authoring        SR-001..009
+#   factor_level_table   SR-010..019
+#   bottom_pane          SR-020..029
+#   forbidden_view       SR-030..039  (built-in evaluator + reference matrix)
+#   coverage_view        SR-040..049  (top-pane exhaustive matrix)
+#   test_case_table      SR-050..059  (test cases + expected values)
+#   pict_invocation      SR-060..069  (external PICT CLI)
+#   persistence          SR-070..079  (.tmodel file I/O)
+#   cli_mode             SR-080..089  (CI/CD pipeline use)
+# UR-007 (NL -> AI -> DSL) is intentionally not realized by any SR yet; deferred to v2.
+
+version: "0.1"
+last_updated: "2026-05-02"
+
+# =============================================================================
+# DSL Authoring (parent: UR-002)
+# =============================================================================
+# The DSL is the PICT BNF subset defined in DSL_Grammar_Specification.md.
+# DSL is the single source of truth for factors, levels, and constraints.
+
+requirements:
+  SR-001:
+    parent: [UR-002]
+    category: dsl_authoring
+    function: "Edit DSL text in editor"
+    scenarios:
+      - context: "DSL tab is active in the bottom pane"
+        action: "User types DSL text"
+        outcome: "Text buffer is updated and re-validated"
+      - context: "DSL is empty"
+        action: "User opens DSL tab"
+        outcome: "Show empty editor with placeholder hint linking to DSL_Grammar_Specification.md"
+
+  SR-002:
+    parent: [UR-002]
+    category: dsl_authoring
+    function: "Validate DSL syntax in real time"
+    scope: |
+      Validation covers the MVP subset only: parameter declarations, constraint
+      clauses (IF/THEN/ELSE), comparison operators (=, <>, >, >=, <, <=),
+      logical operators (AND/OR/NOT), and IN { }. LIKE, submodels, weights,
+      and negative-value markers are reported as "unsupported in MVP" errors.
+    scenarios:
+      - context: "User edits DSL"
+        action: "Editor content changes"
+        outcome: "Parse incrementally; valid AST is held for downstream views"
+      - context: "DSL contains syntax error"
+        action: "Validation runs"
+        outcome: "Mark error position; downstream views (forbidden / coverage / test cases) hold their last valid state"
+      - context: "DSL uses LIKE / submodel / weight / negative-value"
+        action: "Validation runs"
+        outcome: "Report 'unsupported in MVP' diagnostic with link to grammar spec"
+
+  SR-003:
+    parent: [UR-002]
+    category: dsl_authoring
+    function: "Display syntax errors with location"
+    scenarios:
+      - context: "Validation produces errors"
+        action: "Editor renders"
+        outcome: "Underline error span; show message and grammar-spec reference on hover"
+      - context: "Multiple errors exist"
+        action: "Editor renders"
+        outcome: "List errors in a side panel; clicking an entry jumps the cursor to that span"
+
+# =============================================================================
+# Factor / Level Table (parent: UR-002)
+# =============================================================================
+# The factor-level table is a structured view of the DSL parameter section.
+# Edits in either view are reflected in the other.
+
+  SR-010:
+    parent: [UR-002]
+    category: factor_level_table
+    function: "Manage factors"
+    scenarios:
+      - context: "Factor-Level tab is active"
+        action: "User adds a factor"
+        outcome: "New factor row appears; DSL parameter section gains a corresponding declaration"
+      - context: "Factor row is selected"
+        action: "User renames the factor"
+        outcome: "Identifier updates in DSL and in all constraints / test cases / matrices that reference it"
+      - context: "Factor row is selected"
+        action: "User removes the factor"
+        outcome: "Show confirmation listing dependent constraints; on confirm, remove factor and update / remove dependent constraints"
+
+  SR-011:
+    parent: [UR-002]
+    category: factor_level_table
+    function: "Manage levels per factor"
+    scenarios:
+      - context: "Factor row is expanded"
+        action: "User adds a level"
+        outcome: "New level appears; DSL parameter declaration gains the new level value"
+      - context: "Level cell is selected"
+        action: "User renames the level"
+        outcome: "Identifier updates in DSL and in all constraints / test cases / matrices that reference it"
+      - context: "Level cell is selected"
+        action: "User removes the level"
+        outcome: "Show confirmation listing dependent constraints; on confirm, remove level and update / remove dependent constraints"
+
+  SR-012:
+    parent: [UR-002]
+    category: factor_level_table
+    function: "Synchronize factor-level table with DSL"
+    scenarios:
+      - context: "User edits DSL parameter section"
+        action: "DSL is reparsed successfully"
+        outcome: "Factor-Level table view re-renders to reflect the new declaration set"
+      - context: "User edits Factor-Level table"
+        action: "Edit is committed"
+        outcome: "DSL parameter section is regenerated preserving comments and constraint section verbatim"
+      - context: "DSL parse fails"
+        action: "User edits Factor-Level table"
+        outcome: "Defer commit until DSL parses; show notice in the table view"
+
+# =============================================================================
+# Bottom Pane Layout (parent: UR-002)
+# =============================================================================
+
+  SR-020:
+    parent: [UR-002]
+    category: bottom_pane
+    function: "Switch bottom-pane tab"
+    tab_set:
+      - "Factors & Levels"
+      - "DSL"
+      - "Test cases"
+    future_extension: |
+      "Natural-language requirements" tab is added when AI integration mode
+      is enabled (UR-007 / v2). The tab container is designed to accommodate
+      this without rework.
+    scenarios:
+      - context: "Bottom pane is displayed"
+        action: "User clicks a tab header"
+        outcome: "The selected tab's content replaces the visible content"
+      - context: "User switches tabs while editing"
+        action: "Tab switch occurs"
+        outcome: "Edits in the previous tab are preserved (no implicit save / discard)"
+
+# =============================================================================
+# Forbidden-Combination View (parent: UR-003)
+# =============================================================================
+# Reference view, not an input source. Computed by the built-in DSL evaluator,
+# not by invoking PICT. The DSL is the intensional form; this view is the
+# extensional form derived from it.
+
+  SR-030:
+    parent: [UR-003]
+    category: forbidden_view
+    function: "Compute N-factor forbidden combinations from DSL"
+    note: "Built-in evaluator. PICT is not invoked for this computation."
+    scenarios:
+      - context: "DSL is valid"
+        action: "User selects N and a slice (condition factors + constrained factor)"
+        outcome: "Evaluator enumerates all level combinations of the selected factors and marks each as forbidden / allowed by evaluating the DSL constraints"
+      - context: "DSL is invalid"
+        action: "Slice is selected"
+        outcome: "Hold last valid result; display 'DSL has errors' notice"
+      - context: "Selected slice is too large to enumerate"
+        action: "Computation starts"
+        outcome: "Cancel with size warning; suggest reducing N or factor cardinalities"
+
+  SR-031:
+    parent: [UR-003]
+    category: forbidden_view
+    function: "Render multi-factor forbidden-combination matrix slice"
+    layout: |
+      2D matrix. Rows = combinations of (N-1) condition-factor levels (nested).
+      Columns = levels of the constrained factor. Cells show forbidden / allowed.
+      Style follows PICT-PAPP's multi-factor forbidden table.
+    scenarios:
+      - context: "Evaluator produces a slice result"
+        action: "View renders"
+        outcome: "Display the matrix; forbidden cells are visually distinguished from allowed cells"
+
+  SR-032:
+    parent: [UR-003]
+    category: forbidden_view
+    function: "Configure matrix slice"
+    scenarios:
+      - context: "Forbidden view is open"
+        action: "User chooses N (>= 2)"
+        outcome: "Slice configurator updates to require N-1 condition factors and 1 constrained factor"
+      - context: "User selects condition factors and constrained factor"
+        action: "Selection is committed"
+        outcome: "Matrix recomputes for the new slice"
+
+  SR-033:
+    parent: [UR-003]
+    category: forbidden_view
+    function: "Manage multiple matrix slices as switchable views"
+    scenarios:
+      - context: "User wants to compare slices"
+        action: "User opens a new slice (different N or different factor selection)"
+        outcome: "A new switchable view is added; previous views are retained for switching"
+      - context: "Multiple slices exist"
+        action: "User switches between them"
+        outcome: "Show only the active slice (no parallel display)"
+
+# =============================================================================
+# Coverage View / Exhaustive Matrix (parent: UR-004)
+# =============================================================================
+# Top pane. Exhaustive cross-tabulation of factors with PICT-generated
+# occurrence counts overlaid.
+
+  SR-040:
+    parent: [UR-004]
+    category: coverage_view
+    function: "Render exhaustive cross-tabulation matrix in top pane"
+    scenarios:
+      - context: "Factor-Level table is non-empty"
+        action: "Top pane renders"
+        outcome: "Matrix shows all factor pairs (factor A x factor B) with all level combinations as cells"
+      - context: "Test cases have not been generated yet"
+        action: "Matrix renders"
+        outcome: "Cells show the level-pair structure only; occurrence-count overlay is empty"
+
+  SR-041:
+    parent: [UR-004]
+    category: coverage_view
+    function: "Toggle factor visibility via per-row checkbox"
+    scenarios:
+      - context: "Matrix is displayed"
+        action: "User toggles a factor's checkbox off"
+        outcome: "That factor's row and column are hidden from the matrix"
+      - context: "User toggles checkbox on"
+        action: "Toggle event"
+        outcome: "Factor reappears in the matrix; layout reflows"
+
+  SR-042:
+    parent: [UR-004]
+    category: coverage_view
+    function: "Overlay occurrence count from generated test cases"
+    scenarios:
+      - context: "Test cases exist"
+        action: "Matrix renders"
+        outcome: "Each cell shows how many test cases include that level pair"
+      - context: "Cell occurrence count is zero and the pair is forbidden"
+        action: "Matrix renders"
+        outcome: "Mark cell as forbidden (visually distinct from missed)"
+      - context: "Cell occurrence count is zero and the pair is allowed"
+        action: "Matrix renders"
+        outcome: "Mark cell as missed (warning style; e.g., yellow with '?')"
+
+  SR-043:
+    parent: [UR-004]
+    category: coverage_view
+    function: "Highlight uncovered non-forbidden combinations"
+    scenarios:
+      - context: "Generated test cases miss an allowed pair"
+        action: "Matrix renders"
+        outcome: "Highlight the missed cell prominently so the designer can investigate (indirect forbidden vs DSL bug vs PICT result quirk)"
+
+# =============================================================================
+# Test Case Table (parent: UR-001, UR-005)
+# =============================================================================
+
+  SR-050:
+    parent: [UR-001]
+    category: test_case_table
+    function: "Display PICT-generated test cases"
+    scenarios:
+      - context: "PICT has produced output"
+        action: "Test cases tab is rendered"
+        outcome: "Table shows one row per test case; columns are factors + expected value"
+      - context: "No generation has run yet"
+        action: "Tab is rendered"
+        outcome: "Show empty-state message with 'Generate' action"
+
+  SR-051:
+    parent: [UR-005]
+    category: test_case_table
+    function: "Provide expected-value column"
+    scenarios:
+      - context: "Test case row exists"
+        action: "User clicks the expected-value cell"
+        outcome: "Cell becomes editable; user enters free text"
+      - context: "Expected value is set"
+        action: "Row renders"
+        outcome: "Value is displayed in the cell"
+
+  SR-052:
+    parent: [UR-005]
+    category: test_case_table
+    function: "Preserve expected values across regeneration"
+    scenarios:
+      - context: "Expected values exist; user regenerates test cases"
+        action: "Generation completes"
+        outcome: "For rows whose factor / level combination is unchanged, expected values are retained; for new rows, expected value is empty"
+      - context: "A factor or level was renamed between regenerations"
+        action: "Generation completes"
+        outcome: "Match by stable id (not display name); expected values follow the renamed identity"
+      - context: "A factor or level was deleted"
+        action: "Generation completes"
+        outcome: "Expected values for rows that no longer exist are dropped (silently; recoverable via undo)"
+
+  SR-053:
+    parent: [UR-001, UR-005]
+    category: test_case_table
+    function: "Export test cases as CSV / JSON"
+    scenarios:
+      - context: "Test cases exist"
+        action: "User selects 'Export as CSV'"
+        outcome: "Emit CSV file with one row per test case, columns = factors + expected value"
+      - context: "Test cases exist"
+        action: "User selects 'Export as JSON'"
+        outcome: "Emit JSON array with one object per test case"
+
+# =============================================================================
+# PICT Invocation (parent: UR-001)
+# =============================================================================
+# PICT is an external CLI. It is not bundled. The user supplies the path.
+
+  SR-060:
+    parent: [UR-001]
+    category: pict_invocation
+    function: "Invoke PICT external CLI with DSL-derived input file"
+    scenarios:
+      - context: "DSL is valid; PICT path is configured"
+        action: "User triggers generation"
+        outcome: "Write a temporary PICT input file; spawn PICT with arguments; capture stdout"
+      - context: "PICT exits with non-zero status"
+        action: "Generation completes"
+        outcome: "Show stderr text and exit code; test case table holds last successful state"
+      - context: "PICT path is not configured or executable not found"
+        action: "User triggers generation"
+        outcome: "Show 'PICT not configured' error with a link to the configuration UI"
+
+  SR-061:
+    parent: [UR-001]
+    category: pict_invocation
+    function: "Configure PICT executable path"
+    scenarios:
+      - context: "Settings UI is open"
+        action: "User selects PICT executable file"
+        outcome: "Path is stored in user settings; value is persisted across sessions"
+      - context: "Configured path no longer points to an executable"
+        action: "Generation is triggered"
+        outcome: "Show 'PICT executable not found' error with the stored path"
+
+  SR-062:
+    parent: [UR-001]
+    category: pict_invocation
+    function: "Configure generation order N"
+    note: "N = 2 (pairwise) is the default. Higher N requests N-wise coverage from PICT."
+    scenarios:
+      - context: "User opens generation settings"
+        action: "User sets N (integer >= 2)"
+        outcome: "Setting is stored on the project; passed to PICT via /o:N argument on next run"
+
+  SR-063:
+    parent: [UR-001]
+    category: pict_invocation
+    function: "Parse PICT output into test case data"
+    scenarios:
+      - context: "PICT stdout is captured"
+        action: "Parse runs"
+        outcome: "Tab-separated rows become test case records; header row maps to factors"
+      - context: "PICT output is malformed"
+        action: "Parse runs"
+        outcome: "Show parse error with the offending line; previous test cases are retained"
+
+# =============================================================================
+# Persistence (parent: UR-001, UR-002, UR-005, UR-006)
+# =============================================================================
+# .tmodel file = single-file project. Contains DSL + expected values + view state.
+
+  SR-070:
+    parent: [UR-001, UR-002, UR-005]
+    category: persistence
+    function: "Save project as .tmodel file"
+    file_contents:
+      - "DSL source text (single source of truth for factors, levels, constraints)"
+      - "Expected values keyed by stable factor / level ids"
+      - "View state: current bottom-pane tab, factor-checkbox visibility, forbidden-view slice configurations"
+      - "PICT generation settings: order N (path is user-level, not project-level)"
+    scenarios:
+      - context: "Project has unsaved changes"
+        action: "User selects 'Save'"
+        outcome: "Write .tmodel file at the current path"
+      - context: "Project has no path yet"
+        action: "User selects 'Save'"
+        outcome: "Prompt for a path; then write"
+
+  SR-071:
+    parent: [UR-001, UR-002, UR-005, UR-006]
+    category: persistence
+    function: "Load project from .tmodel file"
+    scenarios:
+      - context: "User opens a .tmodel file"
+        action: "Load runs"
+        outcome: "DSL, expected values, and view state are restored; PICT settings reflect the loaded project"
+      - context: "File is from an older format version"
+        action: "Load runs"
+        outcome: "Apply forward migration; if migration is impossible, show error without partial load"
+      - context: "DSL inside file fails to parse"
+        action: "Load runs"
+        outcome: "Open the project anyway; surface DSL errors so the user can fix them in editor"
+
+# =============================================================================
+# CLI Mode (parent: UR-006)
+# =============================================================================
+# Headless invocation for CI/CD. Same deterministic behavior as GUI generation.
+
+  SR-080:
+    parent: [UR-006]
+    category: cli_mode
+    function: "Run NeoCombi as CLI consuming .tmodel input"
+    scenarios:
+      - context: "User runs 'neocombi generate <input.tmodel>'"
+        action: "CLI executes"
+        outcome: "Read .tmodel, invoke PICT, emit test cases (CSV by default) to stdout"
+      - context: "User passes '--format json'"
+        action: "CLI executes"
+        outcome: "Emit JSON array instead of CSV"
+      - context: "User passes '--output <file>'"
+        action: "CLI executes"
+        outcome: "Write to the file instead of stdout"
+
+  SR-081:
+    parent: [UR-006]
+    category: cli_mode
+    function: "Exit with deterministic exit codes"
+    exit_codes:
+      0: "Success"
+      1: "DSL parse / validation error"
+      2: "PICT invocation failed"
+      3: "Input file not found / unreadable"
+      4: "Output write failed"
+    scenarios:
+      - context: "Any CLI run terminates"
+        action: "Process exits"
+        outcome: "Exit code matches the documented set so CI scripts can branch deterministically"
+
+  SR-082:
+    parent: [UR-006]
+    category: cli_mode
+    function: "Run headless without GUI dependencies"
+    scenarios:
+      - context: "Environment has no display server (headless CI)"
+        action: "CLI executes"
+        outcome: "Generation succeeds without loading any GUI module"
+      - context: "GUI bundle is not installed"
+        action: "CLI executes"
+        outcome: "Same successful behavior; CLI and GUI are separate entry points sharing the engine layer"

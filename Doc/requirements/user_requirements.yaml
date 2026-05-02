@@ -1,0 +1,83 @@
+# NeoCombi User Requirements
+# Format: Task expression with background context.
+# Priority: high | medium | future.
+#   - high / medium: in-scope for MVP.
+#   - future: out-of-scope for MVP, recorded so MVP design choices stay compatible.
+# See Doc/PROJECT_KICKOFF.md for the architectural rationale and final vision.
+
+version: "0.1"
+last_updated: "2026-05-02"
+
+requirements:
+  UR-001:
+    task: "Generate pairwise test cases"
+    background: >
+      Pairwise (or N-wise) test case generation is the core function inherited
+      from the predecessor tool PICT-PAPP. NeoCombi delegates the generation
+      algorithm to Microsoft PICT, invoked as an external CLI, and concentrates
+      on pre/post processing (DSL authoring, visualization, output shaping).
+    priority: high
+
+  UR-002:
+    task: "Author factors, levels, and constraints"
+    background: >
+      Test designers express the problem space as factors and their levels,
+      and rule out infeasible combinations via constraints. Constraints are
+      written directly in the PICT DSL (subset; see DSL_Grammar_Specification.md).
+      Factor-level table and DSL editor share the bottom pane and are switched
+      by tabs.
+    priority: high
+
+  UR-003:
+    task: "Verify forbidden combinations derived from constraints"
+    background: >
+      Constraint expressions (intensional form) imply a set of forbidden
+      N-factor combinations (extensional form). Designers want to confirm
+      visually whether the derived forbidden set matches their intent.
+      The view is read-only — computed by NeoCombi's built-in DSL evaluator,
+      not edited directly. N is selectable; the matrix shows one slice
+      (condition factors x constrained factor) at a time.
+    priority: high
+
+  UR-004:
+    task: "Verify pair coverage of generated test cases"
+    background: >
+      After PICT generates the test cases, designers want to confirm that
+      each factor pair is covered (or distinguish forbidden pairs from
+      missed pairs). Occurrence counts are overlaid on the exhaustive
+      (cross-tabulation) matrix in the top pane. Per-factor checkboxes
+      let the designer narrow which factors participate in the matrix.
+    priority: medium
+
+  UR-005:
+    task: "Record expected values for test cases"
+    background: >
+      Test cases without expected outputs are not executable. NeoCombi adds
+      an "expected value" column to each generated test case so the designer
+      can fill in the predicted result per row. This column is preserved
+      across regenerations as long as factor / level identity is stable.
+      (Feature not present in the original PICT-PAPP.)
+    priority: high
+
+  UR-006:
+    task: "Invoke from CI/CD pipeline deterministically"
+    background: >
+      Test design should be reproducible from version-controlled inputs.
+      NeoCombi provides a CLI mode that consumes a .tmodel source file and
+      emits CSV/JSON outputs without requiring the GUI, suitable for use
+      as a UNIX-style filter in CI pipelines. Identical inputs always
+      produce identical outputs (no AI, no nondeterminism).
+    priority: medium
+
+  UR-007:
+    task: "Draft DSL from natural-language requirements via AI"
+    background: >
+      Final vision (out of MVP scope): designers describe the test target
+      in natural language in a dedicated bottom-pane tab, AI generates the
+      PICT DSL via n8n integration, and humans review and refine it.
+      NeoCombi remains a deterministic transformer at its core; AI is an
+      external pass-through, never embedded.
+      MVP only fixes the bottom-pane layout and data model so this can be
+      added later without rework. Deferred until ModelLogue's n8n integration
+      pattern matures, at which point NeoCombi follows the same pattern.
+    priority: future
