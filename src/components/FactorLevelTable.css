@@ -44,20 +44,49 @@
   width: auto;
 }
 
-.factor-level-table__name {
+.factor-level-table__col-actions {
+  width: 2.5rem;
+  text-align: center !important;
+}
+
+/* --- Inline factor name input ------------------------------------------- */
+
+.factor-level-table__name-input {
+  width: 100%;
+  padding: 0.2rem 0.4rem;
+  font: inherit;
   font-weight: 600;
   color: #1a1a1a;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
 }
+
+.factor-level-table__name-input:hover {
+  background: #f5f7f8;
+  border-color: #cfd8dc;
+}
+
+.factor-level-table__name-input:focus {
+  outline: none;
+  background: #fff;
+  border-color: #37474f;
+}
+
+/* --- Level chips with remove ------------------------------------------- */
 
 .factor-level-table__levels {
   display: flex;
   flex-wrap: wrap;
   gap: 0.3rem;
+  align-items: center;
 }
 
 .factor-level-table__level {
-  display: inline-block;
-  padding: 0.1rem 0.45rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.1rem 0.2rem 0.1rem 0.5rem;
   border-radius: 999px;
   background: #eceff1;
   color: #37474f;
@@ -78,22 +107,144 @@
   border-color: #ffe0b2;
 }
 
-.factor-level-table__empty {
-  padding: 1.25rem;
-  color: #607d8b;
-  font-size: 0.88rem;
-  line-height: 1.55;
+.factor-level-table__level--editing {
+  background: #fff;
+  border: 1px dashed #37474f;
 }
 
-.factor-level-table__example {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.82rem;
+.factor-level-table__level-text {
+  padding-right: 0.1rem;
+}
+
+.factor-level-table__level-remove {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: inherit;
+  opacity: 0.5;
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 0 0.2rem;
+  border-radius: 999px;
+}
+
+.factor-level-table__level-remove:hover:not(:disabled) {
+  opacity: 1;
+  background: rgba(183, 28, 28, 0.12);
+  color: #b71c1c;
+}
+
+.factor-level-table__level-remove:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.factor-level-table__level-input {
+  width: 6em;
+  font: inherit;
+  font-size: 0.78rem;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0.1rem 0.2rem;
+}
+
+.factor-level-table__level-add {
+  appearance: none;
+  border: 1px dashed #b0bec5;
+  background: transparent;
+  color: #607d8b;
+  border-radius: 999px;
+  width: 1.6em;
+  height: 1.6em;
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 0;
+}
+
+.factor-level-table__level-add:hover {
+  border-color: #37474f;
+  color: #37474f;
   background: #f5f7f8;
-  padding: 0.5rem 0.75rem;
-  border-left: 3px solid #cfd8dc;
-  border-radius: 0 4px 4px 0;
-  margin: 0.6rem 0;
-  white-space: pre;
+}
+
+/* --- Remove factor button ---------------------------------------------- */
+
+.factor-level-table__remove {
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #90a4ae;
+  cursor: pointer;
+  font-size: 0.78rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+}
+
+.factor-level-table__remove:hover {
+  color: #b71c1c;
+  background: #ffebee;
+  border-color: #ef9a9a;
+}
+
+/* --- Add factor row ---------------------------------------------------- */
+
+.factor-level-table__add-row td {
+  background: #fafafa;
+  padding: 0.5rem;
+}
+
+.factor-level-table__add-row-content {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.factor-level-table__add-input {
+  padding: 0.25rem 0.5rem;
+  font: inherit;
+  font-size: 0.85rem;
+  border: 1px solid #cfd8dc;
+  border-radius: 3px;
+  background: #fff;
+  min-width: 12rem;
+}
+
+.factor-level-table__add-input:focus {
+  outline: none;
+  border-color: #37474f;
+}
+
+.factor-level-table__add-button {
+  appearance: none;
+  border: 1px solid #37474f;
+  background: #37474f;
+  color: #fff;
+  padding: 0.25rem 0.75rem;
+  font: inherit;
+  font-size: 0.82rem;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.factor-level-table__add-button:hover:not(:disabled) {
+  background: #263238;
+}
+
+.factor-level-table__add-button:disabled {
+  background: #cfd8dc;
+  border-color: #cfd8dc;
+  color: #fff;
+  cursor: not-allowed;
+}
+
+.factor-level-table__add-hint {
+  font-size: 0.78rem;
+  color: #90a4ae;
+  font-style: italic;
 }
 
 .factor-level-table__hint {
@@ -101,4 +252,12 @@
   color: #90a4ae;
   font-size: 0.8rem;
   font-style: italic;
+}
+
+.factor-level-table__hint code {
+  background: #f5f7f8;
+  border: 1px solid #cfd8dc;
+  border-radius: 2px;
+  padding: 0 0.25rem;
+  font-style: normal;
 }

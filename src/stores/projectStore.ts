@@ -9,6 +9,13 @@ import type {
   ViewState,
 } from '../types/project'
 import { deserialize, serialize } from '../services/tmodelFile'
+import {
+  addFactor as editAddFactor,
+  addLevelToFactor as editAddLevel,
+  removeFactor as editRemoveFactor,
+  removeLevelFromFactor as editRemoveLevel,
+  renameFactor as editRenameFactor,
+} from '../services/dslEditing'
 
 const DEFAULT_PICT_ORDER = 2
 
@@ -49,6 +56,16 @@ function assignmentEquals(
 type Actions = {
   /** Replace the DSL source. Recomputes parse and marks the project dirty. */
   setSource(source: string): void
+  /** Rename a factor across the source (declaration + all [refs]). */
+  renameFactor(oldName: string, newName: string): void
+  /** Append a new factor with default placeholder levels. */
+  addFactor(name: string, levels?: string[]): void
+  /** Remove a factor's declaration line; dependent constraints are left in place. */
+  removeFactor(name: string): void
+  /** Append a level to a factor's level list. */
+  addLevelToFactor(factorName: string, levelValue: string): void
+  /** Remove a level from a factor's level list (refuses to empty the list). */
+  removeLevelFromFactor(factorName: string, levelValue: string): void
   setPictOrder(order: number): void
   /** Add or update an expected value matched by exact assignment. */
   setExpectedValue(assignment: Record<string, string>, value: string): void
@@ -81,6 +98,35 @@ export const useProjectStore = create<Store>()((set, get) => ({
   setSource(source) {
     const parseResult = parse(source)
     set({ source, parseResult, isDirty: true })
+  },
+
+  renameFactor(oldName, newName) {
+    const next = editRenameFactor(get().source, oldName, newName)
+    if (next === get().source) return
+    set({ source: next, parseResult: parse(next), isDirty: true })
+  },
+
+  addFactor(name, levels) {
+    const next = editAddFactor(get().source, name, levels)
+    set({ source: next, parseResult: parse(next), isDirty: true })
+  },
+
+  removeFactor(name) {
+    const next = editRemoveFactor(get().source, name)
+    if (next === get().source) return
+    set({ source: next, parseResult: parse(next), isDirty: true })
+  },
+
+  addLevelToFactor(factorName, levelValue) {
+    const next = editAddLevel(get().source, factorName, levelValue)
+    if (next === get().source) return
+    set({ source: next, parseResult: parse(next), isDirty: true })
+  },
+
+  removeLevelFromFactor(factorName, levelValue) {
+    const next = editRemoveLevel(get().source, factorName, levelValue)
+    if (next === get().source) return
+    set({ source: next, parseResult: parse(next), isDirty: true })
   },
 
   setPictOrder(order) {
