@@ -47,4 +47,19 @@ describe('parseCsv', () => {
     expect(suite.factorOrder).toEqual([])
     expect(suite.rows).toEqual([])
   })
+
+  it('auto-detects TSV when the first non-blank line has tabs and no commas', () => {
+    const text = 'OS\tBrowser\nLinux\tChrome\nWindows\tSafari\n'
+    const { suite, separator } = parseCsv(text)
+    expect(separator).toBe('\t')
+    expect(suite.factorOrder).toEqual(['OS', 'Browser'])
+    expect(suite.rows).toHaveLength(2)
+    expect(suite.rows[0]?.values).toEqual({ OS: 'Linux', Browser: 'Chrome' })
+  })
+
+  it('treats input with both tabs and commas as CSV', () => {
+    const text = 'OS,Browser\nLinux,"a\tb"\n'
+    const { separator } = parseCsv(text)
+    expect(separator).toBe(',')
+  })
 })

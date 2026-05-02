@@ -1,5 +1,6 @@
 // RFC 4180 CSV parser for test case import. Accepts the CSV produced by
-// `neocombi generate ... --format csv` and any compatible input.
+// `neocombi generate ... --format csv` and PICT's own tab-separated output
+// (auto-detected from the first non-empty line).
 //
 // Recognised columns:
 //   - Factor columns (must match parsed model factor names)
@@ -13,17 +14,22 @@ export type CsvImportResult = {
   suite: TestSuite
   /** Rows the importer skipped (empty / malformed) with the reason. */
   warnings: Array<{ line: number; reason: string }>
+  /** The separator that was detected and used. */
+  separator: ',' | '\t'
 }
 
 /**
- * Parse a CSV string into a TestSuite. The first non-empty row is treated as
- * the header. Empty lines are skipped silently.
+ * Parse a CSV (or PICT-style TSV) string into a TestSuite. The separator is
+ * detected from the first non-blank line: a line containing tabs but no
+ * commas is treated as TSV; otherwise comma-separated. The first non-blank
+ * row is the header, and blank lines are skipped silently.
  */
 export function parseCsv(text: string): CsvImportResult {
-  const rows = parseRows(text)
+  const separator = detectSeparator(text)
+  const rows = parseRows(text, separator)
   const warnings: CsvImportResult['warnings'] = []
   if (rows.length === 0) {
-    return { suite: { factorOrder: [], rows: [] }, warnings }
+    return { suite: { factorOrder: [], rows: [] }, warnings, separator }
   }
 
   const header = rows[0]!.cells.map(c => c.trim())
@@ -55,20 +61,34 @@ export function parseCsv(text: string): CsvImportResult {
     cases.push(tc)
   }
 
-  return { suite: { factorOrder, rows: cases }, warnings }
+  return { suite: { factorOrder, rows: cases }, warnings, separator }
 }
 
 function findExpectedColumn(header: string[]): number {
   return header.findIndex(h => h.toLowerCase() === 'expected')
 }
 
+function detectSeparator(text: string): ',' | '\t' {
+  // Look at the first non-blank line. If it contains tabs and no commas,
+  // treat the whole input as TSV (matches PICT's native output shape).
+  // Otherwise fall back to CSV.
+  const lines = text.split(/\r?\n/)
+  for (const line of lines) {
+    if (line.length === 0) continue
+    if (line.includes('\t') && !line.includes(',')) return '\t'
+    return ','
+  }
+  return ','
+}
+
 // =============================================================================
-// RFC 4180 row tokenizer
+// RFC 4180-ish row tokenizer (parameterised by separator so it handles both
+// `,`-separated CSV and `\t`-separated PICT output).
 // =============================================================================
 
 type Row = { line: number; cells: string[] }
 
-function parseRows(text: string): Row[] {
+function parseRows(text: string, separator: ',' | '\t'): Row[] {
   const rows: Row[] = []
   let cells: string[] = []
   let cell = ''
@@ -109,7 +129,7 @@ function parseRows(text: string): Row[] {
       inQuotes = true
       continue
     }
-    if (ch === ',') {
+    if (ch === separator) {
       pushCell()
       continue
     }

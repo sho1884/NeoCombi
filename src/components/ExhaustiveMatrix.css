@@ -1,8 +1,7 @@
 .matrix {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  min-width: 100%;
+  /* Block layout so the inner <table> sizes to its content (cells stay
+     square instead of being stretched to fill the container, which was
+     happening when the wrapper was a flex container). */
 }
 
 .matrix__summary {
@@ -16,6 +15,7 @@
   border-radius: 4px;
   font-size: 0.78rem;
   color: #455a64;
+  margin-bottom: 0.5rem;
 }
 
 .matrix__legend {

@@ -13,24 +13,31 @@ export function TestCasesTab() {
   const onImport = () => {
     const input = document.createElement('input')
     input.type = 'file'
-    input.accept = '.csv,.tsv,text/csv,text/plain'
+    input.accept = '.csv,.tsv,text/csv,text/tab-separated-values,text/plain'
     input.style.display = 'none'
     const cleanup = () => {
       if (input.parentNode) input.parentNode.removeChild(input)
     }
+    // Modern browsers fire 'cancel' when the picker is dismissed without
+    // a selection. Without this, the hidden <input> would leak forever
+    // because `change` never fires.
+    input.addEventListener('cancel', cleanup)
     input.addEventListener('change', async () => {
       try {
         const file = input.files?.[0]
         if (!file) return
         const text = await file.text()
-        const { suite, warnings } = parseCsv(text)
+        const { suite, warnings, separator } = parseCsv(text)
         if (suite.factorOrder.length === 0) {
           setError('No header row found in the imported file.')
           return
         }
         setTestSuite(suite)
+        const sepLabel = separator === '\t' ? 'TSV' : 'CSV'
         if (warnings.length > 0) {
-          setError(`${warnings.length} row(s) had warnings; imported the rest.`)
+          setError(
+            `${warnings.length} row(s) had warnings; imported the rest as ${sepLabel}.`,
+          )
         } else {
           setError(null)
         }
