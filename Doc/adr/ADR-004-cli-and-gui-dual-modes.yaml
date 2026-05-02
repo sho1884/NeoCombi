@@ -1,7 +1,7 @@
 id: ADR-004
 title: "CLI と GUI の二刀流（エンジン層を共有）"
 date: "2026-05-02"
-status: proposed
+status: accepted
 superseded_by: null
 
 participants:

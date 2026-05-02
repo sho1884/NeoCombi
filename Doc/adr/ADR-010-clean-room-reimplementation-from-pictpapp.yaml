@@ -1,7 +1,7 @@
 id: ADR-010
 title: "PICT-PAPP からの clean-room 再実装"
 date: "2026-05-02"
-status: proposed
+status: accepted
 superseded_by: null
 
 participants:

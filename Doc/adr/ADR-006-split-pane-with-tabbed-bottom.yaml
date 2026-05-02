@@ -1,7 +1,7 @@
 id: ADR-006
 title: "UI を上下 2 ペーンとし、下ペーンはタブ切替式にする"
 date: "2026-05-02"
-status: proposed
+status: accepted
 superseded_by: null
 
 participants:

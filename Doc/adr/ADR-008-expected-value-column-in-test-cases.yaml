@@ -1,7 +1,7 @@
 id: ADR-008
 title: "テストケース表に期待値カラムを持ち、再生成跨ぎで保持する"
 date: "2026-05-02"
-status: proposed
+status: accepted
 superseded_by: null
 
 participants:

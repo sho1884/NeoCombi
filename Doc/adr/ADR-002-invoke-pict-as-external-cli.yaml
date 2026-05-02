@@ -1,7 +1,7 @@
 id: ADR-002
 title: "PICT を外部 CLI として呼び出し、バンドルしない"
 date: "2026-05-02"
-status: proposed
+status: accepted
 superseded_by: null
 
 participants:

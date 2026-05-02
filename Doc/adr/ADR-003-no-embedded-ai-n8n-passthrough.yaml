@@ -1,7 +1,7 @@
 id: ADR-003
 title: "AI を内蔵せず、連携は n8n 経由のパススルーに限定する"
 date: "2026-05-02"
-status: proposed
+status: accepted
 superseded_by: null
 
 participants:

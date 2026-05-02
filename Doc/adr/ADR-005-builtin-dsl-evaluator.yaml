@@ -1,7 +1,7 @@
 id: ADR-005
 title: "DSL 評価器を内製し、禁則ビューを PICT 非依存で計算する"
 date: "2026-05-02"
-status: proposed
+status: accepted
 superseded_by: null
 
 participants:

@@ -1,7 +1,7 @@
 id: ADR-007
 title: "禁則マトリクスは入力源ではなく、DSL から導出した参照ビューとする"
 date: "2026-05-02"
-status: proposed
+status: accepted
 superseded_by: null
 
 participants:
