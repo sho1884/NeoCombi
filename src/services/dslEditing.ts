@@ -240,6 +240,72 @@ export function moveFactor(
 }
 
 /**
+ * Move a factor to an arbitrary index in the declaration order. Used by the
+ * drag-and-drop reorder UI; the click-driven up / down buttons map to swaps
+ * via {@link moveFactor}. Out-of-range targets are clamped.
+ */
+export function moveFactorTo(
+  source: string,
+  factorName: string,
+  targetIndex: number,
+): string {
+  const { model } = parse(source)
+  if (!model) return source
+  const params = model.parameters
+  const fromIdx = params.findIndex(p => p.name === factorName)
+  if (fromIdx < 0) return source
+  const clamped = Math.max(0, Math.min(params.length - 1, targetIndex))
+  if (fromIdx === clamped) return source
+
+  const texts = params.map(p =>
+    source.slice(p.range.start.offset, p.range.end.offset),
+  )
+  const reordered = [...texts]
+  const [moved] = reordered.splice(fromIdx, 1)
+  reordered.splice(clamped, 0, moved!)
+
+  const edits: Edit[] = params.map((p, i) => ({
+    start: p.range.start.offset,
+    end: p.range.end.offset,
+    text: reordered[i]!,
+  }))
+  return applyEdits(source, edits)
+}
+
+/**
+ * Move a level to an arbitrary index inside its factor's level list.
+ */
+export function moveLevelTo(
+  source: string,
+  factorName: string,
+  levelValue: string,
+  targetIndex: number,
+): string {
+  const { model } = parse(source)
+  if (!model) return source
+  const factor = model.parameters.find(p => p.name === factorName)
+  if (!factor) return source
+  const fromIdx = factor.levels.findIndex(l => String(l.value) === levelValue)
+  if (fromIdx < 0) return source
+  const clamped = Math.max(0, Math.min(factor.levels.length - 1, targetIndex))
+  if (fromIdx === clamped) return source
+
+  const texts = factor.levels.map(l =>
+    source.slice(l.range.start.offset, l.range.end.offset),
+  )
+  const reordered = [...texts]
+  const [moved] = reordered.splice(fromIdx, 1)
+  reordered.splice(clamped, 0, moved!)
+
+  const edits: Edit[] = factor.levels.map((l, i) => ({
+    start: l.range.start.offset,
+    end: l.range.end.offset,
+    text: reordered[i]!,
+  }))
+  return applyEdits(source, edits)
+}
+
+/**
  * Swap a level with its neighbour inside a factor's level list.
  */
 export function moveLevel(

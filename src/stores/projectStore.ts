@@ -14,7 +14,9 @@ import {
   addFactor as editAddFactor,
   addLevelToFactor as editAddLevel,
   moveFactor as editMoveFactor,
+  moveFactorTo as editMoveFactorTo,
   moveLevel as editMoveLevel,
+  moveLevelTo as editMoveLevelTo,
   removeFactor as editRemoveFactor,
   removeLevelFromFactor as editRemoveLevel,
   renameFactor as editRenameFactor,
@@ -89,8 +91,12 @@ type Actions = {
   renameLevel(factorName: string, oldValue: string, newValue: string): void
   /** Move a factor up / down in declaration order. */
   moveFactor(factorName: string, direction: 'up' | 'down'): void
+  /** Move a factor to an absolute index (used by drag-and-drop). */
+  moveFactorTo(factorName: string, targetIndex: number): void
   /** Move a level up / down within its factor's level list. */
   moveLevel(factorName: string, levelValue: string, direction: 'up' | 'down'): void
+  /** Move a level to an absolute index (used by drag-and-drop). */
+  moveLevelTo(factorName: string, levelValue: string, targetIndex: number): void
   setPictOrder(order: number): void
   /** Add or update an expected value matched by exact assignment. */
   setExpectedValue(assignment: Record<string, string>, value: string): void
@@ -170,8 +176,20 @@ export const useProjectStore = create<Store>()((set, get) => ({
     set({ source: next, parseResult: parse(next), isDirty: true })
   },
 
+  moveFactorTo(factorName, targetIndex) {
+    const next = editMoveFactorTo(get().source, factorName, targetIndex)
+    if (next === get().source) return
+    set({ source: next, parseResult: parse(next), isDirty: true })
+  },
+
   moveLevel(factorName, levelValue, direction) {
     const next = editMoveLevel(get().source, factorName, levelValue, direction)
+    if (next === get().source) return
+    set({ source: next, parseResult: parse(next), isDirty: true })
+  },
+
+  moveLevelTo(factorName, levelValue, targetIndex) {
+    const next = editMoveLevelTo(get().source, factorName, levelValue, targetIndex)
     if (next === get().source) return
     set({ source: next, parseResult: parse(next), isDirty: true })
   },

@@ -3,7 +3,9 @@ import {
   addFactor,
   addLevelToFactor,
   moveFactor,
+  moveFactorTo,
   moveLevel,
+  moveLevelTo,
   removeFactor,
   removeLevelFromFactor,
   renameFactor,
@@ -252,5 +254,46 @@ describe('dslEditing / moveLevel', () => {
     const src = 'OS: Linux, Windows\n'
     expect(moveLevel(src, 'OS', 'Linux', 'up')).toBe(src)
     expect(moveLevel(src, 'OS', 'Windows', 'down')).toBe(src)
+  })
+})
+
+describe('dslEditing / moveFactorTo (drag-drop)', () => {
+  it('moves a factor to an arbitrary index', () => {
+    const src = 'A: 1, 2\nB: x, y\nC: p, q\nD: 7, 8\n'
+    const next = moveFactorTo(src, 'A', 2)
+    const names = parse(next).model?.parameters.map(p => p.name)
+    expect(names).toEqual(['B', 'C', 'A', 'D'])
+  })
+
+  it('clamps out-of-range targets', () => {
+    const src = 'A: 1\nB: 2\nC: 3\n'
+    expect(parse(moveFactorTo(src, 'B', -5)).model?.parameters.map(p => p.name))
+      .toEqual(['B', 'A', 'C'])
+    expect(parse(moveFactorTo(src, 'B', 99)).model?.parameters.map(p => p.name))
+      .toEqual(['A', 'C', 'B'])
+  })
+
+  it('preserves the constraint section', () => {
+    const src = 'A: 1\nB: x\nC: y\nIF [A] = 1 THEN [C] = "y";\n'
+    const next = moveFactorTo(src, 'C', 0)
+    expect(next).toContain('IF [A] = 1 THEN [C] = "y";')
+    expect(parse(next).model?.parameters.map(p => p.name)).toEqual(['C', 'A', 'B'])
+  })
+})
+
+describe('dslEditing / moveLevelTo (drag-drop)', () => {
+  it('moves a level to an arbitrary index inside its factor', () => {
+    const src = 'OS: Linux, Windows, macOS, FreeBSD\n'
+    const next = moveLevelTo(src, 'OS', 'Linux', 2)
+    expect(parse(next).model?.parameters[0]?.levels.map(l => String(l.value)))
+      .toEqual(['Windows', 'macOS', 'Linux', 'FreeBSD'])
+  })
+
+  it('clamps out-of-range targets', () => {
+    const src = 'OS: Linux, Windows, macOS\n'
+    expect(parse(moveLevelTo(src, 'OS', 'Windows', -5)).model?.parameters[0]?.levels.map(l => String(l.value)))
+      .toEqual(['Windows', 'Linux', 'macOS'])
+    expect(parse(moveLevelTo(src, 'OS', 'Windows', 99)).model?.parameters[0]?.levels.map(l => String(l.value)))
+      .toEqual(['Linux', 'macOS', 'Windows'])
   })
 })
