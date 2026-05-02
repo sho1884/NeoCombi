@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useProjectStore } from '../stores/projectStore'
 import { computeForbiddenSlice } from '../engines/dsl'
 import type { ForbiddenSliceCell } from '../types/dsl'
@@ -246,12 +246,123 @@ function SliceResult({ slice }: SliceResultProps) {
   }
 
   return (
-    <ForbiddenMatrix
-      conditionFactors={slice.conditionFactors}
-      constrainedFactor={slice.constrainedFactor}
-      cells={result.value.cells}
-    />
+    <>
+      <ForbiddenExportToolbar
+        conditionFactors={slice.conditionFactors}
+        constrainedFactor={slice.constrainedFactor}
+        cells={result.value.cells}
+      />
+      <ForbiddenMatrix
+        conditionFactors={slice.conditionFactors}
+        constrainedFactor={slice.constrainedFactor}
+        cells={result.value.cells}
+      />
+    </>
   )
+}
+
+type ForbiddenExportToolbarProps = {
+  conditionFactors: string[]
+  constrainedFactor: string
+  cells: ForbiddenSliceCell[]
+}
+
+function ForbiddenExportToolbar({
+  conditionFactors,
+  constrainedFactor,
+  cells,
+}: ForbiddenExportToolbarProps) {
+  const [copied, setCopied] = useState(false)
+  const buildTsv = () =>
+    forbiddenSliceToTsv(conditionFactors, constrainedFactor, cells)
+  const onCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(buildTsv())
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      /* ignore */
+    }
+  }
+  const onDownload = () => {
+    const blob = new Blob([buildTsv()], {
+      type: 'text/tab-separated-values;charset=utf-8',
+    })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `forbidden-${constrainedFactor}.tsv`
+    a.style.display = 'none'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 100)
+  }
+  return (
+    <div className="forbidden-view__export">
+      <button type="button" className="forbidden-view__export-btn" onClick={onCopy}>
+        {copied ? '✓ Copied' : 'Copy TSV'}
+      </button>
+      <button type="button" className="forbidden-view__export-btn" onClick={onDownload}>
+        Download TSV
+      </button>
+    </div>
+  )
+}
+
+function forbiddenSliceToTsv(
+  conditionFactors: string[],
+  constrainedFactor: string,
+  cells: ForbiddenSliceCell[],
+): string {
+  const constrainedLevels: string[] = []
+  for (const c of cells) {
+    const v = String(c.assignment[constrainedFactor])
+    if (!constrainedLevels.includes(v)) constrainedLevels.push(v)
+  }
+  const rowMap = new Map<string, { tuple: string[]; cells: ForbiddenSliceCell[] }>()
+  for (const c of cells) {
+    const tuple = conditionFactors.map(f => String(c.assignment[f]))
+    const key = tuple.join('||')
+    let row = rowMap.get(key)
+    if (!row) {
+      row = { tuple, cells: [] }
+      rowMap.set(key, row)
+    }
+    row.cells.push(c)
+  }
+  const rows = Array.from(rowMap.values())
+
+  const headerFactors = [
+    ...conditionFactors,
+    constrainedFactor,
+  ]
+  const lines: string[] = [headerFactors.join('\t')]
+  // Sub-header for the constrained columns.
+  const subHeader = [
+    ...conditionFactors.map(() => ''),
+    ...constrainedLevels,
+  ]
+  // Replace last conditionFactors slot count + add column-level labels.
+  // Actually, render two header rows: factor names then level labels.
+  const factorRow = [...conditionFactors, constrainedFactor + ' levels →']
+  const levelRow = [...conditionFactors.map(() => ''), ...constrainedLevels]
+  void subHeader
+  void headerFactors
+  lines.length = 0
+  lines.push(factorRow.join('\t'))
+  lines.push(levelRow.join('\t'))
+  for (const row of rows) {
+    const cells_: string[] = [...row.tuple]
+    for (const colLv of constrainedLevels) {
+      const cell = row.cells.find(
+        c => String(c.assignment[constrainedFactor]) === colLv,
+      )
+      cells_.push(cell?.forbidden ? '✗' : '·')
+    }
+    lines.push(cells_.join('\t'))
+  }
+  return lines.join('\n') + '\n'
 }
 
 type ForbiddenMatrixProps = {

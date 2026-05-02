@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useProjectStore } from '../stores/projectStore'
 import { computeForbiddenSlice } from '../engines/dsl'
 import type { Model, ParameterDecl } from '../types/dsl'
@@ -56,6 +56,11 @@ export function ExhaustiveMatrix() {
 
   return (
     <div className="matrix">
+      <MatrixExportToolbar
+        visibleFactors={visibleFactors}
+        occurrenceMap={occurrenceMap}
+        forbiddenMap={forbiddenMap}
+      />
       {!hasTestSuite && (
         <div className="matrix__no-suite-banner" role="status">
           <strong>No test cases imported.</strong> Cells show only the pair
@@ -184,6 +189,123 @@ export function ExhaustiveMatrix() {
       </table>
     </div>
   )
+}
+
+// =============================================================================
+// Export toolbar: lets the user copy or download the rendered cross-tab
+// matrix as TSV. The TSV uses the same cell values shown in the UI
+// (numbers / "✗" / "?" / "—") so what you see is what you copy.
+// =============================================================================
+
+type MatrixExportToolbarProps = {
+  visibleFactors: ParameterDecl[]
+  occurrenceMap: OccurrenceMap | null
+  forbiddenMap: ForbiddenMap | null
+}
+
+function MatrixExportToolbar({
+  visibleFactors,
+  occurrenceMap,
+  forbiddenMap,
+}: MatrixExportToolbarProps) {
+  const [copied, setCopied] = useState(false)
+
+  const buildTsv = () =>
+    matrixToTsv(visibleFactors, occurrenceMap, forbiddenMap)
+
+  const onCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(buildTsv())
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // Silent fallback — leave the user to inspect the page.
+    }
+  }
+
+  const onDownload = () => {
+    const blob = new Blob([buildTsv()], {
+      type: 'text/tab-separated-values;charset=utf-8',
+    })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'coverage-matrix.tsv'
+    a.style.display = 'none'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 100)
+  }
+
+  return (
+    <div className="matrix__export">
+      <button
+        type="button"
+        className="matrix__export-btn"
+        onClick={onCopy}
+        title="Copy the matrix as TSV"
+      >
+        {copied ? '✓ Copied' : 'Copy TSV'}
+      </button>
+      <button
+        type="button"
+        className="matrix__export-btn"
+        onClick={onDownload}
+        title="Download the matrix as a TSV file"
+      >
+        Download TSV
+      </button>
+    </div>
+  )
+}
+
+function matrixToTsv(
+  visibleFactors: ParameterDecl[],
+  occurrenceMap: OccurrenceMap | null,
+  forbiddenMap: ForbiddenMap | null,
+): string {
+  // Two header rows: factor names spanning, then per-level labels.
+  const factorHeader: string[] = ['', '']
+  const levelHeader: string[] = ['', '']
+  for (const f of visibleFactors) {
+    for (let i = 0; i < f.levels.length; i++) {
+      factorHeader.push(i === 0 ? f.name : '')
+      levelHeader.push(String(f.levels[i]!.value))
+    }
+  }
+  const lines: string[] = [factorHeader.join('\t'), levelHeader.join('\t')]
+
+  for (const rowF of visibleFactors) {
+    for (let i = 0; i < rowF.levels.length; i++) {
+      const rowLevel = rowF.levels[i]!
+      const cells: string[] = []
+      cells.push(i === 0 ? rowF.name : '')
+      cells.push(String(rowLevel.value))
+      for (const colF of visibleFactors) {
+        for (const colLevel of colF.levels) {
+          if (rowF.name === colF.name) {
+            cells.push('—')
+            continue
+          }
+          const va = String(rowLevel.value)
+          const vb = String(colLevel.value)
+          if (forbiddenMap && isForbidden(forbiddenMap, rowF.name, va, colF.name, vb)) {
+            cells.push('✗')
+            continue
+          }
+          if (occurrenceMap) {
+            const occ = occurrenceCount(occurrenceMap, rowF.name, va, colF.name, vb)
+            cells.push(occ > 0 ? String(occ) : '?')
+          } else {
+            cells.push('')
+          }
+        }
+      }
+      lines.push(cells.join('\t'))
+    }
+  }
+  return lines.join('\n') + '\n'
 }
 
 // =============================================================================
