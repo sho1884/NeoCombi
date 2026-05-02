@@ -2,6 +2,7 @@ import { useProjectStore } from '../stores/projectStore'
 import { TopPane } from './TopPane'
 import { BottomPane } from './BottomPane'
 import { FileMenu } from './FileMenu'
+import { AutoRegenerator } from './AutoRegenerator'
 import './AppShell.css'
 
 export function AppShell() {
@@ -11,6 +12,7 @@ export function AppShell() {
 
   return (
     <div className="app">
+      <AutoRegenerator />
       <header className="app__header">
         <h1 className="app__title">NeoCombi</h1>
         <span className="app__subtitle">Combinatorial test design tool</span>

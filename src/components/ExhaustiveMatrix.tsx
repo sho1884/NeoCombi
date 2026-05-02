@@ -102,7 +102,7 @@ export function ExhaustiveMatrix() {
           </tr>
         </thead>
         <tbody>
-          {visibleFactors.flatMap(rowFactor =>
+          {visibleFactors.flatMap((rowFactor, rowFactorIdx) =>
             rowFactor.levels.map((rowLevel, rowLevelIdx) => (
               <tr key={`row-${rowFactor.name}::${String(rowLevel.value)}`}>
                 {rowLevelIdx === 0 && (
@@ -120,62 +120,66 @@ export function ExhaustiveMatrix() {
                 >
                   {String(rowLevel.value)}
                 </th>
-                {visibleFactors.flatMap(colFactor =>
+                {visibleFactors.flatMap((colFactor, colFactorIdx) =>
                   colFactor.levels.map(colLevel => {
                     const sameFactor = rowFactor.name === colFactor.name
-                    const cellLabel =
-                      `${rowFactor.name}=${String(rowLevel.value)}, ` +
-                      `${colFactor.name}=${String(colLevel.value)}`
+                    const va = String(rowLevel.value)
+                    const vb = String(colLevel.value)
+                    const baseLabel = `${rowFactor.name}=${va}, ${colFactor.name}=${vb}`
                     if (sameFactor) {
                       return (
                         <td
-                          key={`cell-${colFactor.name}::${String(colLevel.value)}`}
+                          key={`cell-${colFactor.name}::${vb}`}
                           className="matrix__cell matrix__cell--blocked"
                           aria-label="same factor (blocked)"
                         />
                       )
                     }
-                    const occ = occurrenceMap
-                      ? occurrenceCount(
-                          occurrenceMap,
-                          rowFactor.name,
-                          String(rowLevel.value),
-                          colFactor.name,
-                          String(colLevel.value),
-                        )
+                    const info = occurrenceMap
+                      ? occurrenceMap.get(pairKey(rowFactor.name, va, colFactor.name, vb))
                       : null
                     const forbidden = forbiddenMap
-                      ? isForbidden(
-                          forbiddenMap,
-                          rowFactor.name,
-                          String(rowLevel.value),
-                          colFactor.name,
-                          String(colLevel.value),
-                        )
+                      ? isForbidden(forbiddenMap, rowFactor.name, va, colFactor.name, vb)
                       : false
-                    let display: string
+
+                    let display = ''
                     let cellClass = 'matrix__cell matrix__cell--pair'
+                    let extraLabel = ''
+                    const isUpperRight = colFactorIdx > rowFactorIdx
+
                     if (forbidden) {
                       display = '✗'
                       cellClass += ' matrix__cell--forbidden'
-                    } else if (occ === null) {
+                      extraLabel = ': forbidden by DSL constraints'
+                    } else if (occurrenceMap === null) {
                       display = '·'
                       cellClass += ' matrix__cell--placeholder'
-                    } else if (occ === 0) {
+                    } else if (!info || info.count === 0) {
                       display = '?'
                       cellClass += ' matrix__cell--missed'
+                      extraLabel = ': allowed but no test case covers it'
                     } else {
-                      display = String(occ)
                       cellClass += ' matrix__cell--covered'
+                      if (isUpperRight) {
+                        display = String(info.count)
+                        cellClass += ' matrix__cell--count'
+                        extraLabel =
+                          `: ${info.count} test case` +
+                          (info.count === 1 ? '' : 's') +
+                          ` (rows ${info.ids.join(', ')})`
+                      } else {
+                        display = info.ids.join(',')
+                        cellClass += ' matrix__cell--ids'
+                        extraLabel = `: covered by rows ${info.ids.join(', ')}`
+                      }
                     }
+
                     return (
                       <td
-                        key={`cell-${colFactor.name}::${String(colLevel.value)}`}
+                        key={`cell-${colFactor.name}::${vb}`}
                         className={cellClass}
-                        aria-label={
-                          cellLabel +
-                          (occ === null ? '' : `, occurrences: ${occ}`)
-                        }
+                        title={baseLabel + extraLabel}
+                        aria-label={baseLabel + extraLabel}
                       >
                         <span className="matrix__cell-content">{display}</span>
                       </td>
@@ -276,13 +280,15 @@ function matrixToTsv(
   }
   const lines: string[] = [factorHeader.join('\t'), levelHeader.join('\t')]
 
-  for (const rowF of visibleFactors) {
+  for (let rowFactorIdx = 0; rowFactorIdx < visibleFactors.length; rowFactorIdx++) {
+    const rowF = visibleFactors[rowFactorIdx]!
     for (let i = 0; i < rowF.levels.length; i++) {
       const rowLevel = rowF.levels[i]!
       const cells: string[] = []
       cells.push(i === 0 ? rowF.name : '')
       cells.push(String(rowLevel.value))
-      for (const colF of visibleFactors) {
+      for (let colFactorIdx = 0; colFactorIdx < visibleFactors.length; colFactorIdx++) {
+        const colF = visibleFactors[colFactorIdx]!
         for (const colLevel of colF.levels) {
           if (rowF.name === colF.name) {
             cells.push('—')
@@ -294,11 +300,17 @@ function matrixToTsv(
             cells.push('✗')
             continue
           }
-          if (occurrenceMap) {
-            const occ = occurrenceCount(occurrenceMap, rowF.name, va, colF.name, vb)
-            cells.push(occ > 0 ? String(occ) : '?')
-          } else {
+          if (!occurrenceMap) {
             cells.push('')
+            continue
+          }
+          const info = occurrenceMap.get(pairKey(rowF.name, va, colF.name, vb))
+          if (!info || info.count === 0) {
+            cells.push('?')
+          } else if (colFactorIdx > rowFactorIdx) {
+            cells.push(String(info.count))
+          } else {
+            cells.push(info.ids.join(','))
           }
         }
       }
@@ -411,12 +423,14 @@ function CoverageSummary({ stats, hasTestSuite }: CoverageSummaryProps) {
 // matrix can render placeholder cells.
 // =============================================================================
 
-type OccurrenceMap = Map<string, number>
+type OccurrenceInfo = { count: number; ids: number[] }
+type OccurrenceMap = Map<string, OccurrenceInfo>
 
 function buildOccurrenceMap(suite: TestSuite | null): OccurrenceMap | null {
   if (!suite || suite.rows.length === 0) return null
   const map: OccurrenceMap = new Map()
-  for (const row of suite.rows) {
+  for (let r = 0; r < suite.rows.length; r++) {
+    const row = suite.rows[r]!
     const factors = suite.factorOrder
     for (let i = 0; i < factors.length; i++) {
       for (let j = 0; j < factors.length; j++) {
@@ -427,7 +441,13 @@ function buildOccurrenceMap(suite: TestSuite | null): OccurrenceMap | null {
         const vb = row.values[fb]
         if (va === undefined || vb === undefined) continue
         const key = pairKey(fa, va, fb, vb)
-        map.set(key, (map.get(key) ?? 0) + 1)
+        let info = map.get(key)
+        if (!info) {
+          info = { count: 0, ids: [] }
+          map.set(key, info)
+        }
+        info.count++
+        info.ids.push(r + 1)
       }
     }
   }
@@ -445,7 +465,7 @@ function occurrenceCount(
   colFactor: string,
   colLevel: string,
 ): number {
-  return map.get(pairKey(rowFactor, rowLevel, colFactor, colLevel)) ?? 0
+  return map.get(pairKey(rowFactor, rowLevel, colFactor, colLevel))?.count ?? 0
 }
 
 // =============================================================================

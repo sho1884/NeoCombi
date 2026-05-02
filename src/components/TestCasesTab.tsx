@@ -1,93 +1,58 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useProjectStore } from '../stores/projectStore'
-import { parseCsv } from '../services/csvImport'
-import { generateTestCases } from '../services/pictApi'
+import { runGenerate } from '../services/runGenerate'
 import { formatTestSuite } from '../engines/pict'
 import type { OutputFormat } from '../engines/pict'
 import './TestCasesTab.css'
-
-const AUTO_REGEN_DEBOUNCE_MS = 900
 
 export function TestCasesTab() {
   const testSuite = useProjectStore(s => s.testSuite)
   const setTestCaseExpected = useProjectStore(s => s.setTestCaseExpected)
   const source = useProjectStore(s => s.source)
-  const pictOrder = useProjectStore(s => s.pictOrder)
   const diagnostics = useProjectStore(s => s.parseResult.diagnostics)
-  const parameterCount = useProjectStore(
-    s => s.parseResult.model?.parameters.length ?? 0,
-  )
 
   const [error, setError] = useState<string | null>(null)
   const [generating, setGenerating] = useState(false)
   const [format, setFormat] = useState<OutputFormat>('csv')
   const [copied, setCopied] = useState(false)
-  // Track the last generation we kicked off so debounced auto-regen can
-  // skip if the source has not actually changed since.
-  const lastGeneratedSource = useRef<string | null>(null)
 
   const dslHasErrors = diagnostics.some(d => d.severity === 'error')
 
-  const runGenerate = async (reason: 'manual' | 'auto') => {
-    // Always read latest source / order via getState() so the request reflects
-    // edits made right up to the click — avoids stale-closure surprises.
-    const state = useProjectStore.getState()
-    const liveSource = state.source
-    const liveOrder = state.pictOrder
-    if (liveSource.length === 0) return
-    if (state.parseResult.diagnostics.some(d => d.severity === 'error')) return
-    if ((state.parseResult.model?.parameters.length ?? 0) < 1) return
-
+  const onManualGenerate = async () => {
     setGenerating(true)
-    if (reason === 'manual') setError(null)
+    setError(null)
     try {
-      const result = await generateTestCases(liveSource, { order: liveOrder })
-      if (!result.ok) {
-        if (result.error.kind === 'network') {
+      const result = await runGenerate()
+      switch (result.kind) {
+        case 'ok':
+          break
+        case 'skipped':
+          setError(`Cannot generate: ${result.reason.replace('-', ' ')}`)
+          break
+        case 'network-error':
           setError(
-            `Cannot reach the PICT service: ${result.error.message}. Start it with \`docker compose up pict-service\`.`,
+            `Cannot reach the PICT service: ${result.message}. Start it with \`docker compose up pict-service\`.`,
           )
-        } else if (result.error.kind === 'pict-error') {
+          break
+        case 'pict-error':
           setError(
-            `PICT rejected the model: ${result.error.message}` +
-              (result.error.stderr ? ' — ' + result.error.stderr : ''),
+            `PICT rejected the model: ${result.message}` +
+              (result.stderr ? ' — ' + result.stderr : ''),
           )
-        } else {
-          setError(`Service error (${result.error.status}): ${result.error.message}`)
-        }
-        return
+          break
+        case 'service-error':
+          setError(`Service error (${result.status}): ${result.message}`)
+          break
+        case 'empty-result':
+          setError('PICT returned an empty result.')
+          break
       }
-      const { suite } = parseCsv(result.value)
-      if (suite.factorOrder.length === 0) {
-        setError('PICT returned an empty result.')
-        return
-      }
-      // Re-read the active store action in case the store mutated mid-flight.
-      useProjectStore.getState().setTestSuite(suite)
-      lastGeneratedSource.current = liveSource
-      if (reason === 'manual') setError(null)
     } catch (e) {
       setError(`Unexpected error while generating: ${(e as Error).message}`)
     } finally {
       setGenerating(false)
     }
   }
-
-  // Auto-regenerate when DSL source / order changes, debounced so a flurry of
-  // edits in the editor only kicks off one request after the user pauses.
-  // Only triggers when the model is parseable and has at least one parameter,
-  // i.e. when there is something meaningful for PICT to chew on.
-  useEffect(() => {
-    if (dslHasErrors) return
-    if (source.length === 0) return
-    if (parameterCount === 0) return
-    if (lastGeneratedSource.current === source) return
-
-    const handle = window.setTimeout(() => {
-      void runGenerate('auto')
-    }, AUTO_REGEN_DEBOUNCE_MS)
-    return () => window.clearTimeout(handle)
-  }, [source, pictOrder, dslHasErrors, parameterCount])
 
   // ---------------------------------------------------------------------------
   // Export / copy actions (only meaningful when there is a suite to export)
@@ -136,7 +101,7 @@ export function TestCasesTab() {
           <button
             type="button"
             className="test-cases-tab__generate"
-            onClick={() => void runGenerate('manual')}
+            onClick={() => void onManualGenerate()}
             disabled={generating || dslHasErrors || source.length === 0}
             title={
               dslHasErrors
@@ -182,7 +147,7 @@ docker compose up --build pict-service`}
         <button
           type="button"
           className="test-cases-tab__generate"
-          onClick={() => void runGenerate('manual')}
+          onClick={() => void onManualGenerate()}
           disabled={generating || dslHasErrors || source.length === 0}
         >
           {generating ? 'Generating…' : 'Re-generate'}

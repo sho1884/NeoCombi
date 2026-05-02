@@ -242,6 +242,30 @@
   font-weight: 700;
 }
 
+.matrix__cell--count .matrix__cell-content {
+  font-weight: 600;
+}
+
+/* Lower-left half: comma-joined test-case row indices. Use a smaller font
+   and keep the cell square — overflow is hidden with ellipsis; the full
+   list is always available via the cell's `title` attribute (hover). */
+.matrix__cell--ids {
+  overflow: hidden;
+}
+
+.matrix__cell--ids .matrix__cell-content {
+  display: block;
+  width: 100%;
+  font-size: 0.6rem;
+  letter-spacing: -0.02em;
+  font-weight: 500;
+  color: #1b5e20;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 0.1em;
+}
+
 .matrix__cell--pair {
   /* Pair-coverage cell. Once test cases are wired in, occurrence counts
      will replace the placeholder dot here (SR-042 / SR-043). */
