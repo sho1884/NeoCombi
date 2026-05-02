@@ -63,11 +63,13 @@ export function TestCasesTab() {
 
   const onCopy = async () => {
     if (!testSuite) return
-    // Always copy BOTH text/html and text/plain (TSV) so paste works in
-    // Excel / Sheets (they prefer HTML) and in plain-text editors (TSV).
+    // Always copy BOTH text/html and text/plain. The user's format
+    // selection drives the text/plain payload so VS Code / pytest /
+    // automation tools see the format they actually want, while
+    // Excel / Sheets keep working through the HTML path.
     const html = testSuiteToHtml(testSuite)
-    const tsv = formatTestSuite(testSuite, 'tsv')
-    const result = await copyTableToClipboard(html, tsv)
+    const plain = formatTestSuite(testSuite, format)
+    const result = await copyTableToClipboard(html, plain)
     if (!result.ok) {
       setError(result.reason)
       return
