@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useProjectStore } from '../stores/projectStore'
-import type { ParameterDecl } from '../types/dsl'
+import { computeForbiddenSlice } from '../engines/dsl'
+import type { Model, ParameterDecl } from '../types/dsl'
 import type { TestSuite } from '../types/testCase'
 import './ExhaustiveMatrix.css'
 
@@ -23,6 +24,11 @@ export function ExhaustiveMatrix() {
   const occurrenceMap = useMemo(
     () => buildOccurrenceMap(testSuite),
     [testSuite],
+  )
+
+  const forbiddenMap = useMemo(
+    () => buildForbiddenMap(model, visibleFactors),
+    [model, visibleFactors],
   )
 
   if (visibleFactors.length === 0) {
@@ -120,9 +126,21 @@ export function ExhaustiveMatrix() {
                           String(colLevel.value),
                         )
                       : null
+                    const forbidden = forbiddenMap
+                      ? isForbidden(
+                          forbiddenMap,
+                          rowFactor.name,
+                          String(rowLevel.value),
+                          colFactor.name,
+                          String(colLevel.value),
+                        )
+                      : false
                     let display: string
                     let cellClass = 'matrix__cell matrix__cell--pair'
-                    if (occ === null) {
+                    if (forbidden) {
+                      display = '✗'
+                      cellClass += ' matrix__cell--forbidden'
+                    } else if (occ === null) {
                       display = '·'
                       cellClass += ' matrix__cell--placeholder'
                     } else if (occ === 0) {
@@ -196,4 +214,55 @@ function occurrenceCount(
   colLevel: string,
 ): number {
   return map.get(pairKey(rowFactor, rowLevel, colFactor, colLevel)) ?? 0
+}
+
+// =============================================================================
+// Forbidden map: for each unordered factor pair (i, j) in the visible factor
+// set, run the evaluator and record which level pairs are forbidden by the
+// DSL. Returns null when there are too few visible factors or when any per-
+// pair evaluation hits the size guard (the matrix simply omits the forbidden
+// shading in that case).
+// =============================================================================
+
+const SEP = ' '
+type ForbiddenMap = Map<string, Set<string>>
+
+function buildForbiddenMap(
+  model: Model | null,
+  visibleFactors: ParameterDecl[],
+): ForbiddenMap | null {
+  if (!model || visibleFactors.length < 2) return null
+  const map: ForbiddenMap = new Map()
+  for (let i = 0; i < visibleFactors.length; i++) {
+    for (let j = i + 1; j < visibleFactors.length; j++) {
+      const a = visibleFactors[i]!
+      const b = visibleFactors[j]!
+      const result = computeForbiddenSlice(model, [a.name, b.name])
+      if (!result.ok) return null
+      const forwardSet = new Set<string>()
+      const reverseSet = new Set<string>()
+      for (const cell of result.value.cells) {
+        if (!cell.forbidden) continue
+        const va = String(cell.assignment[a.name])
+        const vb = String(cell.assignment[b.name])
+        forwardSet.add(va + SEP + vb)
+        reverseSet.add(vb + SEP + va)
+      }
+      map.set(a.name + SEP + b.name, forwardSet)
+      map.set(b.name + SEP + a.name, reverseSet)
+    }
+  }
+  return map
+}
+
+function isForbidden(
+  map: ForbiddenMap,
+  rowFactor: string,
+  rowLevel: string,
+  colFactor: string,
+  colLevel: string,
+): boolean {
+  const set = map.get(rowFactor + SEP + colFactor)
+  if (!set) return false
+  return set.has(rowLevel + SEP + colLevel)
 }
