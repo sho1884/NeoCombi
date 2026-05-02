@@ -3,6 +3,10 @@ import { useProjectStore } from '../stores/projectStore'
 import { computeForbiddenSlice } from '../engines/dsl'
 import type { Model, ParameterDecl } from '../types/dsl'
 import type { TestSuite } from '../types/testCase'
+import {
+  copyTableToClipboard,
+  escapeHtml,
+} from '../services/clipboardWrite'
 import './ExhaustiveMatrix.css'
 
 /**
@@ -217,21 +221,19 @@ function MatrixExportToolbar({
 }: MatrixExportToolbarProps) {
   const [copied, setCopied] = useState(false)
 
-  const buildTsv = () =>
-    matrixToTsv(visibleFactors, occurrenceMap, forbiddenMap)
-
   const onCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(buildTsv())
+    const html = matrixToHtml(visibleFactors, occurrenceMap, forbiddenMap)
+    const tsv = matrixToTsv(visibleFactors, occurrenceMap, forbiddenMap)
+    const result = await copyTableToClipboard(html, tsv)
+    if (result.ok) {
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
-    } catch {
-      // Silent fallback — leave the user to inspect the page.
     }
   }
 
   const onDownload = () => {
-    const blob = new Blob([buildTsv()], {
+    const tsv = matrixToTsv(visibleFactors, occurrenceMap, forbiddenMap)
+    const blob = new Blob([tsv], {
       type: 'text/tab-separated-values;charset=utf-8',
     })
     const url = URL.createObjectURL(blob)
@@ -251,19 +253,92 @@ function MatrixExportToolbar({
         type="button"
         className="matrix__export-btn"
         onClick={onCopy}
-        title="Copy the matrix as TSV"
+        title="Copy as HTML table + TSV (paste-friendly to Excel and plain-text editors)"
       >
-        {copied ? '✓ Copied' : 'Copy TSV'}
+        {copied ? '✓ Copied' : 'Copy'}
       </button>
       <button
         type="button"
         className="matrix__export-btn"
         onClick={onDownload}
-        title="Download the matrix as a TSV file"
+        title="Download as TSV"
       >
         Download TSV
       </button>
     </div>
+  )
+}
+
+function matrixToHtml(
+  visibleFactors: ParameterDecl[],
+  occurrenceMap: OccurrenceMap | null,
+  forbiddenMap: ForbiddenMap | null,
+): string {
+  // Two header rows: factor names spanning their levels, then per-level
+  // labels. We use colspan / rowspan so spreadsheet apps merge the cells
+  // correctly on paste.
+  const factorHeaderCells = ['<th></th>', '<th></th>']
+  for (const f of visibleFactors) {
+    factorHeaderCells.push(
+      `<th colspan="${f.levels.length}">${escapeHtml(f.name)}</th>`,
+    )
+  }
+  const levelHeaderCells = ['<th></th>', '<th></th>']
+  for (const f of visibleFactors) {
+    for (const lv of f.levels) {
+      levelHeaderCells.push(`<th>${escapeHtml(String(lv.value))}</th>`)
+    }
+  }
+
+  const bodyRows: string[] = []
+  for (let rowFactorIdx = 0; rowFactorIdx < visibleFactors.length; rowFactorIdx++) {
+    const rowF = visibleFactors[rowFactorIdx]!
+    for (let i = 0; i < rowF.levels.length; i++) {
+      const rowLevel = rowF.levels[i]!
+      const cells: string[] = []
+      if (i === 0) {
+        cells.push(
+          `<th rowspan="${rowF.levels.length}">${escapeHtml(rowF.name)}</th>`,
+        )
+      }
+      cells.push(`<th>${escapeHtml(String(rowLevel.value))}</th>`)
+      for (let colFactorIdx = 0; colFactorIdx < visibleFactors.length; colFactorIdx++) {
+        const colF = visibleFactors[colFactorIdx]!
+        for (const colLevel of colF.levels) {
+          if (rowF.name === colF.name) {
+            cells.push('<td>—</td>')
+            continue
+          }
+          const va = String(rowLevel.value)
+          const vb = String(colLevel.value)
+          if (forbiddenMap && isForbidden(forbiddenMap, rowF.name, va, colF.name, vb)) {
+            cells.push('<td>✗</td>')
+            continue
+          }
+          if (!occurrenceMap) {
+            cells.push('<td></td>')
+            continue
+          }
+          const info = occurrenceMap.get(pairKey(rowF.name, va, colF.name, vb))
+          if (!info || info.count === 0) {
+            cells.push('<td>?</td>')
+          } else if (colFactorIdx > rowFactorIdx) {
+            cells.push(`<td>${info.count}</td>`)
+          } else {
+            cells.push(
+              `<td>${info.ids.map(id => '#' + id).join(', ')}</td>`,
+            )
+          }
+        }
+      }
+      bodyRows.push('<tr>' + cells.join('') + '</tr>')
+    }
+  }
+  return (
+    '<table>' +
+    `<thead><tr>${factorHeaderCells.join('')}</tr><tr>${levelHeaderCells.join('')}</tr></thead>` +
+    `<tbody>${bodyRows.join('')}</tbody>` +
+    '</table>'
   )
 }
 

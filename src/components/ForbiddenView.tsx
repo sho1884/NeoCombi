@@ -3,6 +3,10 @@ import { useProjectStore } from '../stores/projectStore'
 import { computeForbiddenSlice } from '../engines/dsl'
 import type { ForbiddenSliceCell } from '../types/dsl'
 import type { ForbiddenSliceConfig } from '../types/project'
+import {
+  copyTableToClipboard,
+  escapeHtml,
+} from '../services/clipboardWrite'
 import './ForbiddenView.css'
 
 export function ForbiddenView() {
@@ -273,19 +277,18 @@ function ForbiddenExportToolbar({
   cells,
 }: ForbiddenExportToolbarProps) {
   const [copied, setCopied] = useState(false)
-  const buildTsv = () =>
-    forbiddenSliceToTsv(conditionFactors, constrainedFactor, cells)
   const onCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(buildTsv())
+    const html = forbiddenSliceToHtml(conditionFactors, constrainedFactor, cells)
+    const tsv = forbiddenSliceToTsv(conditionFactors, constrainedFactor, cells)
+    const result = await copyTableToClipboard(html, tsv)
+    if (result.ok) {
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
-    } catch {
-      /* ignore */
     }
   }
   const onDownload = () => {
-    const blob = new Blob([buildTsv()], {
+    const tsv = forbiddenSliceToTsv(conditionFactors, constrainedFactor, cells)
+    const blob = new Blob([tsv], {
       type: 'text/tab-separated-values;charset=utf-8',
     })
     const url = URL.createObjectURL(blob)
@@ -300,13 +303,75 @@ function ForbiddenExportToolbar({
   }
   return (
     <div className="forbidden-view__export">
-      <button type="button" className="forbidden-view__export-btn" onClick={onCopy}>
-        {copied ? '✓ Copied' : 'Copy TSV'}
+      <button
+        type="button"
+        className="forbidden-view__export-btn"
+        onClick={onCopy}
+        title="Copy as HTML table + TSV"
+      >
+        {copied ? '✓ Copied' : 'Copy'}
       </button>
       <button type="button" className="forbidden-view__export-btn" onClick={onDownload}>
         Download TSV
       </button>
     </div>
+  )
+}
+
+function forbiddenSliceToHtml(
+  conditionFactors: string[],
+  constrainedFactor: string,
+  cells: ForbiddenSliceCell[],
+): string {
+  const constrainedLevels: string[] = []
+  for (const c of cells) {
+    const v = String(c.assignment[constrainedFactor])
+    if (!constrainedLevels.includes(v)) constrainedLevels.push(v)
+  }
+  const rowMap = new Map<string, { tuple: string[]; cells: ForbiddenSliceCell[] }>()
+  for (const c of cells) {
+    const tuple = conditionFactors.map(f => String(c.assignment[f]))
+    const key = tuple.join('||')
+    let row = rowMap.get(key)
+    if (!row) {
+      row = { tuple, cells: [] }
+      rowMap.set(key, row)
+    }
+    row.cells.push(c)
+  }
+  const rows = Array.from(rowMap.values())
+
+  const factorRow =
+    '<tr>' +
+    conditionFactors.map(n => `<th>${escapeHtml(n)}</th>`).join('') +
+    `<th colspan="${Math.max(constrainedLevels.length, 1)}">${escapeHtml(constrainedFactor)}</th>` +
+    '</tr>'
+  const levelRow =
+    '<tr>' +
+    conditionFactors.map(() => '<th></th>').join('') +
+    constrainedLevels.map(lv => `<th>${escapeHtml(lv)}</th>`).join('') +
+    '</tr>'
+
+  const bodyRows = rows.map(row => {
+    const tupleCells = row.tuple
+      .map(t => `<th>${escapeHtml(t)}</th>`)
+      .join('')
+    const dataCells = constrainedLevels
+      .map(colLv => {
+        const cell = row.cells.find(
+          c => String(c.assignment[constrainedFactor]) === colLv,
+        )
+        return `<td>${cell?.forbidden ? '✗' : '·'}</td>`
+      })
+      .join('')
+    return `<tr>${tupleCells}${dataCells}</tr>`
+  })
+
+  return (
+    '<table>' +
+    `<thead>${factorRow}${levelRow}</thead>` +
+    `<tbody>${bodyRows.join('')}</tbody>` +
+    '</table>'
   )
 }
 

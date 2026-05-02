@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useProjectStore } from '../stores/projectStore'
 import { runGenerate } from '../services/runGenerate'
-import { formatTestSuite } from '../engines/pict'
+import { formatTestSuite, testSuiteToHtml } from '../engines/pict'
 import type { OutputFormat } from '../engines/pict'
+import { copyTableToClipboard } from '../services/clipboardWrite'
 import './TestCasesTab.css'
 
 export function TestCasesTab() {
@@ -58,19 +59,25 @@ export function TestCasesTab() {
   // Export / copy actions (only meaningful when there is a suite to export)
   // ---------------------------------------------------------------------------
 
-  const exportSuite = async (mode: 'copy' | 'download') => {
+  const onCopy = async () => {
     if (!testSuite) return
-    const text = formatTestSuite(testSuite, format)
-    if (mode === 'copy') {
-      try {
-        await navigator.clipboard.writeText(text)
-        setCopied(true)
-        setTimeout(() => setCopied(false), 1500)
-      } catch {
-        setError('Could not copy to clipboard.')
-      }
+    // Always copy BOTH text/html and text/plain (TSV) so paste works in
+    // Excel / Sheets (they prefer HTML) and in plain-text editors (TSV).
+    const html = testSuiteToHtml(testSuite)
+    const tsv = formatTestSuite(testSuite, 'tsv')
+    const result = await copyTableToClipboard(html, tsv)
+    if (!result.ok) {
+      setError(result.reason)
       return
     }
+    setError(null)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  const onDownload = () => {
+    if (!testSuite) return
+    const text = formatTestSuite(testSuite, format)
     const ext = format === 'json' ? 'json' : format === 'tsv' ? 'tsv' : 'csv'
     const mime =
       format === 'json'
@@ -153,8 +160,17 @@ docker compose up --build pict-service`}
           {generating ? 'Generating…' : 'Re-generate'}
         </button>
         <span className="test-cases-tab__divider" aria-hidden="true" />
+        <button
+          type="button"
+          className="test-cases-tab__copy-btn"
+          onClick={() => void onCopy()}
+          title="Copy as HTML table + TSV (paste-friendly to Excel and to plain-text editors)"
+        >
+          {copied ? '✓ Copied' : 'Copy'}
+        </button>
+        <span className="test-cases-tab__divider" aria-hidden="true" />
         <label className="test-cases-tab__format">
-          Format:{' '}
+          Download as:{' '}
           <select
             value={format}
             onChange={e => setFormat(e.target.value as OutputFormat)}
@@ -166,17 +182,9 @@ docker compose up --build pict-service`}
         </label>
         <button
           type="button"
-          className="test-cases-tab__copy-btn"
-          onClick={() => void exportSuite('copy')}
-          title="Copy the rendered table to the clipboard"
-        >
-          {copied ? '✓ Copied' : 'Copy'}
-        </button>
-        <button
-          type="button"
           className="test-cases-tab__download"
-          onClick={() => void exportSuite('download')}
-          title="Download the rendered table as a file"
+          onClick={() => void onDownload()}
+          title="Download as a file (CSV / TSV / JSON)"
         >
           Download
         </button>
