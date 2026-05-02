@@ -1,6 +1,7 @@
 import { useProjectStore } from '../stores/projectStore'
 import { TopPane } from './TopPane'
 import { BottomPane } from './BottomPane'
+import { FileMenu } from './FileMenu'
 import './AppShell.css'
 
 export function AppShell() {
@@ -13,6 +14,7 @@ export function AppShell() {
       <header className="app__header">
         <h1 className="app__title">NeoCombi</h1>
         <span className="app__subtitle">Combinatorial test design tool</span>
+        <FileMenu />
         <span className="app__filepath">
           {filePath ?? '(unsaved project)'}
           {isDirty ? ' •' : ''}
@@ -31,7 +33,7 @@ export function AppShell() {
             : `DSL: ${diagnostics.length} ${diagnostics.length === 1 ? 'issue' : 'issues'}`}
         </span>
         <span className="app__footer-spacer" />
-        <span>MVP scaffold</span>
+        <span>v0.1 preview</span>
       </footer>
     </div>
   )
