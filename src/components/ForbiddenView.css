@@ -221,8 +221,13 @@
 }
 
 .forbidden-view__level-th--col {
+  /* Same vertical-header pattern as the coverage matrix: `vertical-rl`
+     for the top-to-bottom orientation, `text-orientation: mixed` so
+     CJK characters stay upright (proper Japanese vertical writing)
+     while Latin / digits lie on their side. Avoids the 180° rotation
+     trick that flips Japanese upside down. */
   writing-mode: vertical-rl;
-  transform: rotate(180deg);
+  text-orientation: mixed;
   padding: 0.3rem 0;
   height: 5em;
   width: 2em;

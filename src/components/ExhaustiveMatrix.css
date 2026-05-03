@@ -163,10 +163,15 @@
 
 .matrix__factor-header--row {
   /* Span down this factor's level rows (rowSpan handled in JSX).
-     Vertical text keeps the leftmost column narrow. */
+     Vertical writing keeps the leftmost column narrow. `vertical-rl`
+     reads top-to-bottom — natural for Japanese, and English letters
+     fall on their side (`text-orientation: mixed` upright-rotates CJK
+     and lays Latin sideways), which is the established convention for
+     spreadsheet column / row headers. No `transform: rotate(180deg)`
+     here because it flips Japanese text upside down. */
   border-right: 2px solid #90a4ae;
   writing-mode: vertical-rl;
-  transform: rotate(180deg);
+  text-orientation: mixed;
   white-space: nowrap;
   padding: 0.4rem 0.2rem;
   width: 1.6em;
@@ -185,9 +190,12 @@
 
 .matrix__level-header--col {
   /* Rotate column-level labels so the matrix stays roughly square even
-     when level names are long. Text reads bottom-to-top (rotate -90). */
+     when level names are long. `text-orientation: mixed` keeps CJK
+     characters upright while laying Latin / digits on their side, so
+     "Windows" and "Linux" read top-to-bottom while "たて" reads
+     naturally as proper vertical Japanese. */
   writing-mode: vertical-rl;
-  transform: rotate(180deg);
+  text-orientation: mixed;
   vertical-align: bottom;
   padding: 0.3rem 0;
   /* Visual height of the rotated label band; tuned for typical level
