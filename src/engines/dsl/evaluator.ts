@@ -230,6 +230,14 @@ export function isAssignmentValid(
  * Decide whether a partial assignment (over a subset of factors) is forbidden
  * by the model. A partial assignment is forbidden iff no extension to all
  * factors satisfies every constraint.
+ *
+ * Scaling: rather than enumerating every full assignment, we restrict
+ * enumeration to the constraint-reachable closure of the partial's factors
+ * — factors transitively connected via "co-occur in a constraint". Factors
+ * outside that closure cannot be constrained by the partial, so they don't
+ * influence feasibility (assuming the model is globally satisfiable). This
+ * keeps the enumeration tractable on 100+ factor models with sparse
+ * constraints.
  */
 export function isPartiallyForbidden(
   model: Model,
@@ -246,8 +254,28 @@ export function isPartiallyForbidden(
     }
   }
 
-  // Compute factors not fixed by the partial assignment.
-  const freeFactors = info.factors.filter(f => !(f.name in partial))
+  // If any factor has zero levels, the model is malformed; partial cannot be evaluated.
+  if (info.factors.some(f => f.levels.length === 0)) {
+    return failure('invalid-model', 'Model contains a factor with no levels')
+  }
+
+  const partialKeys = new Set(Object.keys(partial))
+  const { relevantFactorNames, relevantConstraints } = relevantSubmodel(
+    model,
+    partialKeys,
+  )
+
+  // No constraint touches the partial's factors → the partial can never be
+  // forbidden. (extractSlices guarantees the slice's factors are connected,
+  // but unconditional forbiddenness should still short-circuit cleanly.)
+  if (relevantConstraints.length === 0) {
+    return { ok: true, value: false }
+  }
+
+  // Free factors = reachable factors not yet fixed by `partial`.
+  const freeFactors = info.factors.filter(
+    f => relevantFactorNames.has(f.name) && !partialKeys.has(f.name),
+  )
 
   // Total enumeration size = product of free-factor cardinalities.
   let total = 1
@@ -261,22 +289,100 @@ export function isPartiallyForbidden(
     }
   }
 
-  // If any factor has zero levels, the model is malformed; partial cannot be evaluated.
-  if (info.factors.some(f => f.levels.length === 0)) {
-    return failure('invalid-model', 'Model contains a factor with no levels')
-  }
-
-  // Enumerate. Found-valid means the partial assignment is feasible (NOT forbidden).
+  // Enumerate over the reachable closure only; check only relevant
+  // constraints. Found-valid means the partial assignment is feasible
+  // (NOT forbidden).
   let foundValid = false
-  enumerateExtensions(freeFactors, 0, partial, assignment => {
-    if (isAssignmentValid(model, assignment, info)) {
-      foundValid = true
-      return false // stop enumeration
+  enumerateExtensions(freeFactors, 0, { ...partial }, assignment => {
+    for (const c of relevantConstraints) {
+      if (!isConstraintSatisfied(c, assignment, info)) return true
     }
-    return true
+    foundValid = true
+    return false
   })
 
   return { ok: true, value: !foundValid }
+}
+
+/**
+ * Compute the constraint-reachable closure: factors transitively connected
+ * to `seed` via "co-occur in some constraint", together with the set of
+ * constraints whose factors all lie inside that closure (which is the same
+ * as constraints touching at least one closure factor, by reachability).
+ */
+function relevantSubmodel(
+  model: Model,
+  seed: Set<string>,
+): { relevantFactorNames: Set<string>; relevantConstraints: ConstraintNode[] } {
+  const constraintFactors: Array<Set<string>> = model.constraints.map(c =>
+    factorsTouched(c),
+  )
+  const reach = new Set(seed)
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const fs of constraintFactors) {
+      let touches = false
+      for (const f of fs) {
+        if (reach.has(f)) {
+          touches = true
+          break
+        }
+      }
+      if (!touches) continue
+      for (const f of fs) {
+        if (!reach.has(f)) {
+          reach.add(f)
+          changed = true
+        }
+      }
+    }
+  }
+  const relevantConstraints: ConstraintNode[] = []
+  for (let i = 0; i < model.constraints.length; i++) {
+    const fs = constraintFactors[i]!
+    if (fs.size === 0) continue
+    let touches = false
+    for (const f of fs) {
+      if (reach.has(f)) {
+        touches = true
+        break
+      }
+    }
+    if (touches) relevantConstraints.push(model.constraints[i]!)
+  }
+  return { relevantFactorNames: reach, relevantConstraints }
+}
+
+function factorsTouched(c: ConstraintNode): Set<string> {
+  const set = new Set<string>()
+  const visit = (p: Predicate): void => {
+    switch (p.type) {
+      case 'or':
+      case 'and':
+        visit(p.left)
+        visit(p.right)
+        return
+      case 'not':
+        visit(p.operand)
+        return
+      case 'comparison':
+        set.add(p.left.name)
+        if (p.right.type === 'paramRef') set.add(p.right.name)
+        return
+      case 'in':
+        set.add(p.left.name)
+        return
+    }
+  }
+  if (c.type === 'if') {
+    visit(c.condition)
+    visit(c.then)
+    if (c.else) visit(c.else)
+  } else {
+    visit(c.predicate)
+  }
+  return set
 }
 
 function enumerateExtensions(

@@ -45,6 +45,33 @@
   min-height: 0;
 }
 
+.app__divider {
+  flex: 0 0 6px;
+  background: #cfd8dc;
+  cursor: row-resize;
+  border-top: 1px solid #b0bec5;
+  border-bottom: 1px solid #b0bec5;
+  position: relative;
+  user-select: none;
+}
+
+.app__divider:hover,
+.app__divider--dragging {
+  background: #90a4ae;
+}
+
+.app__divider::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 32px;
+  height: 2px;
+  background: #78909c;
+  border-radius: 1px;
+}
+
 .app__footer {
   display: flex;
   align-items: center;

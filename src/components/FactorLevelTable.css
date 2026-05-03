@@ -26,8 +26,39 @@
 }
 
 .factor-level-table__col-show {
-  width: 3rem;
+  width: 6.5rem;
   text-align: center !important;
+}
+
+.factor-level-table__show-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  white-space: nowrap;
+}
+
+.factor-level-table__bulk-btn {
+  appearance: none;
+  border: 1px solid #b0bec5;
+  background: #fff;
+  color: #37474f;
+  padding: 0 0.35rem;
+  font: inherit;
+  font-size: 0.7rem;
+  border-radius: 2px;
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.factor-level-table__bulk-btn:hover:not(:disabled) {
+  background: #eceff1;
+  border-color: #37474f;
+}
+
+.factor-level-table__bulk-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .factor-level-table__col-order {

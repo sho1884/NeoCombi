@@ -24,6 +24,7 @@ export function FactorLevelTable() {
   const parseResult = useProjectStore(s => s.parseResult)
   const factorVisibility = useProjectStore(s => s.view.factorVisibility)
   const setFactorVisibility = useProjectStore(s => s.setFactorVisibility)
+  const setAllFactorsVisible = useProjectStore(s => s.setAllFactorsVisible)
   const renameFactor = useProjectStore(s => s.renameFactor)
   const removeFactor = useProjectStore(s => s.removeFactor)
   const addFactor = useProjectStore(s => s.addFactor)
@@ -45,7 +46,29 @@ export function FactorLevelTable() {
       <table className="factor-level-table__table">
         <thead>
           <tr>
-            <th className="factor-level-table__col-show" scope="col">Show</th>
+            <th className="factor-level-table__col-show" scope="col">
+              <div className="factor-level-table__show-header">
+                <span>Show</span>
+                <button
+                  type="button"
+                  className="factor-level-table__bulk-btn"
+                  onClick={() => setAllFactorsVisible(true)}
+                  title="Show all factors in the matrix"
+                  disabled={factors.length === 0}
+                >
+                  All
+                </button>
+                <button
+                  type="button"
+                  className="factor-level-table__bulk-btn"
+                  onClick={() => setAllFactorsVisible(false)}
+                  title="Hide all factors from the matrix"
+                  disabled={factors.length === 0}
+                >
+                  None
+                </button>
+              </div>
+            </th>
             <th className="factor-level-table__col-order" scope="col" aria-label="Reorder" />
             <th className="factor-level-table__col-name" scope="col">Factor</th>
             <th className="factor-level-table__col-count" scope="col">#</th>

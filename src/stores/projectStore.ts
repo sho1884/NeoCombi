@@ -105,6 +105,8 @@ type Actions = {
   setTopPaneTab(tab: TopPaneTab): void
   setBottomPaneTab(tab: BottomPaneTab): void
   setFactorVisibility(factor: string, visible: boolean): void
+  /** Bulk-set visibility for every declared factor. */
+  setAllFactorsVisible(visible: boolean): void
   /** Append a new forbidden-slice configuration and select it as active. */
   addForbiddenSlice(slice?: ForbiddenSliceConfig): void
   /** Replace the active slice's configuration. No-op when no slice is active. */
@@ -229,6 +231,17 @@ export const useProjectStore = create<Store>()((set, get) => ({
 
   setBottomPaneTab(tab) {
     set(state => ({ view: { ...state.view, bottomPaneTab: tab } }))
+  },
+
+  setAllFactorsVisible(visible) {
+    set(state => {
+      const factors = state.parseResult.model?.parameters ?? []
+      const next: Record<string, boolean> = {}
+      for (const p of factors) next[p.name] = visible
+      return {
+        view: { ...state.view, factorVisibility: next },
+      }
+    })
   },
 
   setFactorVisibility(factor, visible) {

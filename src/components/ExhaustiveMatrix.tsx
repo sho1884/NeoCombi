@@ -172,12 +172,33 @@ export function ExhaustiveMatrix() {
                           (info.count === 1 ? '' : 's') +
                           ` (rows ${info.ids.join(', ')})`
                       } else {
-                        // Lower-left half: which test rows contain this pair.
-                        // Prefix with # so the numbers read as references
-                        // rather than as ordinary digits.
-                        display = info.ids.map(id => '#' + id).join(', ')
+                        // Lower-left half: show only the first id; if there
+                        // are more, show "+N" stacked below in a smaller
+                        // font so both pieces fit in a 2em square cell. The
+                        // full list is in the tooltip and in CSV exports.
+                        const first = info.ids[0]!
+                        const rest = info.ids.length - 1
                         cellClass += ' matrix__cell--ids'
                         extraLabel = `: covered by ${info.ids.map(id => '#' + id).join(', ')}`
+                        return (
+                          <td
+                            key={`cell-${colFactor.name}::${vb}`}
+                            className={cellClass}
+                            title={baseLabel + extraLabel}
+                            aria-label={baseLabel + extraLabel}
+                          >
+                            <span className="matrix__cell-content">
+                              <span className="matrix__cell-first-id">
+                                #{first}
+                              </span>
+                              {rest > 0 && (
+                                <span className="matrix__cell-rest">
+                                  +{rest}
+                                </span>
+                              )}
+                            </span>
+                          </td>
+                        )
                       }
                     }
 

@@ -183,16 +183,34 @@ IF [OS] = "Linux" THEN [Browser] <> "Safari";
     if (r.ok) expect(r.value).toBe(true)
   })
 
-  it('errors with too-large when free-factor cardinality exceeds the limit', () => {
+  it('errors with too-large when the reachable closure exceeds the limit', () => {
+    const m = modelOf(`
+A: 1, 2, 3, 4, 5
+B: 1, 2, 3, 4, 5
+C: 1, 2, 3, 4, 5
+IF [A] = 1 THEN [B] <> 1;
+IF [B] = 1 THEN [C] <> 1;
+    `)
+    const info = buildTypeInfo(m)
+    // Partial fixes A; reachable closure = {A, B, C} via the chain.
+    // Free factors B, C have 5 levels each → 25 combinations exceed limit 10.
+    const r = isPartiallyForbidden(m, { A: 1 }, info, { limit: 10 })
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.reason).toBe('too-large')
+  })
+
+  it('treats partials over factors disconnected from any constraint as not-forbidden', () => {
     const m = modelOf(`
 A: 1, 2, 3, 4, 5
 B: 1, 2, 3, 4, 5
 C: 1, 2, 3, 4, 5
     `)
     const info = buildTypeInfo(m)
+    // No constraints → reachable closure is empty regardless of partial size.
+    // The partial can never be forbidden, so the cardinality guard does not fire.
     const r = isPartiallyForbidden(m, {}, info, { limit: 50 })
-    expect(r.ok).toBe(false)
-    if (!r.ok) expect(r.reason).toBe('too-large')
+    expect(r.ok).toBe(true)
+    if (r.ok) expect(r.value).toBe(false)
   })
 
   it('errors with unknown-factor when the partial uses an unknown name', () => {

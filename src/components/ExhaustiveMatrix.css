@@ -246,24 +246,36 @@
   font-weight: 600;
 }
 
-/* Lower-left half: comma-joined test-case row indices. Use a smaller font
-   and keep the cell square — overflow is hidden with ellipsis; the full
-   list is always available via the cell's `title` attribute (hover). */
+/* Lower-left half: "#firstId" with optional "+N" stacked below. Both
+   stay inside the 2em square cell; the full list is in the title
+   attribute (hover) and in CSV exports. */
 .matrix__cell--ids {
   overflow: hidden;
 }
 
 .matrix__cell--ids .matrix__cell-content {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   width: 100%;
-  font-size: 0.6rem;
-  letter-spacing: -0.02em;
+  height: 100%;
   font-weight: 500;
   color: #1b5e20;
-  white-space: nowrap;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  padding: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  padding: 0 0.1em;
+}
+
+.matrix__cell-first-id {
+  font-size: 0.62rem;
+}
+
+.matrix__cell-rest {
+  font-size: 0.5rem;
+  color: #4caf50;
+  margin-top: 0.1em;
 }
 
 .matrix__cell--pair {
