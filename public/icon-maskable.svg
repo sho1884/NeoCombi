@@ -1,9 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="NeoCombi">
   <title>NeoCombi</title>
-  <!-- Soft rounded background; OS will clip to platform shape on PWA install. -->
-  <rect width="64" height="64" rx="10" fill="#eceff1"/>
-  <!-- 2x2 pairwise matrix: three covered cells (theme blue-grey) and one
-       forbidden cell (red with ✗) — the visual signature of NeoCombi. -->
+  <!-- Maskable variant: full-bleed background fills the canvas so the OS
+       can clip it to its platform-preferred shape (circle on Android,
+       squircle on iOS) without leaving transparent corners. The matrix
+       sits inside the ~80% safe zone. -->
+  <rect width="64" height="64" fill="#eceff1"/>
   <g>
     <rect x="14" y="14" width="16" height="16" rx="2" fill="#37474f"/>
     <rect x="34" y="14" width="16" height="16" rx="2" fill="#37474f"/>

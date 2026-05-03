@@ -78,7 +78,12 @@ export function AppShell() {
             : `DSL: ${diagnostics.length} ${diagnostics.length === 1 ? 'issue' : 'issues'}`}
         </span>
         <span className="app__footer-spacer" />
-        <span>v0.1 preview</span>
+        <span
+          className="app__build-time"
+          title="Build time (Asia/Tokyo)"
+        >
+          build {__BUILD_TIME__.slice(0, 16).replace('T', ' ')}
+        </span>
       </footer>
     </div>
   )

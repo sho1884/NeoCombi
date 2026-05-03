@@ -87,3 +87,10 @@
 .app__footer-spacer {
   flex: 1;
 }
+
+.app__build-time {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem;
+  color: #78909c;
+  letter-spacing: 0.02em;
+}
