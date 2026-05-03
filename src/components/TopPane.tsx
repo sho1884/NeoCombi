@@ -5,8 +5,8 @@ import { ForbiddenView } from './ForbiddenView'
 import './TopPane.css'
 
 const TOP_TABS: Array<{ id: TopPaneTab; label: string; description: string }> = [
-  { id: 'coverage', label: 'Coverage', description: 'Exhaustive cross-tabulation matrix (SR-040..043)' },
-  { id: 'forbidden', label: 'Forbidden', description: 'DSL-derived forbidden combinations (SR-030..033)' },
+  { id: 'coverage', label: 'Coverage', description: 'Exhaustive cross-tabulation of every factor pair' },
+  { id: 'forbidden', label: 'Forbidden', description: 'Forbidden combinations derived from constraints' },
 ]
 
 export function TopPane() {

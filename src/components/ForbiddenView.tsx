@@ -60,7 +60,7 @@ export function ForbiddenView() {
     return (
       <div className="forbidden-view__empty">
         Declare at least two factors in the DSL editor or Factors &amp; Levels
-        tab to compute forbidden combinations (SR-030..033).
+        tab to compute forbidden combinations.
       </div>
     )
   }

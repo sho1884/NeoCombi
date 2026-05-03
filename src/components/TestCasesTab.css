@@ -219,18 +219,6 @@
   font-size: 0.85rem;
 }
 
-.test-cases-tab__service-cmd {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.85rem;
-  background: #263238;
-  color: #eceff1;
-  padding: 0.6rem 0.8rem;
-  border-radius: 4px;
-  margin: 0.6rem 0 1rem;
-  white-space: pre;
-  overflow: auto;
-}
-
 .test-cases-tab__table-wrap {
   flex: 1;
   overflow: auto;

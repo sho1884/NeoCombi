@@ -34,7 +34,7 @@ export function TestCasesTab() {
           break
         case 'network-error':
           setError(
-            `Cannot reach the PICT service: ${result.message}. Start it with \`docker compose up pict-service\`.`,
+            `Cannot reach the PICT generator. ${result.message}`,
           )
           break
         case 'pict-error':
@@ -117,7 +117,7 @@ export function TestCasesTab() {
                 ? 'Fix DSL errors before generating'
                 : source.length === 0
                   ? 'Write some DSL first'
-                  : 'Generate test cases via the pict-service Docker container'
+                  : 'Generate test cases'
             }
           >
             {generating ? 'Generating…' : 'Generate'}
@@ -129,16 +129,8 @@ export function TestCasesTab() {
           <p className="test-cases-tab__no-suite-lede">
             Add factors and levels (DSL or Factors &amp; Levels tab); test cases
             will be generated automatically once the DSL parses cleanly. Or click{' '}
-            <strong>Generate</strong> to run PICT immediately via the
-            <code> pict-service </code>Docker container.
+            <strong>Generate</strong> to run PICT immediately.
           </p>
-          <p className="test-cases-tab__no-suite-lede">
-            If the service is not running yet:
-          </p>
-          <pre className="test-cases-tab__service-cmd">
-{`# from the repo root, in a terminal:
-docker compose up --build pict-service`}
-          </pre>
         </div>
       </div>
     )
