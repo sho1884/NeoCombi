@@ -1,3 +1,4 @@
+import { validateModel } from './validator'
 import type {
   CompareOp,
   Comparison,
@@ -27,7 +28,17 @@ import { lex } from './lexer'
 export function parse(source: string): ParseResult {
   const tokens = lex(source)
   const parser = new Parser(tokens)
-  return parser.parse()
+  const result = parser.parse()
+  if (result.model) {
+    const semantic = validateModel(result.model)
+    if (semantic.length > 0) {
+      return {
+        model: result.model,
+        diagnostics: [...result.diagnostics, ...semantic],
+      }
+    }
+  }
+  return result
 }
 
 class Parser {

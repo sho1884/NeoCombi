@@ -14,6 +14,7 @@ export {
   DEFAULT_ENUMERATION_LIMIT,
 } from './evaluator'
 export { extractSuggestedSlices } from './extractSlices'
+export { validateModel } from './validator'
 export type {
   Model,
   ParameterDecl,

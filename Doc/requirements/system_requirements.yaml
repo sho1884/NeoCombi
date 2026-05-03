@@ -67,6 +67,33 @@ requirements:
         action: "Editor renders"
         outcome: "List errors in a side panel; clicking an entry jumps the cursor to that span"
 
+  SR-004:
+    parent: [UR-002]
+    category: dsl_authoring
+    function: "Validate constraint references against declared parameters and levels"
+    scope: |
+      A separate semantic pass runs after the syntax parse and walks every
+      constraint's predicates. It reports two error kinds:
+        - unknown-parameter: a `[Name]` reference that is not declared as a
+          parameter, on either side of a comparison or in an IN clause.
+        - unknown-level: an `=` / `<>` comparison or an IN-clause value that
+          is not present in the referenced parameter's declared level set.
+      Ordering operators (>, >=, <, <=) are intentionally exempt so numeric
+      factors can be compared against out-of-set numbers (PICT permits this).
+      Parameter-to-parameter equalities (`[A] = [B]`) only check that both
+      parameters exist; they do not cross-check level sets, since values are
+      compared at evaluation time.
+    scenarios:
+      - context: "A constraint compares a factor against a level value"
+        action: "Validation runs"
+        outcome: "If the level is not declared on the factor, mark an unknown-level error at the literal's range with the declared set listed for context"
+      - context: "A constraint references an undeclared parameter"
+        action: "Validation runs"
+        outcome: "Mark an unknown-parameter error at the [Name] reference"
+      - context: "All references resolve to declared parameters and levels"
+        action: "Validation runs"
+        outcome: "No semantic diagnostics are emitted; downstream views proceed with the parsed model"
+
 # =============================================================================
 # Factor / Level Table (parent: UR-002)
 # =============================================================================
