@@ -38,9 +38,9 @@ export function ExhaustiveMatrix() {
   if (visibleFactors.length === 0) {
     return (
       <div className="matrix__empty">
-        Declare factors in the DSL editor or Factors &amp; Levels tab to populate
-        the exhaustive cross-tabulation matrix here. Use the checkboxes above to
-        hide factors from this view (SR-041).
+        Declare factors in the DSL editor or Factors &amp; Levels tab to
+        populate the matrix. Use the <strong>Show</strong> column in the
+        Factors &amp; Levels tab to choose which factors appear here.
       </div>
     )
   }
@@ -48,9 +48,9 @@ export function ExhaustiveMatrix() {
   if (visibleFactors.length === 1) {
     return (
       <div className="matrix__empty">
-        Only one factor is visible — pair coverage requires at least two
-        factors. Check more boxes above (or add factors) to see the
-        cross-tabulation matrix.
+        Only one factor is visible — pair coverage needs at least two.
+        Check more rows in the <strong>Show</strong> column of the
+        Factors &amp; Levels tab (or add factors) to populate the matrix.
       </div>
     )
   }

@@ -69,8 +69,7 @@
 
 .app__build-time {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.72rem;
-  color: #b0bec5;
+  font-size: 0.78rem;
+  color: #eceff1;
   letter-spacing: 0.02em;
-  opacity: 0.85;
 }

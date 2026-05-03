@@ -279,8 +279,8 @@
 }
 
 .matrix__cell--pair {
-  /* Pair-coverage cell. Once test cases are wired in, occurrence counts
-     will replace the placeholder dot here (SR-042 / SR-043). */
+  /* Pair-coverage cell. Occurrence counts overlay the placeholder
+     dot once test cases are imported. */
 }
 
 .matrix__cell--blocked {
