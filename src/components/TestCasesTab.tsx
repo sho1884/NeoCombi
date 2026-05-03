@@ -3,24 +3,8 @@ import { useProjectStore } from '../stores/projectStore'
 import { runGenerate } from '../services/runGenerate'
 import { formatTestSuite, testSuiteToHtml } from '../engines/pict'
 import { copyTableToClipboard } from '../services/clipboardWrite'
+import { isHostedDeployment } from '../services/demoMode'
 import './TestCasesTab.css'
-
-/**
- * The hosted Vercel deployment is a static SPA — there is no PICT
- * generator service running alongside it. Local browsers can reach
- * `http://localhost:5174` (the docker-compose service); a hosted
- * page can't (mixed-content + CSP both block it). Detect that case
- * up front so the user knows what to expect *before* clicking
- * Generate, instead of just seeing a "Cannot reach" error.
- */
-function isHostedDeployment(): boolean {
-  if (typeof window === 'undefined') return false
-  const h = window.location.hostname
-  if (!h) return false
-  if (h === 'localhost' || h === '127.0.0.1' || h === '::1') return false
-  if (h.endsWith('.local')) return false
-  return true
-}
 
 export function TestCasesTab() {
   const testSuite = useProjectStore(s => s.testSuite)
@@ -122,10 +106,12 @@ export function TestCasesTab() {
 
   const hostedBanner = isHostedDeployment() ? (
     <div className="test-cases-tab__hosted-banner" role="status">
-      <strong>Demo deployment.</strong> Test-case generation needs the local
-      PICT service, which doesn&apos;t run here. Authoring, the forbidden
-      matrix, and file save / open all work — to actually generate, run
-      NeoCombi locally (
+      <strong>Demo mode.</strong> A 50-factor sample is preloaded; the
+      cases below come from a frozen PICT run baked into the bundle.
+      Editing the model on this hosted page works (authoring, forbidden
+      matrix, save / open all live) but <strong>Re-generate</strong>{' '}
+      will fail because the PICT service isn&apos;t running here. Run
+      NeoCombi locally to generate from your own model (
       <a
         href="https://github.com/sho1884/NeoCombi#author-in-the-gui"
         target="_blank"
