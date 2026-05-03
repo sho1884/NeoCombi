@@ -3,7 +3,7 @@
 > **このファイルは自動生成されたビューです。直接編集しないでください。**
 > 編集は `Doc/adr/ADR-NNN-*.yaml` に対して行い、`adr` スキルで本ファイルを再生成します。
 >
-> Generated: 2026-05-02
+> Generated: 2026-05-03
 
 ## Summary
 
@@ -19,6 +19,7 @@
 | [ADR-008](adr/ADR-008-expected-value-column-in-test-cases.yaml) | テストケース表に期待値カラムを持ち、再生成跨ぎで保持する | 2026-05-02 | accepted | テストケース表に期待値カラムを持ち、再生成跨ぎで stable id によって期待値を保持する |
 | [ADR-009](adr/ADR-009-tmodel-file-extension.yaml) | プロジェクトファイル拡張子を .tmodel とする | 2026-05-02 | accepted | プロジェクトファイル拡張子を .tmodel（test model）に決定する |
 | [ADR-010](adr/ADR-010-clean-room-reimplementation-from-pictpapp.yaml) | PICT-PAPP からの clean-room 再実装 | 2026-05-02 | accepted | PICT-PAPP の VBA ソースは行レベルで一切参照せず、clean-room で再実装する |
+| [ADR-011](adr/ADR-011-suggest-slices-co-occurrence-components.yaml) | 禁則 slice の自動提案は『制約共起グラフの連結成分 + 全ピボット展開』で行う | 2026-05-03 | accepted | DSL 制約集合から共起グラフを作り、Union-Find で連結成分を求め、サイズ ≥3 の各成分について全因子を順にピボットした slice を発行する |
 
 ---
 
@@ -405,3 +406,60 @@ NeoCombi の実装にあたり、PICT-PAPP の VBA ソース（src/PICT-PAPP.xls
 
 **Risks:**
 - 意図せず VBA を読みに行く誘惑が将来発生する可能性 → memory に記録、頻繁にチェック
+
+---
+
+## ADR-011 — 禁則 slice の自動提案は『制約共起グラフの連結成分 + 全ピボット展開』で行う
+
+- **Date:** 2026-05-03
+- **Status:** accepted
+- **Author:** sho1884 / **Approver:** sho1884
+
+### Context — Problem
+
+SR-032 では禁則ビューの slice（行軸＝条件因子群／列軸＝被制約因子）をユーザが手動で構成する。100〜300 因子規模を想定すると、どの組合せを見れば良いかをユーザが判断するのは現実的ではない。さらに、ある制約に登場する因子が別の制約にも登場するとき、両制約は連鎖して効く（例：`IF A=1 THEN B=1; IF B=1 THEN C=0;` では A=1 → C≠0 が伝播的に禁則になる）。手動 slice 構成だけではこの伝播効果が見落とされやすい。
+
+### Decision
+
+**DSL 制約集合から共起グラフを作り、Union-Find で連結成分を求め、サイズ ≥3 の各成分について全因子を順にピボットした slice を発行する**
+
+extractSuggestedSlices は次の 2 段階で slice を提案する：
+
+1. **Per-constraint slices**：各制約について、条件側因子集合（IF 部 / 無条件 Predicate の前段因子）を行軸、結果側因子（THEN/ELSE 内の新規因子、または無条件 Predicate の最後の因子）を列軸とする slice を発行する。条件と結果が同じ因子集合内で完結する自己制約の場合は、各因子を順にピボットして他因子を条件側に置いた slice を発行する。
+
+2. **Propagation slices**：「同じ制約内に共起する」関係で因子を結合した Union-Find により連結成分を求める。サイズが 3 以上の成分について、成分内の各因子を順に被制約軸（列軸）に据え、残りの因子を条件軸に並べた slice を発行する。サイズ 2 の成分は per-constraint で完全カバーされるため除外する。
+
+重複検出は `(sorted(conditions), constrained)` をキーに 1 度だけ発行することで保証する。マトリクスは可換（行軸と列軸は数学的には対等）なので、向きを尊重して 1 ピボットだけ出すより、全ピボットを出して見落としを防ぐ方を優先する。
+
+### Neglected Options
+
+- **THEN/ELSE の意味論的方向だけを尊重し、ピボットを 1 方向に固定する** — 禁則マトリクスは 2D で行・列の役割は可換。固定するとユーザが見たい軸を選べず、伝播の見落としが残る
+- **Union-Find ではなく BFS/DFS で成分を求める** — 計算量は同等。Union-Find は実装が短く、将来制約を増分追加する拡張にも乗りやすい
+- **成分サイズ 2 もピボットして提案** — size 2 は per-constraint と完全に一致するため、dedup を通れば slice 数は変わらず、コードが冗長になるだけ
+- **提案 ON/OFF を UI の設定で切り替えさせる** — 提案は『追加候補を示す』だけで dedup により副作用なし。MVP では設定項目を増やさない方を選んだ
+- **AI に提案させる（自然言語で『どの slice を見るべき？』と問う）** — ADR-003 により本体に AI を組み込まない。決定論変換器として CLI でも同じ結果が再現できることを優先
+
+### Consequences
+
+**Positive:**
+- A → B → C のような連鎖禁則を 1 クリックで slice 化できる
+- Union-Find は線形に近く、因子数が増えても提案コストはほぼ問題にならない
+- 決定論的：同じ DSL からは常に同じ slice 集合が提案される（CLI モードでも再現可能）
+- PICT 非依存（ADR-005 の内製 evaluator 上で動く）
+
+**Negative:**
+- 成分サイズ n の連結成分から n 個の slice が生成されるため、密結合な制約セットでは提案数が成分サイズに比例して増える
+- 100 因子規模で全因子が 1 つの大連結成分になるケースでは提案数が爆発する可能性がある
+
+**Risks:**
+- 大規模モデルでの提案数爆発に対し、件数キャップや成分サイズキャップ（例：成分サイズ ≥ K の場合は警告して候補を間引く）が将来的に必要になる可能性
+- ユーザが 1 クリックで全 slice を一括追加すると、タブ列が長大化してスクロール UX が悪化する可能性
+
+### References
+
+- Doc/requirements/user_requirements.yaml UR-003
+- Doc/requirements/system_requirements.yaml SR-030..034
+- ADR-005
+- ADR-007
+- src/engines/dsl/extractSlices.ts
+- tests/dsl/extractSlices.test.ts

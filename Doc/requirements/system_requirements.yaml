@@ -202,6 +202,36 @@ requirements:
         action: "User switches between them"
         outcome: "Show only the active slice (no parallel display)"
 
+  SR-034:
+    parent: [UR-003]
+    category: forbidden_view
+    function: "Suggest matrix slices from DSL constraints (per-constraint and propagation)"
+    note: |
+      Two kinds of suggestions are produced from the parsed DSL:
+        (a) Per-constraint slices — each constraint maps to a slice with the
+            condition factors on the row axis and each consequence factor on
+            the column axis.
+        (b) Propagation slices — factors that co-occur across multiple
+            constraints form a connected component; for components of size
+            >= 3, every pivot inside the component is suggested so chained
+            restrictions (A -> B -> C cells forbidden via the chain rather
+            than via any single constraint alone) become inspectable.
+      Identical (sorted conditions, constrained-factor) pairs are deduplicated.
+      See ADR-011 for the algorithm rationale.
+    scenarios:
+      - context: "Forbidden view is open and the DSL has at least one constraint"
+        action: "User clicks the 'Suggest from constraints' control"
+        outcome: "Suggested slices that are not already saved are appended as new switchable views; pre-existing slices are kept untouched"
+      - context: "DSL has no constraints"
+        action: "User clicks the suggestion control"
+        outcome: "No slices are added; the user is informed that there is nothing to suggest"
+      - context: "All suggestions are already present as saved slices"
+        action: "User clicks the suggestion control"
+        outcome: "No duplicates are added; existing slices remain"
+      - context: "A constraint touches a single factor only"
+        action: "Suggestions are computed"
+        outcome: "That constraint contributes no slice (a 2D matrix needs at least two factors)"
+
 # =============================================================================
 # Coverage View / Exhaustive Matrix (parent: UR-004)
 # =============================================================================
