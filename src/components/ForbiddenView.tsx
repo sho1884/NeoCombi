@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useProjectStore } from '../stores/projectStore'
-import { computeForbiddenSlice } from '../engines/dsl'
+import { computeForbiddenSlice, extractSuggestedSlices } from '../engines/dsl'
 import type { ForbiddenSliceCell } from '../types/dsl'
 import type { ForbiddenSliceConfig } from '../types/project'
 import {
@@ -22,6 +22,40 @@ export function ForbiddenView() {
   const factorNames = factors.map(f => f.name)
   const activeSlice = activeIdx >= 0 ? slices[activeIdx] : undefined
 
+  const onSuggestFromConstraints = () => {
+    if (!model) return
+    const suggested = extractSuggestedSlices(model)
+    if (suggested.length === 0) {
+      window.alert(
+        'No suggestions: the DSL has no constraints (or none that touch two or more distinct factors).',
+      )
+      return
+    }
+    const existing = new Set(
+      slices.map(
+        s =>
+          [...s.conditionFactors].sort().join('|') +
+          '::' +
+          (s.constrainedFactor ?? ''),
+      ),
+    )
+    let added = 0
+    for (const s of suggested) {
+      const key =
+        [...s.conditionFactors].sort().join('|') +
+        '::' +
+        (s.constrainedFactor ?? '')
+      if (existing.has(key)) continue
+      addSlice(s)
+      added++
+    }
+    if (added === 0) {
+      window.alert(
+        `All ${suggested.length} suggested slice(s) are already present.`,
+      )
+    }
+  }
+
   if (factors.length < 2) {
     return (
       <div className="forbidden-view__empty">
@@ -39,6 +73,7 @@ export function ForbiddenView() {
         onSelect={setActive}
         onAdd={() => addSlice()}
         onRemove={removeSlice}
+        onSuggestFromConstraints={onSuggestFromConstraints}
       />
 
       {activeSlice ? (
@@ -69,9 +104,17 @@ type SliceTabsProps = {
   onSelect: (idx: number) => void
   onAdd: () => void
   onRemove: (idx: number) => void
+  onSuggestFromConstraints: () => void
 }
 
-function SliceTabs({ slices, activeIdx, onSelect, onAdd, onRemove }: SliceTabsProps) {
+function SliceTabs({
+  slices,
+  activeIdx,
+  onSelect,
+  onAdd,
+  onRemove,
+  onSuggestFromConstraints,
+}: SliceTabsProps) {
   return (
     <div className="forbidden-view__tabs" role="tablist">
       {slices.map((s, idx) => {
@@ -112,6 +155,14 @@ function SliceTabs({ slices, activeIdx, onSelect, onAdd, onRemove }: SliceTabsPr
         onClick={onAdd}
       >
         + Slice
+      </button>
+      <button
+        type="button"
+        className="forbidden-view__tab-suggest"
+        onClick={onSuggestFromConstraints}
+        title="Auto-generate slices from the model's constraints"
+      >
+        ✨ Suggest from constraints
       </button>
     </div>
   )

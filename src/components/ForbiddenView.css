@@ -82,7 +82,8 @@
   background: #ffebee;
 }
 
-.forbidden-view__tab-add {
+.forbidden-view__tab-add,
+.forbidden-view__tab-suggest {
   appearance: none;
   border: 1px dashed #b0bec5;
   border-radius: 3px;
@@ -93,9 +94,23 @@
   cursor: pointer;
 }
 
-.forbidden-view__tab-add:hover {
+.forbidden-view__tab-add:hover,
+.forbidden-view__tab-suggest:hover {
   background: #fff;
   border-color: #37474f;
+}
+
+.forbidden-view__tab-suggest {
+  border-style: solid;
+  border-color: #1976d2;
+  color: #1565c0;
+  background: #e3f2fd;
+}
+
+.forbidden-view__tab-suggest:hover {
+  background: #bbdefb;
+  border-color: #0d47a1;
+  color: #0d47a1;
 }
 
 /* --- Slice editor ------------------------------------------------------- */

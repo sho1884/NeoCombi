@@ -13,6 +13,7 @@ export {
   computeForbiddenSlice,
   DEFAULT_ENUMERATION_LIMIT,
 } from './evaluator'
+export { extractSuggestedSlices } from './extractSlices'
 export type {
   Model,
   ParameterDecl,
