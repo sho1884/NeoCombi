@@ -1,6 +1,6 @@
 # NeoCombi
 
-> **Status: v0.1 preview** — DSL authoring, factor / level editing, forbidden visualization, CSV import of PICT results, expected-value tracking, and a CLI for CI/CD all work today. The GUI does not yet spawn PICT directly; use the CLI to generate test cases and import the CSV back into the GUI. Direct in-GUI execution requires a desktop wrapper (Tauri / Electron) and is tracked for v1.0.
+> **Status: v0.1 (MVP)** — DSL authoring, factor / level editing, forbidden visualization, in-GUI test case generation via a local PICT service, expected-value tracking, and a CLI for CI/CD pipelines. Tested on models up to 100 factors / ~4 levels each.
 
 **NeoCombi** is a combinatorial test design tool that pairs PICT-style DSL authoring with rich visualization. It mirrors Microsoft **PICT**'s constraint language (`IF/THEN/ELSE`, `=`, `<>`, `>`, `>=`, `<`, `<=`, `AND`, `OR`, `NOT`, `IN`) as a first-class subset DSL, parses it locally for instant feedback, and delegates pairwise / N-wise generation to PICT itself when invoked.
 
@@ -21,9 +21,9 @@ See [`Doc/PROJECT_KICKOFF.md`](Doc/PROJECT_KICKOFF.md) for the full architectura
 
 | User Requirement | Coverage |
 |---|---|
-| UR-001 Generate pairwise test cases | ✅ via the CLI; GUI imports the CSV result |
-| UR-002 Author factors, levels, constraints | ✅ DSL editor + Factors & Levels inline editing |
-| UR-003 Verify forbidden combinations | ✅ live forbidden matrix derived from the DSL |
+| UR-001 Generate pairwise test cases | ✅ in the GUI via the local PICT service, and on the CLI |
+| UR-002 Author factors, levels, constraints | ✅ DSL editor + Factors & Levels inline editing (rename / drag-reorder) |
+| UR-003 Verify forbidden combinations | ✅ live forbidden matrix with constraint-propagation slice suggestions |
 | UR-004 Verify pair coverage | ✅ cross-tabulation matrix with covered / missed / forbidden cells + summary |
 | UR-005 Record expected values | ✅ editable Expected column on each test case, persisted in `.tmodel` |
 | UR-006 Invoke from CI/CD pipeline | ✅ `neocombi generate` CLI with deterministic exit codes |
@@ -51,19 +51,27 @@ npm install
 
 ### Author in the GUI
 
+Two terminals — one for the dev server, one for the local PICT service that the GUI calls to generate test cases:
+
 ```bash
-npm run dev
+npm run dev                                    # vite dev server (http://localhost:5173)
+docker compose up --build pict-service         # in another shell — local PICT API (http://localhost:5174)
 ```
 
-Open the URL Vite prints (typically `http://localhost:5173`). The header has **New / Open / Save / Save As** buttons backed by the File System Access API on Chrome / Edge (with a download fallback on Firefox / Safari).
+Open `http://localhost:5173`. The header has **New / Open / Save / Save As** buttons backed by the File System Access API on Chrome / Edge (download fallback on Firefox / Safari).
 
 A typical session:
 
 1. **DSL** tab — write parameters and constraints (subset of PICT BNF; see [`Doc/DSL_Grammar_Specification.md`](Doc/DSL_Grammar_Specification.md)).
-2. **Factors & Levels** tab — same data shown as a table; rename factors, add or remove levels inline. Renames automatically rewrite `[refs]` in constraints.
-3. **Top pane → Coverage** — exhaustive cross-tabulation with covered / missed / forbidden cells once you import test cases.
-4. **Top pane → Forbidden** — live forbidden-combination matrix computed from the DSL by the in-house evaluator (no PICT spawn needed).
-5. **Save As…** writes a `.tmodel` file you can re-open later or drop into CI.
+2. **Factors & Levels** tab — same data shown as a table; rename factors, add or remove levels inline, drag rows or level chips to reorder. Renames automatically rewrite `[refs]` in constraints.
+3. **Top pane → Coverage** — exhaustive cross-tabulation with covered / missed / forbidden cells. The **Show** column in the Factors & Levels tab controls which factors appear here (per-row checkboxes plus All / None bulk toggles in the column header).
+4. **Top pane → Forbidden** — live forbidden-combination matrix computed from the DSL by the in-house evaluator (no PICT spawn needed). The ✨ **Suggest from constraints** button proposes slices automatically, including propagation slices that surface chained restrictions across multiple constraints.
+5. **Test cases** tab — automatic re-generation runs whenever the DSL parses cleanly, or click **Re-generate** for an explicit run. Edit the **Expected** column to record per-row expectations; values survive re-generation by stable id.
+6. **Save As…** writes a `.tmodel` file you can re-open later or drop into CI.
+
+### Install as a PWA
+
+The dev server (and any production deployment) ships a Web App Manifest. Chrome / Edge will offer an "Install NeoCombi" affordance in the address-bar menu; once installed, NeoCombi runs as a standalone window with the K₅ icon.
 
 ### Generate test cases on the CLI
 

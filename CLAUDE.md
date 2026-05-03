@@ -176,6 +176,8 @@ These transitive deps surface non-typical licenses but are vetted as MIT-compati
 | `argparse` | Python-2.0 | OSI-approved permissive license, MIT-compatible |
 | `caniuse-lite` | CC-BY-4.0 | Build-time browser-compat data; not redistributed in bundle |
 | `@resvg/resvg-js` (+ platform binary) | MPL-2.0 | Build-only devDep used by `scripts/genIcons.mjs` to rasterize SVG → PNG. Not bundled. MPL-2.0 is file-level copyleft (no project-wide infection); we don't modify the source |
+| `spdx-exceptions` | CC-BY-3.0 | Transitive of `license-checker` (devDep). Static SPDX-exception name data, build-time only, not bundled |
+| `spdx-ranges` | (MIT AND CC-BY-3.0) | Transitive of `license-checker` (devDep). Static SPDX-version-range data, build-time only, not bundled |
 
 ### External Tool Dependency
 
