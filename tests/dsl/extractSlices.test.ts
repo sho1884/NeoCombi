@@ -36,9 +36,20 @@ describe('extractSuggestedSlices', () => {
       'A: 1, 2\nB: 1, 2\nC: 1, 2\n' +
         'IF [A] = 1 AND [B] = 1 THEN [C] = 1;\n',
     )
-    expect(slices).toHaveLength(1)
-    expect(slices[0]?.conditionFactors).toEqual(['A', 'B'])
-    expect(slices[0]?.constrainedFactor).toBe('C')
+    // The per-constraint slice keeps the AND'd condition factors together.
+    const perConstraint = slices.find(
+      s => s.constrainedFactor === 'C' && s.conditionFactors.length === 2,
+    )
+    expect(perConstraint?.conditionFactors).toEqual(['A', 'B'])
+    expect(perConstraint?.constrainedFactor).toBe('C')
+    // The {A, B, C} component is size 3, so propagation also pivots
+    // each factor as constrained against the other two.
+    const set = new Set(
+      slices.map(s => [...s.conditionFactors].sort().join('|') + '->' + s.constrainedFactor),
+    )
+    expect(set).toContain('A|B->C')
+    expect(set).toContain('A|C->B')
+    expect(set).toContain('B|C->A')
   })
 
   it('treats an unconditional Predicate as a slice over the factors it touches', () => {
@@ -86,5 +97,75 @@ describe('extractSuggestedSlices', () => {
     )
     expect(pairs).toContain('B->A')
     expect(pairs).toContain('A->B')
+  })
+})
+
+describe('extractSuggestedSlices / propagation across constraints', () => {
+  function pairs(slices: { conditionFactors: string[]; constrainedFactor: string | null }[]) {
+    return new Set(
+      slices.map(
+        s => [...s.conditionFactors].sort().join('|') + '->' + s.constrainedFactor,
+      ),
+    )
+  }
+
+  it('chains A → B and B → C into a propagation slice (A, B → C) and pivots', () => {
+    const slices = suggest(
+      'A: 1, 2\nB: 1, 2\nC: 1, 2\n' +
+        'IF [A] = 1 THEN [B] = 1;\n' +
+        'IF [B] = 1 THEN [C] = 0;\n',
+    )
+    const got = pairs(slices)
+    // Per-constraint slices.
+    expect(got).toContain('A->B')
+    expect(got).toContain('B->C')
+    // Propagation slices: every pivot inside the {A, B, C} component.
+    expect(got).toContain('A|B->C')
+    expect(got).toContain('A|C->B')
+    expect(got).toContain('B|C->A')
+  })
+
+  it('does not propagate across disjoint constraint groups', () => {
+    const slices = suggest(
+      'A: 1, 2\nB: 1, 2\nC: 1, 2\nD: 1, 2\n' +
+        'IF [A] = 1 THEN [B] = 1;\n' +
+        'IF [C] = 1 THEN [D] = 1;\n',
+    )
+    const got = pairs(slices)
+    expect(got).toContain('A->B')
+    expect(got).toContain('C->D')
+    // No cross-component propagation suggested.
+    expect(got.has('A|C->B')).toBe(false)
+    expect(got.has('A|D->B')).toBe(false)
+    expect(got.has('B|C->D')).toBe(false)
+  })
+
+  it('extends a 4-factor chain into all four pivots', () => {
+    const slices = suggest(
+      'A: 1, 2\nB: 1, 2\nC: 1, 2\nD: 1, 2\n' +
+        'IF [A] = 1 THEN [B] = 1;\n' +
+        'IF [B] = 1 THEN [C] = 1;\n' +
+        'IF [C] = 1 THEN [D] = 1;\n',
+    )
+    const got = pairs(slices)
+    expect(got).toContain('A|B|C->D')
+    expect(got).toContain('A|B|D->C')
+    expect(got).toContain('A|C|D->B')
+    expect(got).toContain('B|C|D->A')
+  })
+
+  it('handles a fork (A → B, A → C) as one component {A, B, C}', () => {
+    const slices = suggest(
+      'A: 1, 2\nB: 1, 2\nC: 1, 2\n' +
+        'IF [A] = 1 THEN [B] = 1;\n' +
+        'IF [A] = 2 THEN [C] = 1;\n',
+    )
+    const got = pairs(slices)
+    expect(got).toContain('A->B')
+    expect(got).toContain('A->C')
+    // The shared factor A pulls B and C into one component.
+    expect(got).toContain('A|B->C')
+    expect(got).toContain('A|C->B')
+    expect(got).toContain('B|C->A')
   })
 })

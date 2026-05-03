@@ -1,10 +1,19 @@
 // Derive natural forbidden-matrix slices from the model's constraints.
 //
-// Intuition: each constraint encodes a relationship between factors, and the
-// matrix view that makes that relationship legible is exactly the slice with
-// THE factors mentioned in the condition on the row axis and THE factor
-// mentioned in the consequence on the column axis. So we walk the AST and
-// emit one slice per (condition factors -> constrained factor) pair.
+// Two kinds of suggestions are produced:
+//
+// 1. PER-CONSTRAINT slices. Each constraint encodes a relationship between
+//    factors, and the matrix view that makes that relationship legible is
+//    exactly the slice with the condition factors on the row axis and the
+//    consequence factor on the column axis.
+//
+// 2. PROPAGATION slices. When the same factor appears in multiple
+//    constraints, those constraints chain — restricting one factor can
+//    transitively restrict another. Connected components of the
+//    "co-occurs in some constraint" graph capture that chain scope, and
+//    we emit one slice per pivot inside each component of size 3+ so the
+//    user can see (A, B) => C cells where C is forbidden via the
+//    A => B => C chain rather than via any single constraint alone.
 
 import type { ConstraintNode, Model, Predicate } from '../../types/dsl'
 import type { ForbiddenSliceConfig } from '../../types/project'
@@ -44,10 +53,93 @@ export function extractSuggestedSlices(model: Model): ForbiddenSliceConfig[] {
     })
   }
 
+  // 1. Per-constraint slices (immediate, single-constraint scope).
   for (const c of model.constraints) {
     extractFromConstraint(c, emit)
   }
+
+  // 2. Propagation slices: one pivot per factor inside each connected
+  //    component of size >= 3. Components of size 2 are already covered by
+  //    the per-constraint emission above, so we skip them. Inside a chain
+  //    A -> B -> C the propagation slice (A, B -> C) reveals cells that
+  //    are forbidden via B even though no single constraint mentions both
+  //    A and C.
+  const components = connectedComponents(model)
+  for (const component of components) {
+    if (component.length < 3) continue
+    for (const constrained of component) {
+      const conditions = component.filter(f => f !== constrained)
+      emit(conditions, constrained)
+    }
+  }
+
   return slices
+}
+
+/**
+ * Group factors into connected components where two factors are connected
+ * iff they co-occur in at least one constraint. The factors a constraint
+ * touches are joined into one component regardless of which side of an
+ * IF / THEN / ELSE they appeared on.
+ *
+ * Returns components of size >= 2 in declaration order; isolated factors
+ * (no constraint references) are dropped because they do not affect any
+ * forbidden combination.
+ */
+function connectedComponents(model: Model): string[][] {
+  const parent = new Map<string, string>()
+  for (const p of model.parameters) parent.set(p.name, p.name)
+
+  const find = (x: string): string => {
+    let cur = x
+    let next = parent.get(cur) ?? cur
+    while (next !== cur) {
+      cur = next
+      next = parent.get(cur) ?? cur
+    }
+    return cur
+  }
+  const union = (a: string, b: string): void => {
+    const ra = find(a)
+    const rb = find(b)
+    if (ra !== rb) parent.set(ra, rb)
+  }
+
+  for (const c of model.constraints) {
+    const factors = factorsInConstraint(c)
+    for (let i = 1; i < factors.length; i++) {
+      union(factors[0]!, factors[i]!)
+    }
+  }
+
+  // Preserve declaration order inside each component.
+  const groups = new Map<string, string[]>()
+  for (const p of model.parameters) {
+    if (!parent.has(p.name)) continue
+    const root = find(p.name)
+    let g = groups.get(root)
+    if (!g) {
+      g = []
+      groups.set(root, g)
+    }
+    g.push(p.name)
+  }
+  return Array.from(groups.values()).filter(g => g.length >= 2)
+}
+
+function factorsInConstraint(c: ConstraintNode): string[] {
+  const set = new Set<string>()
+  const visit = (name: string): void => {
+    set.add(name)
+  }
+  if (c.type === 'if') {
+    walk(c.condition, visit)
+    walk(c.then, visit)
+    if (c.else) walk(c.else, visit)
+  } else {
+    walk(c.predicate, visit)
+  }
+  return Array.from(set)
 }
 
 function extractFromConstraint(
