@@ -21,7 +21,7 @@
 | [ADR-010](adr/ADR-010-clean-room-reimplementation-from-pictpapp.yaml) | PICT-PAPP からの clean-room 再実装 | 2026-05-02 | accepted | PICT-PAPP の VBA ソースは行レベルで一切参照せず、clean-room で再実装する |
 | [ADR-011](adr/ADR-011-suggest-slices-co-occurrence-components.yaml) | 禁則 slice の自動提案は『制約共起グラフの連結成分 + 全ピボット展開』で行う | 2026-05-03 | accepted | DSL 制約集合から共起グラフを作り、Union-Find で連結成分を求め、サイズ ≥3 の各成分について全因子を順にピボットした slice を発行する |
 | [ADR-012](adr/ADR-012-forbidden-enumeration-reachability-scoping.yaml) | 禁則判定の自由因子列挙は『制約到達可能閉包』に絞る | 2026-05-03 | accepted | isPartiallyForbidden の自由因子列挙を、制約共起グラフで slice 因子から到達可能な閉包だけに限定する |
-| [ADR-013](adr/ADR-013-pict-utf8-ascii-alias-layer.yaml) | PICT の UTF-8 非対応を ASCII エイリアス層で迂回する | 2026-05-03 | accepted | PICT 呼び出し直前に多バイト識別子を ASCII alias に書き換え、応答の TSV を受けて元の名前に復元する透過層を NeoCombi 側に持つ |
+| [ADR-013](adr/ADR-013-pict-service-utf8-locale.yaml) | pict-service コンテナの locale を C.UTF-8 に設定する | 2026-05-03 | accepted | Dockerfile に `ENV LC_ALL=C.UTF-8` を入れて locale-gen し、PICT が UTF-8 多バイト識別子を正しく処理できるようにする |
 
 ---
 
@@ -525,7 +525,7 @@ isPartiallyForbidden を以下のアルゴリズムに置き換えた：
 
 ---
 
-## ADR-013 — PICT の UTF-8 非対応を ASCII エイリアス層で迂回する
+## ADR-013 — pict-service コンテナの locale を C.UTF-8 に設定する
 
 - **Date:** 2026-05-03
 - **Status:** accepted
@@ -533,55 +533,56 @@ isPartiallyForbidden を以下のアルゴリズムに置き換えた：
 
 ### Context — Problem
 
-pict-service にバンドルしている upstream PICT (microsoft/pict, 2026-05 時点) のソースビルドは、UTF-8 多バイト文字を識別子として正しく処理できない。実測：
+日本語の因子名・水準値を含む DSL を pict-service に投げると、PICT が無限ループに入り OOM-kill される（`exit 137` あるいは `timeout` 経由 SIGKILL で `exit 124`）。最小再現は `あ: い, う` 1 行のみ。当初は「PICT がそもそも UTF-8 を扱えない」と結論付けかけたが、ユーザから「PICT-PAPP では日本語で問題なく使えていた」との指摘を受けて再検証したところ、原因はまったく違うところにあった：
 
-- 多バイト因子名 (`原稿の向き: たて, よこ` など) → パーサが無限ループに入り、プロセスは OOM-killed（exit 137）または `timeout` で SIGKILL（exit 124）。最小再現は `あ: い, う` 1 行のみ。
-- 多バイト水準値 (`Direction: たて, よこ`) → exit 0 で正常終了するが、出力 TSV が因子名行のみで本体行なし、または該当列が空文字に置換される。
+```
+docker exec -e LC_ALL=C.UTF-8 -e LANG=C.UTF-8 -i neocombi-pict \
+    sh -c 'pict /tmp/utf8.tmodel'  →  exit 0、正常出力
+```
 
-NeoCombi の主要ターゲットは HAYST 実務（プリンタ機能設計、用紙設定など）で、日本語の因子名・水準名は事実上必須。ASCII 縛りは UR-001 / UR-002 を実用上満たさない。
+つまり PICT 自体は UTF-8 を正しく扱える。コンテナの既定 locale が `C`（ASCII のみ想定）だと、libc の ctype 関数（tolower / isalpha 等）が多バイト列に対して未定義動作になり、PICT のトークナイザが先頭の非 ASCII バイトで進めなくなって無限ループに陥っていた。
 
 ### Decision
 
-**PICT 呼び出し直前に多バイト識別子を ASCII alias に書き換え、PICT の TSV 出力を受けて元の名前に復元する透過的な変換層を NeoCombi 側に持つ**
+**pict-service Dockerfile に `ENV LANG=C.UTF-8` / `ENV LC_ALL=C.UTF-8` を入れ、locale パッケージで C.UTF-8 を生成する**
 
-`src/services/asciiAlias.ts` が次の 2 つの純関数を提供する：
+```Dockerfile
+RUN apt-get install -y --no-install-recommends locales \
+    && sed -i '/C.UTF-8/s/^# //' /etc/locale.gen \
+    && locale-gen C.UTF-8
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+```
 
-1. **aliasForPict(source, model)** — Model AST を歩き、非 ASCII 文字を含む因子名・水準値だけを ASCII alias に置換した DSL ソースと、原名↔alias の双方向マップを返す。Alias は決定論的：因子は宣言順に `_F1, _F2, ...`、各因子の水準は宣言順に `_L1, _L2, ...`。ASCII の名前は素通し。
+`C.UTF-8` を選ぶのは、ja_JP.UTF-8 等の言語固有 locale を使うと PICT のテキスト比較順序が地域依存になり再現性に影響しうるため。`C.UTF-8` はバイト順比較を維持しつつマルチバイト文字を ctype 関数が安全に通すという NeoCombi の用途に最適な落とし所。
 
-2. **unaliasTsv(tsv, aliasMap)** — PICT が返す TSV のヘッダ行を因子原名に、各セルを「その列の因子の水準原名」に逐次復元する。空 alias map なら no-op。
-
-`runGenerate.ts` が呼び出し直前に aliasForPict、PICT 応答取得後に unaliasTsv を挟む。Auto-regenerator / 手動 Generate / CLI どこから呼んでも同じ経路。ユーザに alias 化の事実は見えない（service ログのみで観察可能）。
+この修正だけで日本語因子・水準を含む DSL が PICT に直接渡せる。クライアント側で alias 化していた一時的な diff は撤去。
 
 ### Neglected Options
 
-- **PICT 本体を fork してマルチバイト対応にする** — ADR-002（PICT は外部 CLI、不変として扱う）を覆す。upstream maintainer が応答するか不明、メンテ負担も MVP スコープを大幅に超える
-- **Shift-JIS など別エンコーディングに変換して送る** — 実測で Shift-JIS でも同じく OOM kill。エンコードを変えても本質的な multi-byte parser のバグは解消しない
-- **UI 側で多バイト識別子を入力時点で禁止する** — HAYST 日本語 DSL を書けないツールは要求を満たさない。透明な迂回が正解
-- **PICT を捨てて自前で pairwise 生成器を実装する** — MVP スコープ大幅超過。ADR-001（PICT BNF mirror）と ADR-002（外部 CLI）を両方反故にする
-- **alias を正規表現で source 文字列に直接かける** — 因子名と水準名が衝突したり、文字列リテラル外（コメント等）にマッチして壊す危険。AST node の range を使った置換は安全で局所的
+- **ASCII alias 層をクライアント側に常設して PICT には常に ASCII を渡す** — 対症療法。本来不要なコードと、サービスログの可読性低下。根本原因を直す方が小さく確実。最初に commit したが、ユーザに指摘されて撤回
+- **ja_JP.UTF-8 を使う** — 言語固有 locale はソート順や ctype 判定に地域差を持ち込み、決定論性 (ADR-003) と CI 再現性を損なう。C.UTF-8 のほうが安全
+- **`en_US.UTF-8` を使う** — ja_JP.UTF-8 と同じ理由。C.UTF-8 はロケールデータが軽量・地域ニュートラルで本用途に最適
+- **Dockerfile を変えず、docker-compose.yml で env を上書きする** — コンテナを直接 `docker run` / pull する利用パスでも壊れる。修正は image レイヤに焼き込むべき
 
 ### Consequences
 
 **Positive:**
-- 日本語 DSL のまま PICT で生成できる — UR-001 / UR-002 の実質的成立
-- ASCII モデルは alias 経路を通らない（hasNonAscii 早期リターン）— ゼロオーバーヘッド
-- 決定論的：同じ Model から同じ alias マップ → 同じ PICT 入力 → 同じ出力
-- PICT 本体に依存変更なし — upstream の MIT バイナリを使い続けられる
-- AST node range 駆動の rewrite なので、コメントや空白を保ったまま identifier だけ置換
+- 日本語 DSL がそのまま PICT で生成できる — UR-001 / UR-002 の素直な成立
+- クライアント側に余計な変換層が要らない
+- PICT 本体に依存変更なし — upstream の MIT ビルドをそのまま使う
+- 決定論性は C.UTF-8 のバイト順比較で保たれる
 
 **Negative:**
-- PICT の service ログを生で見たユーザは `_F1`, `_L2` などの符号を見ることになる（ただしアプリ画面・出力には漏れない）
-- AST に nameRange / level range を持たせる前提に依存。今後の AST 変更時はこの rewrite 経路を一緒に確認する必要がある
+- image サイズが locales パッケージ分わずかに増える（〜数 MB）
 
 **Risks:**
-- 今後 PICT が UTF-8 対応した場合、本層は冗長になる。`hasNonAscii` ガードのおかげで害はないが、将来削除候補として認識しておく
-- alias `_F1` 等が本来の因子名と衝突する DSL（例：ユーザが因子に `_F1` と命名）を将来サポートする場合、衝突回避ロジックが必要
+- 今後 PICT が ja_JP.UTF-8 等の言語別 locale を要求する機能を持った場合、本設定では満たせない可能性
+- 別のコンテナ（PICT 以外）を pict-service に同居させる際、その新ツールが C ロケールを期待するなら別途切り分けが必要
 
 ### References
 
 - Doc/requirements/user_requirements.yaml UR-001, UR-002
 - ADR-001
 - ADR-002
-- src/services/asciiAlias.ts
-- src/services/runGenerate.ts
-- tests/services/asciiAlias.test.ts
+- pict-service/Dockerfile

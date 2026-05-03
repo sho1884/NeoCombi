@@ -1,0 +1,79 @@
+id: ADR-013
+title: "pict-service コンテナの locale を C.UTF-8 に設定する"
+date: "2026-05-03"
+status: accepted
+superseded_by: null
+
+participants:
+  author: "sho1884"
+  approver: "sho1884"
+  last_updated: "2026-05-03"
+
+context:
+  problem: |
+    日本語の因子名・水準値を含む DSL を pict-service に投げると、PICT が無限
+    ループに入り OOM-kill される（`exit 137` あるいは `timeout` 経由 SIGKILL
+    で `exit 124`）。最小再現は `あ: い, う` 1 行のみ。当初は「PICT がそもそも
+    UTF-8 を扱えない」と結論付けかけたが、ユーザから「PICT-PAPP では日本語で
+    問題なく使えていた」との指摘を受けて再検証したところ、原因はまったく違う
+    ところにあった：
+
+      docker exec -e LC_ALL=C.UTF-8 -e LANG=C.UTF-8 -i neocombi-pict \
+          sh -c 'pict /tmp/utf8.tmodel'  →  exit 0、正常出力
+
+    つまり PICT 自体は UTF-8 を正しく扱える。コンテナの既定 locale が `C`
+    （ASCII のみ想定）だと、libc の ctype 関数（tolower / isalpha 等）が
+    多バイト列に対して未定義動作になり、PICT のトークナイザが先頭の非 ASCII
+    バイトで進めなくなって無限ループに陥っていた。
+  drivers:
+    - "ユーザは日本語 DSL で運用する（HAYST 用紙設定・印刷モード等）"
+    - "PICT 本体に手を入れない (ADR-002)"
+    - "対症療法ではなく根本原因を直す"
+    - "コンテナビルド差分は最小限に抑える"
+
+decision:
+  summary: "pict-service Dockerfile に `ENV LANG=C.UTF-8` / `ENV LC_ALL=C.UTF-8` を入れ、locale パッケージで C.UTF-8 を生成する"
+  detail: |
+    pict-service/Dockerfile の Node 20 ステージに次を追加する：
+
+      RUN apt-get install -y --no-install-recommends locales \
+          && sed -i '/C.UTF-8/s/^# //' /etc/locale.gen \
+          && locale-gen C.UTF-8
+      ENV LANG=C.UTF-8
+      ENV LC_ALL=C.UTF-8
+
+    `C.UTF-8` を選ぶのは、ja_JP.UTF-8 等の言語固有 locale を使うと PICT の
+    テキスト比較順序が地域依存になり再現性に影響しうるため。`C.UTF-8` は
+    バイト順比較を維持しつつマルチバイト文字を ctype 関数が安全に通すという
+    NeoCombi の用途に最適な落とし所。
+
+    この修正だけで日本語因子・水準を含む DSL が PICT に直接渡せる。クライ
+    アント側 (runGenerate / asciiAlias 層) で alias 化していた diff は撤去。
+
+neglected:
+  - option: "ASCII alias 層をクライアント側に常設して PICT には常に ASCII を渡す"
+    because: "対症療法。本来不要なコード（211 → 197 tests に戻る分の保守負担）と、サービスログの可読性低下。根本原因を直す方が小さく確実。最初に commit したが、ユーザに指摘されて撤回"
+  - option: "ja_JP.UTF-8 を使う"
+    because: "言語固有 locale はソート順や ctype 判定に地域差を持ち込み、決定論性 (ADR-003) と CI 再現性を損なう。C.UTF-8 のほうが安全"
+  - option: "`en_US.UTF-8` を使う"
+    because: "ja_JP.UTF-8 と同じ理由。C.UTF-8 はロケールデータが軽量・地域ニュートラルで本用途に最適"
+  - option: "Dockerfile を変えず、docker-compose.yml で env を上書きする"
+    because: "コンテナを直接 docker run / pull してくる利用パスでも壊れる。修正は image レイヤに焼き込むべき"
+
+consequences:
+  positive:
+    - "日本語 DSL がそのまま PICT で生成できる — UR-001 / UR-002 の素直な成立"
+    - "クライアント側に余計な変換層が要らない（rewrite した分の運用認知コストゼロ）"
+    - "PICT 本体に依存変更なし — upstream の MIT ビルドをそのまま使う"
+    - "決定論性は C.UTF-8 のバイト順比較で保たれる"
+  negative:
+    - "image サイズが locales パッケージ分わずかに増える（〜数 MB）"
+  risks:
+    - "今後 PICT が ja_JP.UTF-8 等の言語別 locale を要求する機能を持った場合、本設定では満たせない可能性。当面は問題にならない"
+    - "別のコンテナ（PICT 以外）を pict-service に同居させる際、その新ツールが C ロケールを期待するなら別途切り分けが必要"
+
+references:
+  - "Doc/requirements/user_requirements.yaml UR-001, UR-002"
+  - "ADR-001"
+  - "ADR-002"
+  - "pict-service/Dockerfile"

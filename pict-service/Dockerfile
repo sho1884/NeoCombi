@@ -23,12 +23,21 @@ RUN cmake -B build -S . -DCMAKE_BUILD_TYPE=Release \
 
 FROM node:20-bookworm-slim
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ca-certificates \
+ && apt-get install -y --no-install-recommends ca-certificates locales \
+ && sed -i '/C.UTF-8/s/^# //' /etc/locale.gen \
+ && locale-gen C.UTF-8 \
  && rm -rf /var/lib/apt/lists/*
 COPY --from=pict-builder /src/pict/build/cli/pict /usr/local/bin/pict
 WORKDIR /app
 COPY server.mjs /app/server.mjs
 ENV PORT=8765
+# PICT relies on the libc ctype tables for tokenisation; under the default
+# `C` locale, those tables only cover ASCII and a multi-byte input byte
+# tips the tokeniser into an infinite loop (the parser never advances
+# past the first non-ASCII codepoint). Enabling C.UTF-8 fixes it cleanly
+# without introducing language-specific behaviour.
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
 EXPOSE 8765
 USER node
 ENTRYPOINT ["node", "/app/server.mjs"]
