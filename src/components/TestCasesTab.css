@@ -120,6 +120,24 @@
   font-size: 0.78rem;
 }
 
+/* --- Hosted-deployment banner ----------------------------------------- */
+
+.test-cases-tab__hosted-banner {
+  margin: 0.5rem 0.75rem;
+  padding: 0.55rem 0.8rem;
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: 4px;
+  color: #5d4037;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.test-cases-tab__hosted-banner a {
+  color: #1565c0;
+  text-decoration: underline;
+}
+
 /* --- Empty state: prominent step-by-step instructions ----------------- */
 
 .test-cases-tab__no-suite {

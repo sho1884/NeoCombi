@@ -5,6 +5,23 @@ import { formatTestSuite, testSuiteToHtml } from '../engines/pict'
 import { copyTableToClipboard } from '../services/clipboardWrite'
 import './TestCasesTab.css'
 
+/**
+ * The hosted Vercel deployment is a static SPA — there is no PICT
+ * generator service running alongside it. Local browsers can reach
+ * `http://localhost:5174` (the docker-compose service); a hosted
+ * page can't (mixed-content + CSP both block it). Detect that case
+ * up front so the user knows what to expect *before* clicking
+ * Generate, instead of just seeing a "Cannot reach" error.
+ */
+function isHostedDeployment(): boolean {
+  if (typeof window === 'undefined') return false
+  const h = window.location.hostname
+  if (!h) return false
+  if (h === 'localhost' || h === '127.0.0.1' || h === '::1') return false
+  if (h.endsWith('.local')) return false
+  return true
+}
+
 export function TestCasesTab() {
   const testSuite = useProjectStore(s => s.testSuite)
   const setTestCaseExpected = useProjectStore(s => s.setTestCaseExpected)
@@ -103,9 +120,27 @@ export function TestCasesTab() {
   // Render
   // ---------------------------------------------------------------------------
 
+  const hostedBanner = isHostedDeployment() ? (
+    <div className="test-cases-tab__hosted-banner" role="status">
+      <strong>Demo deployment.</strong> Test-case generation needs the local
+      PICT service, which doesn&apos;t run here. Authoring, the forbidden
+      matrix, and file save / open all work — to actually generate, run
+      NeoCombi locally (
+      <a
+        href="https://github.com/sho1884/NeoCombi#author-in-the-gui"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        setup
+      </a>
+      ).
+    </div>
+  ) : null
+
   if (!testSuite || testSuite.rows.length === 0) {
     return (
       <div className="test-cases-tab">
+        {hostedBanner}
         <div className="test-cases-tab__toolbar">
           <button
             type="button"
@@ -138,6 +173,7 @@ export function TestCasesTab() {
 
   return (
     <div className="test-cases-tab">
+      {hostedBanner}
       <div className="test-cases-tab__toolbar">
         <span className="test-cases-tab__count">
           {testSuite.rows.length} test case{testSuite.rows.length === 1 ? '' : 's'},
