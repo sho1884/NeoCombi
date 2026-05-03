@@ -1,0 +1,88 @@
+id: ADR-013
+title: "PICT の UTF-8 非対応を ASCII エイリアス層で迂回する"
+date: "2026-05-03"
+status: accepted
+superseded_by: null
+
+participants:
+  author: "sho1884"
+  approver: "sho1884"
+  last_updated: "2026-05-03"
+
+context:
+  problem: |
+    pict-service にバンドルしている upstream PICT (microsoft/pict, 2026-05 時点)
+    のソースビルドは、UTF-8 多バイト文字を識別子として正しく処理できない。
+    実測：
+
+      - 多バイト因子名 (`原稿の向き: たて, よこ` など) → パーサが無限ループに入り、
+        プロセスは OOM-killed（exit 137）または `timeout` で SIGKILL（exit 124）。
+        最小再現は `あ: い, う` 1 行のみ。
+      - 多バイト水準値 (`Direction: たて, よこ`) → exit 0 で正常終了するが、
+        出力 TSV が因子名行のみで本体行なし、または該当列が空文字に置換される。
+
+    NeoCombi の主要ターゲットは HAYST 実務（プリンタ機能設計、用紙設定など）で、
+    日本語の因子名・水準名は事実上必須。ASCII 縛りは UR-001 / UR-002 を実用上
+    満たさない。
+  drivers:
+    - "日本語 DSL を保ったまま PICT で test case 生成できる必要がある"
+    - "PICT 本体に手を入れない (ADR-002 の『外部 CLI として呼び出す』を維持)"
+    - "決定論性 (ADR-003) を保つ — 同じモデルから同じ出力"
+    - "MVP 内で実装できる小さな差分で済ませる"
+
+decision:
+  summary: "PICT 呼び出し直前に多バイト識別子を ASCII alias に書き換え、PICT の TSV 出力を受けて元の名前に復元する透過的な変換層を NeoCombi 側に持つ"
+  detail: |
+    src/services/asciiAlias.ts が次の 2 つの純関数を提供する：
+
+    1. **aliasForPict(source, model)** — Model AST を歩き、非 ASCII 文字を含む
+       因子名・水準値だけを ASCII alias に置換した DSL ソースと、原名↔alias の
+       双方向マップを返す。Alias は決定論的：因子は宣言順に `_F1, _F2, ...`、
+       各因子の水準は宣言順に `_L1, _L2, ...`。ASCII の名前は素通し。
+
+       置換対象は AST 上の以下のノード：
+         - parameter declaration（nameRange / 各 LevelNode.range）
+         - constraint 内の ParameterRef（`[Name]` → `[_F1]`）
+         - constraint の Comparison.right と InClause.values の literal
+
+    2. **unaliasTsv(tsv, aliasMap)** — PICT が返す TSV のヘッダ行を因子原名に、
+       各セルを「その列の因子の水準原名」に逐次復元する。空 alias map なら
+       no-op（ASCII モデルは何も触らない）。
+
+    runGenerate.ts が呼び出し直前に aliasForPict、PICT 応答取得後に unaliasTsv
+    を挟む。Auto-regenerator / 手動 Generate / CLI どこから呼んでも同じ経路。
+    ユーザに alias 化の事実は見えない（service ログのみで観察可能）。
+
+neglected:
+  - option: "PICT 本体を fork してマルチバイト対応にする"
+    because: "ADR-002（PICT は外部 CLI、不変として扱う）を覆す。upstream maintainer が応答するか不明、メンテ負担も MVP スコープを大幅に超える"
+  - option: "Shift-JIS など別エンコーディングに変換して送る"
+    because: "実測で Shift-JIS でも同じく OOM kill。エンコードを変えても本質的な multi-byte parser のバグは解消しない"
+  - option: "UI 側で多バイト識別子を入力時点で禁止する"
+    because: "HAYST 日本語 DSL を書けないツールは要求を満たさない。透明な迂回が正解"
+  - option: "PICT を捨てて自前で pairwise 生成器を実装する"
+    because: "MVP スコープ大幅超過。ADR-001（PICT BNF mirror）と ADR-002（外部 CLI）を両方反故にする。将来検討する余地はあるが、今回は alias 層で十分"
+  - option: "alias を正規表現で source 文字列に直接かける"
+    because: "因子名と水準名が衝突したり、文字列リテラル外（コメント等）にマッチして壊す危険。AST node の range を使った置換は安全で局所的"
+
+consequences:
+  positive:
+    - "日本語 DSL のまま PICT で生成できる — UR-001 / UR-002 の実質的成立"
+    - "ASCII モデルは alias 経路を通らない（hasNonAscii 早期リターン）— ゼロオーバーヘッド"
+    - "決定論的：同じ Model から同じ alias マップ → 同じ PICT 入力 → 同じ出力"
+    - "PICT 本体に依存変更なし — upstream の MIT バイナリを使い続けられる"
+    - "AST node range 駆動の rewrite なので、コメントや空白を保ったまま identifier だけ置換"
+  negative:
+    - "PICT の service ログを生で見たユーザは _F1, _L2 などの符号を見ることになる（ただしアプリ画面・出力には漏れない）"
+    - "AST に nameRange / level range を持たせる前提に依存。今後の AST 変更時はこの rewrite 経路を一緒に確認する必要がある"
+  risks:
+    - "今後 PICT が UTF-8 対応した場合、本層は冗長になる。hasNonAscii ガードのおかげで害はないが、将来削除候補として認識しておく"
+    - "alias `_F1` 等が本来の因子名と衝突する DSL（例：ユーザが因子に `_F1` と命名）を将来サポートする場合、衝突回避ロジックが必要"
+
+references:
+  - "Doc/requirements/user_requirements.yaml UR-001, UR-002"
+  - "ADR-001"
+  - "ADR-002"
+  - "src/services/asciiAlias.ts"
+  - "src/services/runGenerate.ts"
+  - "tests/services/asciiAlias.test.ts"

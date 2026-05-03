@@ -3,7 +3,7 @@
 > **このファイルは自動生成されたビューです。直接編集しないでください。**
 > 編集は `Doc/adr/ADR-NNN-*.yaml` に対して行い、`adr` スキルで本ファイルを再生成します。
 >
-> Generated: 2026-05-03
+> Generated: 2026-05-03 (ADR-013 added)
 
 ## Summary
 
@@ -21,6 +21,7 @@
 | [ADR-010](adr/ADR-010-clean-room-reimplementation-from-pictpapp.yaml) | PICT-PAPP からの clean-room 再実装 | 2026-05-02 | accepted | PICT-PAPP の VBA ソースは行レベルで一切参照せず、clean-room で再実装する |
 | [ADR-011](adr/ADR-011-suggest-slices-co-occurrence-components.yaml) | 禁則 slice の自動提案は『制約共起グラフの連結成分 + 全ピボット展開』で行う | 2026-05-03 | accepted | DSL 制約集合から共起グラフを作り、Union-Find で連結成分を求め、サイズ ≥3 の各成分について全因子を順にピボットした slice を発行する |
 | [ADR-012](adr/ADR-012-forbidden-enumeration-reachability-scoping.yaml) | 禁則判定の自由因子列挙は『制約到達可能閉包』に絞る | 2026-05-03 | accepted | isPartiallyForbidden の自由因子列挙を、制約共起グラフで slice 因子から到達可能な閉包だけに限定する |
+| [ADR-013](adr/ADR-013-pict-utf8-ascii-alias-layer.yaml) | PICT の UTF-8 非対応を ASCII エイリアス層で迂回する | 2026-05-03 | accepted | PICT 呼び出し直前に多バイト識別子を ASCII alias に書き換え、応答の TSV を受けて元の名前に復元する透過層を NeoCombi 側に持つ |
 
 ---
 
@@ -521,3 +522,66 @@ isPartiallyForbidden を以下のアルゴリズムに置き換えた：
 - ADR-011
 - src/engines/dsl/evaluator.ts isPartiallyForbidden / relevantSubmodel
 - tests/dsl/evaluator.test.ts
+
+---
+
+## ADR-013 — PICT の UTF-8 非対応を ASCII エイリアス層で迂回する
+
+- **Date:** 2026-05-03
+- **Status:** accepted
+- **Author:** sho1884 / **Approver:** sho1884
+
+### Context — Problem
+
+pict-service にバンドルしている upstream PICT (microsoft/pict, 2026-05 時点) のソースビルドは、UTF-8 多バイト文字を識別子として正しく処理できない。実測：
+
+- 多バイト因子名 (`原稿の向き: たて, よこ` など) → パーサが無限ループに入り、プロセスは OOM-killed（exit 137）または `timeout` で SIGKILL（exit 124）。最小再現は `あ: い, う` 1 行のみ。
+- 多バイト水準値 (`Direction: たて, よこ`) → exit 0 で正常終了するが、出力 TSV が因子名行のみで本体行なし、または該当列が空文字に置換される。
+
+NeoCombi の主要ターゲットは HAYST 実務（プリンタ機能設計、用紙設定など）で、日本語の因子名・水準名は事実上必須。ASCII 縛りは UR-001 / UR-002 を実用上満たさない。
+
+### Decision
+
+**PICT 呼び出し直前に多バイト識別子を ASCII alias に書き換え、PICT の TSV 出力を受けて元の名前に復元する透過的な変換層を NeoCombi 側に持つ**
+
+`src/services/asciiAlias.ts` が次の 2 つの純関数を提供する：
+
+1. **aliasForPict(source, model)** — Model AST を歩き、非 ASCII 文字を含む因子名・水準値だけを ASCII alias に置換した DSL ソースと、原名↔alias の双方向マップを返す。Alias は決定論的：因子は宣言順に `_F1, _F2, ...`、各因子の水準は宣言順に `_L1, _L2, ...`。ASCII の名前は素通し。
+
+2. **unaliasTsv(tsv, aliasMap)** — PICT が返す TSV のヘッダ行を因子原名に、各セルを「その列の因子の水準原名」に逐次復元する。空 alias map なら no-op。
+
+`runGenerate.ts` が呼び出し直前に aliasForPict、PICT 応答取得後に unaliasTsv を挟む。Auto-regenerator / 手動 Generate / CLI どこから呼んでも同じ経路。ユーザに alias 化の事実は見えない（service ログのみで観察可能）。
+
+### Neglected Options
+
+- **PICT 本体を fork してマルチバイト対応にする** — ADR-002（PICT は外部 CLI、不変として扱う）を覆す。upstream maintainer が応答するか不明、メンテ負担も MVP スコープを大幅に超える
+- **Shift-JIS など別エンコーディングに変換して送る** — 実測で Shift-JIS でも同じく OOM kill。エンコードを変えても本質的な multi-byte parser のバグは解消しない
+- **UI 側で多バイト識別子を入力時点で禁止する** — HAYST 日本語 DSL を書けないツールは要求を満たさない。透明な迂回が正解
+- **PICT を捨てて自前で pairwise 生成器を実装する** — MVP スコープ大幅超過。ADR-001（PICT BNF mirror）と ADR-002（外部 CLI）を両方反故にする
+- **alias を正規表現で source 文字列に直接かける** — 因子名と水準名が衝突したり、文字列リテラル外（コメント等）にマッチして壊す危険。AST node の range を使った置換は安全で局所的
+
+### Consequences
+
+**Positive:**
+- 日本語 DSL のまま PICT で生成できる — UR-001 / UR-002 の実質的成立
+- ASCII モデルは alias 経路を通らない（hasNonAscii 早期リターン）— ゼロオーバーヘッド
+- 決定論的：同じ Model から同じ alias マップ → 同じ PICT 入力 → 同じ出力
+- PICT 本体に依存変更なし — upstream の MIT バイナリを使い続けられる
+- AST node range 駆動の rewrite なので、コメントや空白を保ったまま identifier だけ置換
+
+**Negative:**
+- PICT の service ログを生で見たユーザは `_F1`, `_L2` などの符号を見ることになる（ただしアプリ画面・出力には漏れない）
+- AST に nameRange / level range を持たせる前提に依存。今後の AST 変更時はこの rewrite 経路を一緒に確認する必要がある
+
+**Risks:**
+- 今後 PICT が UTF-8 対応した場合、本層は冗長になる。`hasNonAscii` ガードのおかげで害はないが、将来削除候補として認識しておく
+- alias `_F1` 等が本来の因子名と衝突する DSL（例：ユーザが因子に `_F1` と命名）を将来サポートする場合、衝突回避ロジックが必要
+
+### References
+
+- Doc/requirements/user_requirements.yaml UR-001, UR-002
+- ADR-001
+- ADR-002
+- src/services/asciiAlias.ts
+- src/services/runGenerate.ts
+- tests/services/asciiAlias.test.ts
