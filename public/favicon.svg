@@ -1,41 +1,39 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="NeoCombi">
   <title>NeoCombi</title>
   <defs>
-    <linearGradient id="g-teal" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#22d3ee"/>
+    <radialGradient id="g-cyan" cx="0.35" cy="0.35">
+      <stop offset="0%" stop-color="#67e8f9"/>
       <stop offset="100%" stop-color="#0891b2"/>
-    </linearGradient>
-    <linearGradient id="g-indigo" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#818cf8"/>
-      <stop offset="100%" stop-color="#4338ca"/>
-    </linearGradient>
-    <linearGradient id="g-amber" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#fbbf24"/>
+    </radialGradient>
+    <radialGradient id="g-pink" cx="0.35" cy="0.35">
+      <stop offset="0%" stop-color="#f9a8d4"/>
+      <stop offset="100%" stop-color="#be185d"/>
+    </radialGradient>
+    <radialGradient id="g-amber" cx="0.35" cy="0.35">
+      <stop offset="0%" stop-color="#fcd34d"/>
       <stop offset="100%" stop-color="#d97706"/>
-    </linearGradient>
-    <linearGradient id="g-red" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#fb7185"/>
-      <stop offset="100%" stop-color="#be123c"/>
-    </linearGradient>
+    </radialGradient>
     <linearGradient id="g-bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#0f172a"/>
-      <stop offset="100%" stop-color="#1e293b"/>
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
     </linearGradient>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="1.2" stdDeviation="0.8" flood-color="#000" flood-opacity="0.35"/>
+    <filter id="dot-shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="1.4" stdDeviation="0.9" flood-color="#000" flood-opacity="0.55"/>
     </filter>
   </defs>
-  <!-- Deep navy background gives the vibrant tile colors maximum punch. -->
+  <!-- Deep navy background. -->
   <rect width="64" height="64" rx="12" fill="url(#g-bg)"/>
-  <!-- 2x2 pairwise matrix: each "covered" cell carries its own factor color
-       (teal / indigo / amber) — the visual cue that combinations bring
-       distinct factors together — and the bottom-left tile is the
-       forbidden exception, marked with a bold white ✗ on a red gradient. -->
-  <g filter="url(#shadow)">
-    <rect x="13" y="13" width="17" height="17" rx="3" fill="url(#g-teal)"/>
-    <rect x="34" y="13" width="17" height="17" rx="3" fill="url(#g-indigo)"/>
-    <rect x="34" y="34" width="17" height="17" rx="3" fill="url(#g-amber)"/>
-    <rect x="13" y="34" width="17" height="17" rx="3" fill="url(#g-red)"/>
-    <path d="M18 39 L26 47 M26 39 L18 47" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/>
+  <!-- K3: complete graph on 3 nodes. Nodes = factors, edges = pairs.
+       This is literally the smallest pairwise-coverage graph and the
+       core idea NeoCombi exists to compute. -->
+  <g stroke="#94a3b8" stroke-width="2.2" stroke-linecap="round" opacity="0.78">
+    <line x1="32" y1="20" x2="20" y2="42"/>
+    <line x1="32" y1="20" x2="44" y2="42"/>
+    <line x1="20" y1="42" x2="44" y2="42"/>
+  </g>
+  <g filter="url(#dot-shadow)">
+    <circle cx="32" cy="20" r="8.5" fill="url(#g-cyan)"/>
+    <circle cx="20" cy="42" r="8.5" fill="url(#g-pink)"/>
+    <circle cx="44" cy="42" r="8.5" fill="url(#g-amber)"/>
   </g>
 </svg>
