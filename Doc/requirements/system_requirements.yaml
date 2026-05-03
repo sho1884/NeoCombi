@@ -153,17 +153,27 @@ requirements:
     parent: [UR-003]
     category: forbidden_view
     function: "Compute N-factor forbidden combinations from DSL"
-    note: "Built-in evaluator. PICT is not invoked for this computation."
+    note: |
+      Built-in evaluator. PICT is not invoked for this computation.
+      Free-factor enumeration is scoped to the transitive closure of
+      "co-occurs in some constraint" starting from the slice's factors;
+      factors outside that closure are not enumerated since they cannot
+      affect the slice's feasibility (assuming a globally satisfiable
+      model). See ADR-012 for the algorithm rationale. This keeps the
+      computation tractable on 100+ factor models with sparse constraints.
     scenarios:
       - context: "DSL is valid"
         action: "User selects N and a slice (condition factors + constrained factor)"
-        outcome: "Evaluator enumerates all level combinations of the selected factors and marks each as forbidden / allowed by evaluating the DSL constraints"
+        outcome: "Evaluator enumerates the slice's reachable closure and marks each cell forbidden / allowed by evaluating the constraints inside that closure"
       - context: "DSL is invalid"
         action: "Slice is selected"
         outcome: "Hold last valid result; display 'DSL has errors' notice"
-      - context: "Selected slice is too large to enumerate"
+      - context: "Slice's reachable closure is too large to enumerate"
         action: "Computation starts"
-        outcome: "Cancel with size warning; suggest reducing N or factor cardinalities"
+        outcome: "Cancel with size warning; suggest reducing N or factor cardinalities, or splitting the constraint graph"
+      - context: "Slice factors are not connected to any constraint"
+        action: "Computation starts"
+        outcome: "Return immediately with all cells marked allowed (no constraint touches the slice)"
 
   SR-031:
     parent: [UR-003]

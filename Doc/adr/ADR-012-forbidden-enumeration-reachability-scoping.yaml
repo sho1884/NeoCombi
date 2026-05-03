@@ -1,0 +1,81 @@
+id: ADR-012
+title: "禁則判定の自由因子列挙は『制約到達可能閉包』に絞る"
+date: "2026-05-03"
+status: accepted
+superseded_by: null
+
+participants:
+  author: "sho1884"
+  approver: "sho1884"
+  last_updated: "2026-05-03"
+
+context:
+  problem: |
+    isPartiallyForbidden は「ある部分割当が禁則であるか」を判定するため、
+    部分割当に含まれない自由因子全てに対して水準 Cartesian 積を全展開し、
+    どれか一つでも全制約を満たす全割当が存在するかを探していた。100 因子規模
+    では自由因子が ~98 個、各 3〜5 水準 → 列挙総数 ~4^98 ≈ 10^59 に達し、
+    DEFAULT_ENUMERATION_LIMIT (1,000,000) で必ず too-large 失敗する。結果、
+    HAYST 100 因子モデルでは Forbidden ビューが事実上使えなかった。
+  drivers:
+    - "MVP のターゲット規模（HAYST 100〜300 因子）で Forbidden ビューが使える必要がある"
+    - "PICT 非依存（ADR-005）の制約を保ったまま判定を高速化したい"
+    - "決定論性（ADR-003）を犠牲にしない／SAT ソルバ等の外部依存を持ち込まない"
+    - "実装複雑度を上げすぎず、既存の brute-force 列挙基盤の上に乗せたい"
+
+decision:
+  summary: "部分割当の因子から「同一制約内に共起する」関係で到達可能な因子の閉包だけを列挙対象にする"
+  detail: |
+    isPartiallyForbidden を以下のアルゴリズムに置き換えた：
+
+    1. 部分割当のキー集合 seed から出発し、「ある制約に共起する因子は全て同一
+       到達集合に追加」を不動点まで反復して到達閉包 R を得る。
+    2. 自由因子のうち R に属するもののみを列挙対象とする。R の外の因子は
+       slice の禁則性に影響しないので、既定値を選ぶ必要すらなく無視する。
+    3. 制約のうち、その因子集合が R と非空交差するもののみをチェック対象と
+       する（到達性の定義から、R に触れる制約はその因子全てが R 内になる）。
+    4. 自由因子集合の Cartesian 積カーディナリティが limit を超える場合のみ
+       too-large を返す。R が空なら即座に「禁則ではない」を返す。
+
+    アルゴリズム正当性：R 外の因子は seed と制約共起グラフ上で連結していない
+    ので、それらの値は seed と独立に選べる。モデル全体が大域的に充足可能で
+    ある限り、R 外の因子に対する充足割当は必ず存在し、slice の禁則性判定に
+    影響しない。R 外の制約も同様に、slice と独立な部分モデルの問題として、
+    本判定では検査不要。
+
+    モデルが大域的に非充足の場合は、本判定は誤って「禁則でない」と返す可能性が
+    残る（R 外で矛盾が起きていても気づけない）。これは MVP では受容する。
+    PICT による test case 生成段階でモデルが拒絶されるため、ユーザはその時点で
+    気づける。
+
+neglected:
+  - option: "総当たり列挙のまま limit を 100,000,000 へ大きく緩める"
+    because: "100 因子規模では 4^98 オーダーで limit を 10x にしてもオーバー。本質的に間に合わない"
+  - option: "外部 SAT ソルバ / CSP ソルバを内蔵"
+    because: "ADR-003（AI/外部依存を持ち込まない）に反する、依存ライセンス審査が増える、決定論的かつ簡素という MVP 方針と齟齬"
+  - option: "PICT に判定を委ねる（PICT 出力に禁則情報を抽出させる）"
+    because: "ADR-005 の『Forbidden は PICT 非依存で内製』を覆す。PICT の出力には part-of-test-case か否かしか出ないため流用も難しい"
+  - option: "到達閉包は使わず、slice 因子と直接共起する因子のみ列挙（1-hop）"
+    because: "A → B → C の伝播禁則を取りこぼす。propagation slice (ADR-011) と整合せず、ユーザの提案通りの slice を計算できない"
+  - option: "列挙ではなく Constraint Propagation (e.g., AC-3) でドメイン削減"
+    because: "実装複雑度が大きい。MVP の評価器を全面書き換えになる。reachability scoping だけで十分高速になるため、必要になってから検討"
+
+consequences:
+  positive:
+    - "100 因子モデルでも slice の禁則計算が現実的時間で完了する（典型ケースで成分サイズ ~5、列挙 ~5^4 ≈ 625）"
+    - "既存 evaluator の構造を保つ（enumerateExtensions / isConstraintSatisfied は無変更）"
+    - "PICT 非依存・決定論的・依存ライブラリゼロ"
+    - "サイズ制限ガードは残るので、密結合な大規模成分が来た場合の防御は保たれる"
+  negative:
+    - "モデルが大域的に非充足な場合、R 外で起きる矛盾を本判定では検出できない（false-negative）"
+    - "アルゴリズムの説明・テストが少し複雑化した"
+  risks:
+    - "constraint co-occurrence が密で全因子が一成分になると、改善前と同じく爆発する。100 因子全結合なら 4^99 で再び too-large。実用 HAYST モデルでは稀と推定するが将来の保護が必要になる可能性"
+    - "false-negative リスクをユーザに気づかせる UI 表示が現状ない（PICT 経由で気づくのを期待）"
+
+references:
+  - "Doc/requirements/system_requirements.yaml SR-030"
+  - "ADR-005"
+  - "ADR-011"
+  - "src/engines/dsl/evaluator.ts isPartiallyForbidden / relevantSubmodel"
+  - "tests/dsl/evaluator.test.ts"
