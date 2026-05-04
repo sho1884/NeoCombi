@@ -5,8 +5,8 @@
 #   - future: out-of-scope for MVP, recorded so MVP design choices stay compatible.
 # See Doc/PROJECT_KICKOFF.md for the architectural rationale and final vision.
 
-version: "0.1"
-last_updated: "2026-05-02"
+version: "0.2-draft"
+last_updated: "2026-05-04"
 
 requirements:
   UR-001:
@@ -81,3 +81,33 @@ requirements:
       added later without rework. Deferred until ModelLogue's n8n integration
       pattern matures, at which point NeoCombi follows the same pattern.
     priority: future
+
+  UR-008:
+    task: "Make mask levels easy to author and hard to forget"
+    background: >
+      A "mask level" represents the state where a factor is unreachable
+      because of other factors' values — e.g., the card-number factor is
+      effectively absent when payment-method is cash. Per the predecessor
+      PICT-PAPP convention (which NeoCombi inherits unchanged), this is
+      handled purely operationally: the designer adds a dedicated level
+      to the affected factor (PICT-PAPP names it "MASK" but the choice is
+      free) and writes an IF-THEN constraint that pins the factor to that
+      level under the trigger condition. The existing PICT DSL handles
+      this with no extension, no new operator, no new data model.
+
+      The risk highlighted by PICT-PAPP's author: if the designer forgets
+      to introduce the mask level, the generated test cases silently drop
+      the masked situation from coverage. Every generated case is
+      executable, so the omission is invisible — the gap is only noticed
+      when a tester wonders why a particular condition was never tried.
+
+      NeoCombi adds two UI affordances on top of the unchanged DSL:
+      - A distinct symbol for entering and displaying mask levels so they
+        read differently from regular levels at a glance, both in the
+        factor-level table and wherever the level appears (matrix cells,
+        DSL editor, generated test cases).
+      - A defect-flagging lint: when a factor declares a mask level but
+        no constraint references that level, surface it as a missing
+        binding the designer should resolve (a mask level with no
+        triggering condition is almost always an incomplete model).
+    priority: medium

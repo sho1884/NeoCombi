@@ -11,10 +11,11 @@
 #   pict_invocation      SR-060..069  (external PICT CLI)
 #   persistence          SR-070..079  (.tmodel file I/O)
 #   cli_mode             SR-080..089  (CI/CD pipeline use)
+#   mask_level           SR-090..099  (UR-008 — mask-level authoring assistance)
 # UR-007 (NL -> AI -> DSL) is intentionally not realized by any SR yet; deferred to v2.
 
-version: "0.1"
-last_updated: "2026-05-02"
+version: "0.2-draft"
+last_updated: "2026-05-04"
 
 # =============================================================================
 # DSL Authoring (parent: UR-002)
@@ -515,3 +516,122 @@ requirements:
       - context: "GUI bundle is not installed"
         action: "CLI executes"
         outcome: "Same successful behavior; CLI and GUI are separate entry points sharing the engine layer"
+
+# =============================================================================
+# Mask-Level Authoring Assistance (parent: UR-008)
+# =============================================================================
+# Mask levels are a regular IF-THEN-driven operational technique inherited
+# from PICT-PAPP — no DSL extension. NeoCombi adds purely UI-side assistance
+# so designers can apply the technique consistently and not omit it by accident.
+
+  SR-090:
+    parent: [UR-008]
+    category: mask_level
+    function: "Recognize a level as the mask level via the fixed sentinel value <MASK>"
+    convention: |
+      A level whose value is exactly the string "<MASK>" (case-sensitive,
+      angle brackets included) is treated by NeoCombi as the mask level
+      for that factor. The same fixed token is used across all factors,
+      so designers always type the same value and readers always see the
+      same symbol.
+
+      Rationale for the choice:
+      - Inherits the literal "MASK" naming from PICT-PAPP, immediately
+        recognizable to designers coming from the predecessor tool.
+      - Angle brackets read universally as "placeholder / meta-token"
+        (XML tags, BNF nonterminals, template syntax), reinforcing
+        "this is not an ordinary level value".
+      - Cross-tool conceptual link with the sibling tool NeoCEG, whose
+        MASK constraint expresses the same authoring intent (a factor
+        is inert under specific conditions). NeoCombi expresses it as
+        a level value plus IF-THEN rather than as a constraint operator,
+        but the underlying test-design concept is the same — and the
+        shared "MASK" name makes that connection visible.
+      - Inside a PICT string literal, "<" and ">" carry no syntactic
+        meaning, so the value passes through to PICT verbatim as
+        "<MASK>" with no quoting hazards.
+
+      Constraints:
+      - A factor has at most one "<MASK>" level. Duplicate declarations
+        on the same factor are a model error.
+      - The token is part of the level value itself — no separate
+        data-model flag. Detection is exact string match.
+      - The "<MASK>" level is rename-locked in the UI: editing the
+        token's text would silently strip its mask semantics, so the
+        Factor / Level table disallows in-place renaming. Removal and
+        re-addition (via the "+ <MASK>" affordance) are the only edit
+        paths.
+    scenarios:
+      - context: "Level value equals <MASK>"
+        action: "Parser / table reads the level"
+        outcome: "Level is tagged as the factor's mask level for downstream display and lint"
+      - context: "Level value contains <MASK> as a substring but not as the whole value"
+        action: "Parser / table reads the level"
+        outcome: "Treated as a regular level (only an exact match identifies the mask level)"
+      - context: "A factor declares <MASK> more than once"
+        action: "Validation runs"
+        outcome: "Emit a duplicate-declaration error"
+
+  SR-091:
+    parent: [UR-008]
+    category: mask_level
+    function: "Display mask levels distinctly across all level-displaying views"
+    surfaces:
+      - "Factor / Level table — level chip"
+      - "Forbidden-combination matrix — column header (cell coloring stays as-is; the cue lives in the header)"
+      - "Coverage matrix — row / column header (cell occurrence overlay stays as-is)"
+      - "Test case table — cell whose value is the mask level"
+    surfaces_excluded:
+      - target: "DSL editor"
+        reason: |
+          The DSL editor is plain text (no syntax-highlight overlay in MVP).
+          Adding mask-level styling there would require a syntax-highlighting
+          editor migration, which is disproportionate to UR-008's scope. The
+          DSL is the place authors actively write, so the recognition risk is
+          lower than in views they passively read. If a syntax-highlighting
+          editor is adopted later, mask-level styling should follow.
+    style_intent: |
+      Render the literal value "<MASK>" verbatim (no glyph substitution so
+      copy-paste / CSV export carry the same string) but visually
+      de-emphasize it: muted color plus italic weight, so the distinction
+      uses two channels (color + style) and remains discernible under
+      accessibility settings. Hover tooltip explains the mask semantics.
+    scenarios:
+      - context: "A factor has a mask level"
+        action: "Any of the listed surfaces renders that level"
+        outcome: "The mask level is visually distinct from regular levels using the same style across all surfaces"
+      - context: "Theme / accessibility settings are applied"
+        action: "View renders"
+        outcome: "Distinction remains discernible (color is not the sole channel; shape / weight / glyph also carries the cue)"
+
+  SR-092:
+    parent: [UR-008]
+    category: mask_level
+    function: "Warn when a mask level has no triggering constraint"
+    severity: warning
+    note: |
+      Severity is warning, not error: the model still parses and PICT
+      generation is not blocked. The author may legitimately be in the
+      middle of editing. A blocked-on-error policy would be hostile to
+      iterative authoring, while silent acceptance is what UR-008 is
+      explicitly preventing — so warning is the right middle ground.
+    rule: |
+      For each "<MASK>" level declared on factor F, at least one constraint
+      in the model must bind F to "<MASK>" (i.e., a clause whose consequence
+      assigns F = "<MASK>", such as IF <condition> THEN [F] = "<MASK>").
+      If no such binding exists, the model is incomplete: "<MASK>" can
+      never become active in any generated test case, which is almost
+      always an authoring oversight rather than intent.
+    scenarios:
+      - context: "Factor F declares <MASK> level; no constraint binds F to <MASK>"
+        action: "Validation runs"
+        outcome: "Emit a warning diagnostic identifying F, with a hint that a triggering IF-THEN is missing and a sample form"
+      - context: "At least one constraint binds F to <MASK>"
+        action: "Validation runs"
+        outcome: "No diagnostic emitted for this mask level"
+      - context: "Factor has no mask level"
+        action: "Validation runs"
+        outcome: "Rule is inert; no diagnostic"
+      - context: "User clicks the warning"
+        action: "Click is dispatched"
+        outcome: "Focus jumps to the Factor / Level table row for F (consistent with existing diagnostic-to-source navigation)"

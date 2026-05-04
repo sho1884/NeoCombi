@@ -3,7 +3,7 @@
 > User Requirements (UR) と System Requirements (SR) の Markdown ビュー（人間向けの読みやすい view）。
 > **一次資料は YAML**（`Doc/requirements/user_requirements.yaml`、`Doc/requirements/system_requirements.yaml`）。本ファイルはそれを元に手で書き起こしている。整合性が崩れた場合は YAML が正であり、本ファイルを更新する。
 >
-> Status: draft (2026-05-02). MVP planning. **本ファイルは仕様レビュー＆合意のための view であり、コーディング着手の前提**（`CLAUDE.md` 「ドキュメント・ファースト」方針）。
+> Status: draft (2026-05-04, v0.2-draft). MVP planning + v0.2 候補（UR-008）。**本ファイルは仕様レビュー＆合意のための view であり、コーディング着手の前提**（`CLAUDE.md` 「ドキュメント・ファースト」方針）。
 
 ## 1. 概要 — Overview
 
@@ -77,6 +77,11 @@ NeoCEG / NeoCombi は決定論変換器（AI 不内蔵）。AI 連携は n8n 経
 
 - **Priority:** future（MVP 範囲外）
 - **Background:** 最終ビジョン：設計者が下ペーンの専用タブにテスト対象の振る舞いを自然言語で書き、AI（n8n 連携経由）が PICT DSL を起草、人間がレビュー＆修正して完成させる。NeoCombi 本体は決定論変換器のままで、AI は外部パススルー、内蔵しない（[ADR-003](../adr/ADR-003-no-embedded-ai-n8n-passthrough.yaml)）。MVP では下ペーンのレイアウトとデータモデルだけを将来拡張可能な形で固める。ModelLogue の n8n 連携実装が成熟したら同パターンに追従。
+
+### UR-008 — Make mask levels easy to author and hard to forget
+
+- **Priority:** medium（v0.2 候補）
+- **Background:** 「mask 水準」とは、ある因子が他因子の値で実質的に到達不能になる状態（例：支払方法=現金 のときカード番号は実質存在しない）。前身 PICT-PAPP の運用慣習を継承し、影響を受ける因子に専用水準を 1 つ加え、トリガ条件の IF-THEN でその水準に固定する ── **既存の PICT DSL でそのまま表現でき、拡張も新オペレータも新データモデルも不要**。NeoCombi は変更しない DSL の上に UI 補助 2 点（特別記号での入力・表示／不備警告 lint）を追加し、「mask 水準を立てるのを忘れて生成テストケースから masked 状況が静かに脱落する」リスクを減らす。
 
 ## 4. System Requirements
 
@@ -173,6 +178,16 @@ CI/CD 向け headless 実行。GUI と engine 層を共有（[ADR-004](../adr/AD
 | SR-081 | Exit with deterministic exit codes | 0=success, 1=parse, 2=PICT failure, 3=I/O input, 4=I/O output |
 | SR-082 | Run headless without GUI dependencies | display server なしで動作。GUI bundle 未インストールでも CLI 単独動作 |
 
+### 4.10 mask_level（SR-090..092） — Parent: UR-008
+
+mask 水準の authoring 補助。DSL は変更せず、固定トークン `"<MASK>"` を「mask 水準」として識別する規約と、その水準が結合制約を持たない場合の警告を加える。
+
+| ID | Function | 概要 |
+|---|---|---|
+| SR-090 | Recognize a level as the mask level via the fixed sentinel value `<MASK>` | 全因子共通の固定文字列 `"<MASK>"`（case-sensitive、山括弧込み）を mask 水準として識別。PICT-PAPP の `MASK` 命名継承＋姉妹ツール NeoCEG の MASK 制約との概念リンクを明示。Factor 表で rename 不可（削除＋再追加のみ）、因子あたり最大 1 個 |
+| SR-091 | Display mask levels distinctly across level-displaying views | 因子・水準表 / 禁則マトリクス（列ヘッダ）/ coverage マトリクス（行・列ヘッダ）/ テストケース表 の **4 面** で統一的に muted-italic 表示（色 + 字体の 2 チャネル）。値文字列はそのまま `<MASK>`（コピペ・CSV エクスポートで literal 維持）。**DSL エディタは対象外** — 素 textarea ゆえスタイル付与に syntax-highlight エディタ移行が必要で UR-008 のスコープを超える |
+| SR-092 | Warn when a mask level has no triggering constraint | `<MASK>` 水準が宣言されているのに、その水準を consequence として束縛する IF-THEN が無ければ「永遠に active にならない」モデル不備として **warning**（severity = warning、PICT 実行はブロックしない）。クリックで Factor 行へジャンプ |
+
 ## 5. Traceability Matrix（UR ↔ SR）
 
 | UR | Realized by SR |
@@ -184,6 +199,7 @@ CI/CD 向け headless 実行。GUI と engine 層を共有（[ADR-004](../adr/AD
 | UR-005 (Record expected values) | SR-051..053, SR-070, SR-071 |
 | UR-006 (CI/CD invocation) | SR-071, SR-080..082 |
 | UR-007 (NL → AI → DSL) | （v2 で SR を追加。MVP では SR-020 future_extension のみが将来余地） |
+| UR-008 (Mask-level authoring assistance) | SR-090..092 |
 
 ## 6. References
 
