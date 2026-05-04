@@ -227,3 +227,55 @@ A: 1, 2
     expect(model?.constraints.length).toBeGreaterThanOrEqual(1)
   })
 })
+
+describe('parser / constraint Value position rejects bare identifiers', () => {
+  // Mirrors PICT's actual rule: PICT rejects bare values in constraints
+  // with `Incorrect numeric value`. Catching it at parse time keeps the
+  // DSL a true subset of PICT (ADR-001) and surfaces the problem with
+  // editor-position information instead of a runtime error.
+
+  it('rejects a bare identifier as the RHS of an equality', () => {
+    const src = 'F: a, b\nG: g1, g2\nIF [F] = a THEN [G] = "g1";\n'
+    const { diagnostics } = parse(src)
+    const d = diagnostics.find(x => x.kind === 'syntax' && x.message.includes('"a"'))
+    expect(d).toBeDefined()
+    expect(d?.message).toContain('quoted')
+  })
+
+  it('rejects a bare identifier as the RHS of a THEN equality', () => {
+    const src = 'F: a, b\nG: g1, g2\nIF [F] = "a" THEN [G] = g1;\n'
+    const { diagnostics } = parse(src)
+    expect(diagnostics.some(d => d.kind === 'syntax' && d.message.includes('"g1"'))).toBe(true)
+  })
+
+  it('rejects a bare identifier inside an IN clause', () => {
+    const src = 'F: a, b, c\n[F] IN { a, "b" };\n'
+    const { diagnostics } = parse(src)
+    expect(diagnostics.some(d => d.kind === 'syntax' && d.message.includes('"a"'))).toBe(true)
+  })
+
+  it('still accepts quoted strings and bare numbers (per PICT rule)', () => {
+    const src =
+      'F: 1, 2, 3\nG: g1, g2\n' +
+      'IF [F] = 1 THEN [G] = "g1";\n' +
+      'IF [G] = "g2" THEN [F] = 2;\n'
+    const { diagnostics, model } = parse(src)
+    expect(diagnostics.filter(d => d.severity === 'error')).toHaveLength(0)
+    expect(model?.constraints).toHaveLength(2)
+  })
+
+  it('still accepts parameter-to-parameter comparison ([A] = [B])', () => {
+    const src = 'A: 1, 2\nB: 1, 2\nIF [A] = [B] THEN [A] = 1;\n'
+    const { diagnostics, model } = parse(src)
+    expect(diagnostics.filter(d => d.severity === 'error')).toHaveLength(0)
+    expect(model?.constraints).toHaveLength(1)
+  })
+
+  it('does not affect Level positions in parameter declarations', () => {
+    // The Level rule (parameter declarations) still allows bare identifiers
+    // — that is the conventional PICT-compatible form.
+    const src = 'OS: Linux, Windows, macOS\nIF [OS] = "Linux" THEN [OS] <> "Windows";\n'
+    const { diagnostics } = parse(src)
+    expect(diagnostics.filter(d => d.severity === 'error')).toHaveLength(0)
+  })
+})

@@ -219,6 +219,14 @@
   text-overflow: ellipsis;
 }
 
+/* SR-091: mask-level header gets a muted-italic treatment so the reader
+   recognizes "this represents the factor being inert" at a glance.
+   Cells under the header keep their normal occurrence-overlay styling. */
+.matrix__level-header--mask {
+  color: #90a4ae;
+  font-style: italic;
+}
+
 .matrix__cell {
   border: 1px solid #eceff1;
   padding: 0;

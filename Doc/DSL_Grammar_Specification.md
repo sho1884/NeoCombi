@@ -2,7 +2,7 @@
 
 > NeoCombi の制約 DSL の文法仕様。PICT 制約言語の最小サブセットを EBNF として独立定義し、PICT BNF からの差分（捨てた要素）を明示する。
 >
-> Status: draft (2026-05-02). MVP 対応範囲を定義する一次資料。
+> Status: draft (2026-05-04). MVP 対応範囲を定義する一次資料。
 > Related: [ADR-001](adr/ADR-001-mirror-pict-bnf-subset.yaml), [ADR-005](adr/ADR-005-builtin-dsl-evaluator.yaml).
 
 ## 1. 目的とスコープ — Purpose & Scope
@@ -38,6 +38,7 @@ The NeoCombi DSL is a strict subset of the PICT constraint language. It serves b
 | Weight `Value (N)` | 水準への重み付け | 同上 |
 | Negative value `~Value` | 異常系テスト用マーカー | 同上 |
 | Default alias separator `\|` | 水準のエイリアス分離記号 | エイリアス機能自体が MVP 範囲外 |
+| 制約 Value 位置の bare Identifier | 制約 RHS の値表現の 1 形態 | PICT 自身が `Incorrect numeric value` で拒否する形なので、subset として受け入れる意味がない（受け入れると DSL は通るが PICT が落ちる罠になる）。Value はクォート文字列か数値のみ |
 
 採用外構文を含む DSL は、パーサが `unsupported in MVP` 診断を返す（[SR-002](requirements/system_requirements.yaml)）。位置情報付きで本ファイル §7 の差分表へリンクする UI を提供する。
 
@@ -145,9 +146,19 @@ ValueList        ::= Value ( ',' Value )*
 
 (* ====================================================================
    Values
+
+   Constraint Value positions deliberately disallow bare Identifier
+   tokens. PICT itself rejects them with `Incorrect numeric value` —
+   PICT requires a quoted string or a number on the right-hand side
+   of any comparison or inside an IN clause. Mirroring that rule
+   keeps NeoCombi's DSL a true subset of PICT (per ADR-001), so the
+   source can be passed verbatim with no translation layer.
+
+   Note: a Level (in a parameter declaration) is a separate rule that
+   still accepts bare Identifier — declarations are PICT-compatible
+   either bare or as quoted strings, and bare is the conventional form.
    ==================================================================== *)
-Value            ::= Identifier
-                   | StringLiteral
+Value            ::= StringLiteral
                    | NumberLiteral
 
 (* ====================================================================
@@ -354,7 +365,7 @@ NeoCombi MVP DSL は PICT BNF のサブセットなので、PICT 入力ファイ
 
 | 診断種別 | 条件 | 例 |
 |---|---|---|
-| Syntax error | 文法エラー | `IF [A] THEN ;` |
+| Syntax error | 文法エラー | `IF [A] THEN ;`、`IF [F] = bareword`（**Value 位置で bare Identifier、PICT が拒否するので源泉で止める**） |
 | Unknown parameter | 未宣言パラメータ参照 | `IF [Undefined] = "x" THEN ...` |
 | Unknown level | 宣言にない水準値の参照 | `IF [OS] = "iOS"`（OS に iOS が無い） |
 | Type mismatch | 型不一致 | `IF [NumericParam] = "string"` |

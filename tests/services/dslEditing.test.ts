@@ -297,3 +297,44 @@ describe('dslEditing / moveLevelTo (drag-drop)', () => {
       .toEqual(['Linux', 'macOS', 'Windows'])
   })
 })
+
+describe('dslEditing / mask level guards (SR-090)', () => {
+  it('appends _MASK_ bare (no quotes) so the source passes through to PICT directly', () => {
+    const src = 'Card: 1234, 5678\n'
+    const next = addLevelToFactor(src, 'Card', '_MASK_')
+    expect(next).toBe('Card: 1234, 5678, _MASK_\n')
+    const card = parse(next).model?.parameters[0]
+    expect(card?.levels.map(l => String(l.value))).toEqual(['1234', '5678', '_MASK_'])
+  })
+
+  it('is idempotent — adding _MASK_ twice on the same factor is a no-op', () => {
+    const src = 'Card: 1234, _MASK_\n'
+    const next = addLevelToFactor(src, 'Card', '_MASK_')
+    expect(next).toBe(src)
+  })
+
+  it('detects an existing quoted "_MASK_" too (idempotency works either way)', () => {
+    const src = 'Card: 1234, "_MASK_"\n'
+    const next = addLevelToFactor(src, 'Card', '_MASK_')
+    expect(next).toBe(src)
+  })
+
+  it('refuses to rename away from _MASK_ (preserves mask semantics)', () => {
+    const src = 'Card: 1234, _MASK_\n'
+    const next = renameLevel(src, 'Card', '_MASK_', 'invisible')
+    expect(next).toBe(src)
+  })
+
+  it('refuses to rename a regular level to _MASK_ (must use the + _MASK_ button)', () => {
+    const src = 'Card: 1234, masked\n'
+    const next = renameLevel(src, 'Card', 'masked', '_MASK_')
+    expect(next).toBe(src)
+  })
+
+  it('still allows removing the _MASK_ level', () => {
+    const src = 'Card: 1234, _MASK_\n'
+    const next = removeLevelFromFactor(src, 'Card', '_MASK_')
+    expect(parse(next).model?.parameters[0]?.levels.map(l => String(l.value)))
+      .toEqual(['1234'])
+  })
+})

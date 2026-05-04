@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useProjectStore } from '../stores/projectStore'
 import { computeForbiddenSlice } from '../engines/dsl'
+import { MASK_LEVEL } from '../engines/dsl/maskLevel'
 import type { Model, ParameterDecl } from '../types/dsl'
 import type { TestSuite } from '../types/testCase'
 import {
@@ -93,15 +94,23 @@ export function ExhaustiveMatrix() {
           <tr>
             <th className="matrix__corner" colSpan={2} aria-hidden="true" />
             {visibleFactors.flatMap(f =>
-              f.levels.map(lv => (
-                <th
-                  key={`col-level-${f.name}::${String(lv.value)}`}
-                  className="matrix__level-header matrix__level-header--col"
-                  scope="col"
-                >
-                  {String(lv.value)}
-                </th>
-              )),
+              f.levels.map(lv => {
+                const v = String(lv.value)
+                const isMask = v === MASK_LEVEL
+                return (
+                  <th
+                    key={`col-level-${f.name}::${v}`}
+                    className={
+                      'matrix__level-header matrix__level-header--col' +
+                      (isMask ? ' matrix__level-header--mask' : '')
+                    }
+                    scope="col"
+                    title={isMask ? 'Mask level' : undefined}
+                  >
+                    {v}
+                  </th>
+                )
+              }),
             )}
           </tr>
         </thead>
@@ -119,8 +128,18 @@ export function ExhaustiveMatrix() {
                   </th>
                 )}
                 <th
-                  className="matrix__level-header matrix__level-header--row"
+                  className={
+                    'matrix__level-header matrix__level-header--row' +
+                    (String(rowLevel.value) === MASK_LEVEL
+                      ? ' matrix__level-header--mask'
+                      : '')
+                  }
                   scope="row"
+                  title={
+                    String(rowLevel.value) === MASK_LEVEL
+                      ? 'Mask level'
+                      : undefined
+                  }
                 >
                   {String(rowLevel.value)}
                 </th>

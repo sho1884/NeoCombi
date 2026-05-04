@@ -5,6 +5,7 @@
 // section formatting are preserved.
 
 import { parse } from '../engines/dsl'
+import { MASK_LEVEL } from '../engines/dsl/maskLevel'
 import type {
   ConstraintNode,
   LevelNode,
@@ -145,7 +146,13 @@ export function removeFactor(source: string, name: string): string {
 }
 
 /**
- * Append a level to a factor's level list (`, NewLevel`).
+ * Append a level to a factor's level list (`, NewLevel`). The mask-level
+ * sentinel ({@link MASK_LEVEL}) is added at most once per factor (SR-090);
+ * a second add request on a factor that already has one is a silent no-op.
+ * The sentinel is emitted as a bare identifier (no surrounding quotes)
+ * so the source is a valid PICT parameter declaration verbatim — PICT
+ * does not dequote level values, so a quoted form would silently break
+ * constraint matching (see memory/pict_quirk_quoted_levels.md).
  */
 export function addLevelToFactor(
   source: string,
@@ -156,6 +163,14 @@ export function addLevelToFactor(
   if (!model) return source
   const factor = model.parameters.find(p => p.name === factorName)
   if (!factor) return source
+  if (newLevel === MASK_LEVEL) {
+    const alreadyHasMask = factor.levels.some(
+      l =>
+        (l.type === 'identifier' || l.type === 'string') &&
+        l.value === MASK_LEVEL,
+    )
+    if (alreadyHasMask) return source
+  }
   if (factor.levels.length === 0) {
     // No existing levels: insert directly after the colon (sigh — locating the
     // colon precisely without lexer help means scanning. Approximate: insert
@@ -184,6 +199,11 @@ export function renameLevel(
   newValue: string,
 ): string {
   if (oldValue === newValue) return source
+  // SR-090: the mask sentinel is rename-locked. Defense in depth — the UI
+  // already disables the chip's rename affordance, but renaming away from
+  // _MASK_ would silently strip the mask semantics, and renaming to _MASK_
+  // would conjure mask state without a tracked add. Both are no-ops here.
+  if (oldValue === MASK_LEVEL || newValue === MASK_LEVEL) return source
   const { model } = parse(source)
   if (!model) return source
   const factor = model.parameters.find(p => p.name === factorName)

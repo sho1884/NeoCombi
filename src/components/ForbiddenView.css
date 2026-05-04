@@ -247,6 +247,15 @@
   text-overflow: ellipsis;
 }
 
+/* SR-091: mask-level header gets a muted-italic treatment so it reads as
+   "this represents the factor being inert" at a glance. The cells under
+   the header keep their normal allowed/forbidden coloring — the cue
+   lives in the header, not the data. */
+.forbidden-view__level-th--mask {
+  color: #90a4ae;
+  font-style: italic;
+}
+
 .forbidden-view__cell {
   width: 2em;
   height: 2em;

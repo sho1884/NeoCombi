@@ -135,3 +135,47 @@
   font-size: 0.78rem;
   font-style: italic;
 }
+
+/* SR-092: warning diagnostics use a yellow band so they distinguish from
+   red errors. PICT generation is not blocked, but the author needs to
+   notice. */
+.dsl-editor__diagnostic--severity-warning {
+  background: #fff8e1;
+}
+
+.dsl-editor__diagnostic--unbound-mask-level .dsl-editor__diagnostic-kind {
+  background: #ffe082;
+  color: #6d4c00;
+}
+
+/* The diagnostic is wrapped in a button when it carries a jump target
+   (currently unbound-mask-level only). Reset button chrome so the row
+   looks identical to non-clickable diagnostics, plus a hover affordance. */
+.dsl-editor__diagnostic-button {
+  appearance: none;
+  border: none;
+  background: transparent;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+
+.dsl-editor__diagnostic--clickable {
+  padding: 0;
+}
+
+.dsl-editor__diagnostic--clickable .dsl-editor__diagnostic-button {
+  padding: 0.35rem 1rem;
+}
+
+.dsl-editor__diagnostic--clickable:hover {
+  background: #fff3cd;
+}

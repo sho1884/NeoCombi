@@ -4,6 +4,7 @@ import { runGenerate } from '../services/runGenerate'
 import { formatTestSuite, testSuiteToHtml } from '../engines/pict'
 import { copyTableToClipboard } from '../services/clipboardWrite'
 import { isHostedDeployment } from '../services/demoMode'
+import { MASK_LEVEL } from '../engines/dsl/maskLevel'
 import './TestCasesTab.css'
 
 export function TestCasesTab() {
@@ -229,11 +230,22 @@ export function TestCasesTab() {
             {testSuite.rows.map((row, idx) => (
               <tr key={`r-${idx}`}>
                 <th className="test-cases-tab__col-idx" scope="row">{idx + 1}</th>
-                {testSuite.factorOrder.map(name => (
-                  <td key={`r-${idx}-${name}`} className="test-cases-tab__cell">
-                    {row.values[name] ?? ''}
-                  </td>
-                ))}
+                {testSuite.factorOrder.map(name => {
+                  const v = row.values[name] ?? ''
+                  const isMask = v === MASK_LEVEL
+                  return (
+                    <td
+                      key={`r-${idx}-${name}`}
+                      className={
+                        'test-cases-tab__cell' +
+                        (isMask ? ' test-cases-tab__cell--mask' : '')
+                      }
+                      title={isMask ? 'Mask level' : undefined}
+                    >
+                      {v}
+                    </td>
+                  )
+                })}
                 <td className="test-cases-tab__col-expected">
                   <ExpectedCell
                     initial={row.expected ?? ''}

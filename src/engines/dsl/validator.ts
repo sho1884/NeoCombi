@@ -22,6 +22,7 @@ import type {
   Predicate,
   ValueLiteral,
 } from '../../types/dsl'
+import { MASK_LEVEL, isMaskLevelNode } from './maskLevel'
 
 export function validateModel(model: Model): Diagnostic[] {
   const diagnostics: Diagnostic[] = []
@@ -37,7 +38,68 @@ export function validateModel(model: Model): Diagnostic[] {
       }
     })
   }
+  validateMaskLevelBindings(model, diagnostics)
   return diagnostics
+}
+
+/**
+ * SR-092: warn when a factor declares the mask sentinel level but no
+ * constraint ever pins the factor to it. A mask level that no constraint
+ * can activate is almost always an authoring oversight — generated test
+ * cases will silently omit the masked situation.
+ *
+ * "Pinned" means the factor appears in a positive equality comparison or
+ * an IN clause whose value set includes the sentinel, anywhere in any
+ * constraint (condition or consequent — having it referenced at all is
+ * enough to suggest the author has wired the state in). Severity is
+ * warning (not error): PICT generation must remain unblocked.
+ */
+function validateMaskLevelBindings(
+  model: Model,
+  out: Diagnostic[],
+): void {
+  const factorsWithMask = model.parameters.filter(p =>
+    p.levels.some(isMaskLevelNode),
+  )
+  if (factorsWithMask.length === 0) return
+
+  const boundFactors = new Set<string>()
+  for (const c of model.constraints) {
+    walkConstraintPredicates(c, predicate => {
+      if (
+        predicate.type === 'comparison' &&
+        predicate.op === '=' &&
+        (predicate.right.type === 'string' || predicate.right.type === 'identifier') &&
+        predicate.right.value === MASK_LEVEL
+      ) {
+        boundFactors.add(predicate.left.name)
+      } else if (predicate.type === 'in') {
+        const includesMask = predicate.values.some(
+          v =>
+            (v.type === 'string' || v.type === 'identifier') &&
+            v.value === MASK_LEVEL,
+        )
+        if (includesMask) boundFactors.add(predicate.left.name)
+      }
+    })
+  }
+
+  for (const factor of factorsWithMask) {
+    if (boundFactors.has(factor.name)) continue
+    const maskNode = factor.levels.find(isMaskLevelNode)!
+    out.push({
+      severity: 'warning',
+      kind: 'unbound-mask-level',
+      message:
+        `Factor [${factor.name}] has a _MASK_ level but no constraint sets ` +
+        `[${factor.name}] = "_MASK_". The masked state will never appear in ` +
+        `generated test cases until you add a rule that triggers it ` +
+        `(for example, IF [<other factor>] = "<value>" THEN ` +
+        `[${factor.name}] = "_MASK_";). Otherwise, remove the _MASK_ level ` +
+        `from [${factor.name}].`,
+      range: maskNode.range,
+    })
+  }
 }
 
 function walkConstraintPredicates(

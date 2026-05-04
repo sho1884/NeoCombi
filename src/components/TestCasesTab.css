@@ -287,6 +287,15 @@
   color: #1a1a1a;
 }
 
+/* SR-091: a cell whose value is the mask sentinel reads "this row, this
+   factor is inert" at a glance. Two-channel cue (color + style). The
+   value text is rendered verbatim, so CSV / JSON exports still carry
+   the literal _MASK_ string. */
+.test-cases-tab__cell--mask {
+  color: #78909c;
+  font-style: italic;
+}
+
 .test-cases-tab__expected-input {
   width: 100%;
   padding: 0.15rem 0.35rem;

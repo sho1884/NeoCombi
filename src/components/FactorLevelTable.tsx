@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useProjectStore } from '../stores/projectStore'
+import { MASK_LEVEL } from '../engines/dsl/maskLevel'
 import './FactorLevelTable.css'
 
 const FACTOR_DRAG_TYPE = 'application/x-neocombi-factor'
@@ -83,6 +84,7 @@ export function FactorLevelTable() {
             return (
               <tr
                 key={p.name}
+                data-factor-name={p.name}
                 className={
                   'factor-level-table__row' +
                   (isDragOver ? ' factor-level-table__row--drop-target' : '')
@@ -176,6 +178,11 @@ export function FactorLevelTable() {
                       value: String(l.value),
                       idx: levelIdx,
                     }))}
+                    hasMaskLevel={p.levels.some(
+                      l =>
+                        (l.type === 'identifier' || l.type === 'string') &&
+                        l.value === MASK_LEVEL,
+                    )}
                     onAdd={value => addLevelToFactor(p.name, value)}
                     onRemove={value => removeLevelFromFactor(p.name, value)}
                     onRename={(oldValue, newValue) =>
@@ -284,6 +291,7 @@ type LevelEntry = {
 type LevelChipsProps = {
   factorName: string
   levels: LevelEntry[]
+  hasMaskLevel: boolean
   onAdd: (value: string) => void
   onRemove: (value: string) => void
   onRename: (oldValue: string, newValue: string) => void
@@ -294,6 +302,7 @@ type LevelChipsProps = {
 function LevelChips({
   factorName,
   levels,
+  hasMaskLevel,
   onAdd,
   onRemove,
   onRename,
@@ -380,6 +389,24 @@ function LevelChips({
           +
         </button>
       )}
+      <button
+        type="button"
+        className="factor-level-table__level-add factor-level-table__level-add--mask"
+        aria-label={
+          hasMaskLevel
+            ? `${factorName} already has a _MASK_ level`
+            : `Add _MASK_ level to ${factorName}`
+        }
+        title={
+          hasMaskLevel
+            ? 'This factor already has a _MASK_ level'
+            : 'Add the _MASK_ level — represents the factor being inert under a triggering constraint'
+        }
+        disabled={hasMaskLevel}
+        onClick={() => onAdd(MASK_LEVEL)}
+      >
+        + _MASK_
+      </button>
     </div>
   )
 }
@@ -419,6 +446,7 @@ function LevelChip({
 }: LevelChipProps) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(level.value)
+  const isMask = level.value === MASK_LEVEL
 
   const commitEdit = () => {
     const trimmed = draft.trim()
@@ -434,6 +462,7 @@ function LevelChip({
     <span
       className={
         'factor-level-table__level factor-level-table__level--' + level.type +
+        (isMask ? ' factor-level-table__level--mask' : '') +
         (isDropTarget ? ' factor-level-table__level--drop-target' : '')
       }
       draggable={!editing}
@@ -473,7 +502,7 @@ function LevelChip({
       >
         ‹
       </button>
-      {editing ? (
+      {editing && !isMask ? (
         <input
           type="text"
           className="factor-level-table__level-input"
@@ -492,6 +521,14 @@ function LevelChip({
           }}
           aria-label={`Rename level ${level.value} of ${factorName}`}
         />
+      ) : isMask ? (
+        <span
+          className="factor-level-table__level-text factor-level-table__level-text--mask"
+          title="_MASK_ level — this factor is inert when a triggering constraint applies. Rename is disabled; remove and re-add to change."
+          aria-label={`Mask level on ${factorName}`}
+        >
+          {level.value}
+        </span>
       ) : (
         <button
           type="button"

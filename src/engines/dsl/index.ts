@@ -15,6 +15,7 @@ export {
 } from './evaluator'
 export { extractSuggestedSlices } from './extractSlices'
 export { validateModel } from './validator'
+export { MASK_LEVEL, isMaskLevel, isMaskLevelNode } from './maskLevel'
 export type {
   Model,
   ParameterDecl,

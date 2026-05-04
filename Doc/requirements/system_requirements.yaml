@@ -45,6 +45,15 @@ requirements:
       clauses (IF/THEN/ELSE), comparison operators (=, <>, >, >=, <, <=),
       logical operators (AND/OR/NOT), and IN { }. LIKE, submodels, weights,
       and negative-value markers are reported as "unsupported in MVP" errors.
+
+      Constraint Value positions (the right-hand side of comparisons and the
+      members of an IN { ... } clause) accept only quoted strings or numbers
+      — bare identifiers are rejected as syntax errors. This mirrors PICT's
+      own rule: PICT rejects bare values in constraints with `Incorrect
+      numeric value`, so accepting them in our DSL would silently produce
+      DSL that fails at PICT-invocation time. Catching it at parse time
+      keeps the DSL a true subset of PICT (per ADR-001) and surfaces the
+      problem with editor-position information instead of a runtime error.
     scenarios:
       - context: "User edits DSL"
         action: "Editor content changes"
@@ -527,48 +536,53 @@ requirements:
   SR-090:
     parent: [UR-008]
     category: mask_level
-    function: "Recognize a level as the mask level via the fixed sentinel value <MASK>"
+    function: "Recognize a level as the mask level via the fixed sentinel value _MASK_"
     convention: |
-      A level whose value is exactly the string "<MASK>" (case-sensitive,
-      angle brackets included) is treated by NeoCombi as the mask level
-      for that factor. The same fixed token is used across all factors,
-      so designers always type the same value and readers always see the
-      same symbol.
+      A level whose value is exactly the string "_MASK_" (case-sensitive,
+      leading and trailing underscores included) is treated by NeoCombi
+      as the mask level for that factor. The same fixed token is used
+      across all factors, so designers always type the same value and
+      readers always see the same symbol.
 
       Rationale for the choice:
-      - Inherits the literal "MASK" naming from PICT-PAPP, immediately
+      - Inherits the "MASK" naming from PICT-PAPP, immediately
         recognizable to designers coming from the predecessor tool.
-      - Angle brackets read universally as "placeholder / meta-token"
-        (XML tags, BNF nonterminals, template syntax), reinforcing
+      - The leading and trailing underscores follow the widely
+        understood "internal / framework-magic name" convention
+        (Python's `_private`, `__dunder__`), signalling at a glance
         "this is not an ordinary level value".
       - Cross-tool conceptual link with the sibling tool NeoCEG, whose
         MASK constraint expresses the same authoring intent (a factor
         is inert under specific conditions). NeoCombi expresses it as
         a level value plus IF-THEN rather than as a constraint operator,
         but the underlying test-design concept is the same — and the
-        shared "MASK" name makes that connection visible.
-      - Inside a PICT string literal, "<" and ">" carry no syntactic
-        meaning, so the value passes through to PICT verbatim as
-        "<MASK>" with no quoting hazards.
+        shared "MASK" name keeps that connection visible.
+      - Plain-ASCII underscores+letters: the token is a valid identifier
+        in both NeoCombi's DSL and PICT, so the source can be passed
+        directly to PICT with no translation layer (per ADR-001 the
+        DSL is a strict subset of PICT). The author writes a bare
+        `_MASK_` in the parameter declaration and a quoted `"_MASK_"`
+        in constraint references, the same shape as every other
+        non-numeric value in PICT.
 
       Constraints:
-      - A factor has at most one "<MASK>" level. Duplicate declarations
+      - A factor has at most one `_MASK_` level. Duplicate declarations
         on the same factor are a model error.
       - The token is part of the level value itself — no separate
         data-model flag. Detection is exact string match.
-      - The "<MASK>" level is rename-locked in the UI: editing the
+      - The `_MASK_` level is rename-locked in the UI: editing the
         token's text would silently strip its mask semantics, so the
         Factor / Level table disallows in-place renaming. Removal and
-        re-addition (via the "+ <MASK>" affordance) are the only edit
+        re-addition (via the "+ _MASK_" affordance) are the only edit
         paths.
     scenarios:
-      - context: "Level value equals <MASK>"
+      - context: "Level value equals _MASK_"
         action: "Parser / table reads the level"
         outcome: "Level is tagged as the factor's mask level for downstream display and lint"
-      - context: "Level value contains <MASK> as a substring but not as the whole value"
+      - context: "Level value contains _MASK_ as a substring but not as the whole value"
         action: "Parser / table reads the level"
         outcome: "Treated as a regular level (only an exact match identifies the mask level)"
-      - context: "A factor declares <MASK> more than once"
+      - context: "A factor declares _MASK_ more than once"
         action: "Validation runs"
         outcome: "Emit a duplicate-declaration error"
 
@@ -616,17 +630,17 @@ requirements:
       iterative authoring, while silent acceptance is what UR-008 is
       explicitly preventing — so warning is the right middle ground.
     rule: |
-      For each "<MASK>" level declared on factor F, at least one constraint
-      in the model must bind F to "<MASK>" (i.e., a clause whose consequence
-      assigns F = "<MASK>", such as IF <condition> THEN [F] = "<MASK>").
-      If no such binding exists, the model is incomplete: "<MASK>" can
+      For each `_MASK_` level declared on factor F, at least one constraint
+      in the model must bind F to `_MASK_` (i.e., a clause whose consequence
+      assigns F = `"_MASK_"`, such as IF <condition> THEN [F] = "_MASK_").
+      If no such binding exists, the model is incomplete: `_MASK_` can
       never become active in any generated test case, which is almost
       always an authoring oversight rather than intent.
     scenarios:
-      - context: "Factor F declares <MASK> level; no constraint binds F to <MASK>"
+      - context: "Factor F declares _MASK_ level; no constraint binds F to _MASK_"
         action: "Validation runs"
         outcome: "Emit a warning diagnostic identifying F, with a hint that a triggering IF-THEN is missing and a sample form"
-      - context: "At least one constraint binds F to <MASK>"
+      - context: "At least one constraint binds F to _MASK_"
         action: "Validation runs"
         outcome: "No diagnostic emitted for this mask level"
       - context: "Factor has no mask level"

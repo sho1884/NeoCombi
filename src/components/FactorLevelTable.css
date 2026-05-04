@@ -310,6 +310,63 @@
   background: #f5f7f8;
 }
 
+/* --- Mask level (UR-008 / SR-090..091) --------------------------------- */
+
+/* The "+ _MASK_" affordance — wider than the basic "+" because it carries
+   text. Same dashed-border idiom as the regular add button. */
+.factor-level-table__level-add--mask {
+  width: auto;
+  height: auto;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  font-style: italic;
+  color: #78909c;
+  border-color: #b0bec5;
+}
+
+.factor-level-table__level-add--mask:hover:not(:disabled) {
+  background: #eceff1;
+  color: #455a64;
+  border-color: #607d8b;
+}
+
+.factor-level-table__level-add--mask:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* The chip representing an existing mask level. Two-channel cue: muted
+   color + italic, so the distinction survives without color. */
+.factor-level-table__level--mask {
+  background: #eceff1;
+  color: #546e7a;
+  border-color: #cfd8dc;
+  font-style: italic;
+}
+
+.factor-level-table__level-text--mask {
+  cursor: not-allowed;
+  user-select: text;
+  font-style: italic;
+}
+
+.factor-level-table__level-text--mask:hover {
+  text-decoration: none;
+}
+
+/* SR-092: brief highlight applied when a diagnostic click jumps to this
+   factor row, so the user sees where they landed. The class is added by
+   the DslEditor click handler and removed after a timeout. */
+.factor-level-table__row--flash {
+  animation: factor-level-table__row-flash 1.5s ease-out;
+}
+
+@keyframes factor-level-table__row-flash {
+  0% { background: #fff8e1; }
+  100% { background: transparent; }
+}
+
 /* --- Remove factor button ---------------------------------------------- */
 
 .factor-level-table__remove {

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useProjectStore } from '../stores/projectStore'
 import { computeForbiddenSlice, extractSuggestedSlices } from '../engines/dsl'
+import { MASK_LEVEL } from '../engines/dsl/maskLevel'
 import type { ForbiddenSliceCell } from '../types/dsl'
 import type { ForbiddenSliceConfig } from '../types/project'
 import {
@@ -266,21 +267,25 @@ type SliceResultProps = {
 function SliceResult({ slice }: SliceResultProps) {
   const model = useProjectStore(s => s.parseResult.model)
   const diagnostics = useProjectStore(s => s.parseResult.diagnostics)
+  // Only errors block matrix computation. Warnings (e.g. unbound mask
+  // levels per SR-092) leave the parsed model usable; computing the
+  // matrix is still meaningful and informative.
+  const hasErrors = diagnostics.some(d => d.severity === 'error')
 
   const result = useMemo(() => {
     if (!model) return null
-    if (diagnostics.length > 0) return null
+    if (hasErrors) return null
     if (slice.conditionFactors.length === 0 || !slice.constrainedFactor) return null
     return computeForbiddenSlice(
       model,
       [...slice.conditionFactors, slice.constrainedFactor],
     )
-  }, [model, diagnostics, slice.conditionFactors, slice.constrainedFactor])
+  }, [model, hasErrors, slice.conditionFactors, slice.constrainedFactor])
 
-  if (!model || diagnostics.length > 0) {
+  if (!model || hasErrors) {
     return (
       <div className="forbidden-view__hint">
-        Fix DSL diagnostics to compute the forbidden matrix.
+        Fix DSL errors to compute the forbidden matrix.
       </div>
     )
   }
@@ -525,8 +530,12 @@ function ForbiddenMatrix({
             {constrainedLevels.map(lv => (
               <th
                 key={`col-${lv}`}
-                className="forbidden-view__level-th forbidden-view__level-th--col"
+                className={
+                  'forbidden-view__level-th forbidden-view__level-th--col' +
+                  (lv === MASK_LEVEL ? ' forbidden-view__level-th--mask' : '')
+                }
                 scope="col"
+                title={lv === MASK_LEVEL ? 'Mask level' : undefined}
               >
                 {lv}
               </th>
@@ -539,8 +548,12 @@ function ForbiddenMatrix({
               {row.tuple.map((lv, cIdx) => (
                 <th
                   key={`row-${rIdx}-cond-${cIdx}`}
-                  className="forbidden-view__level-th forbidden-view__level-th--row"
+                  className={
+                    'forbidden-view__level-th forbidden-view__level-th--row' +
+                    (lv === MASK_LEVEL ? ' forbidden-view__level-th--mask' : '')
+                  }
                   scope="row"
+                  title={lv === MASK_LEVEL ? 'Mask level' : undefined}
                 >
                   {lv}
                 </th>

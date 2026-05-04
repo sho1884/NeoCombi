@@ -502,12 +502,23 @@ class Parser {
       }
     }
     if (t.kind === 'identifier') {
+      // Constraint Value positions disallow bare identifiers — see
+      // DSL_Grammar_Specification.md §4 (Value rule). PICT itself
+      // rejects them with `Incorrect numeric value`, so we catch the
+      // problem at parse time with a helpful, position-anchored error
+      // instead of letting it slip through to PICT invocation.
       this.advance()
-      return { type: 'identifier', value: t.text, range: t.range }
+      this.report(
+        'syntax',
+        `Constraint values must be quoted strings or numbers; got bare identifier "${t.text}". Wrap it: "${t.text}".`,
+        t.range,
+        'See DSL_Grammar_Specification.md §4 (Value rule).',
+      )
+      return null
     }
     this.report(
       'syntax',
-      `Expected value, got ${describe(t)}`,
+      `Expected value (quoted string or number), got ${describe(t)}`,
       t.range,
     )
     return null

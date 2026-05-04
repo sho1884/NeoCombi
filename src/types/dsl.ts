@@ -132,6 +132,7 @@ export type DiagnosticKind =
   | 'unknown-parameter'
   | 'unknown-level'
   | 'type-mismatch'
+  | 'unbound-mask-level'
 
 export type Diagnostic = {
   severity: DiagnosticSeverity
