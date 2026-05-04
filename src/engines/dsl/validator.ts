@@ -91,10 +91,10 @@ function validateMaskLevelBindings(
       severity: 'warning',
       kind: 'unbound-mask-level',
       message:
-        `因子 [${factor.name}] に設定された _MASK_ 水準に対する制約式が` +
-        `定義されていないか、または不備があります。` +
-        `どういう条件で _MASK_ 水準になるか、そしてそれ以外の時には ` +
-        `_MASK_ 水準になってはいけないという制約関係が必要なはずです。`,
+        `Factor [${factor.name}] has a _MASK_ level, but the constraint ` +
+        `clause for it is missing or incomplete. You need to specify ` +
+        `both: under what conditions the factor becomes _MASK_, and ` +
+        `that it must not be _MASK_ otherwise.`,
       range: maskNode.range,
     })
   }

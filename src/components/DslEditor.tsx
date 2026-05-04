@@ -3,7 +3,7 @@ import { useProjectStore } from '../stores/projectStore'
 import type { Diagnostic } from '../types/dsl'
 import './DslEditor.css'
 
-const MASK_FACTOR_PATTERN = /^因子 \[([^\]]+)\] に設定された _MASK_/
+const MASK_FACTOR_PATTERN = /^Factor \[([^\]]+)\] has a _MASK_/
 
 export function DslEditor() {
   const source = useProjectStore(s => s.source)
