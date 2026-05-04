@@ -91,12 +91,10 @@ function validateMaskLevelBindings(
       severity: 'warning',
       kind: 'unbound-mask-level',
       message:
-        `Factor [${factor.name}] has a _MASK_ level but no constraint sets ` +
-        `[${factor.name}] = "_MASK_". The masked state will never appear in ` +
-        `generated test cases until you add a rule that triggers it ` +
-        `(for example, IF [<other factor>] = "<value>" THEN ` +
-        `[${factor.name}] = "_MASK_";). Otherwise, remove the _MASK_ level ` +
-        `from [${factor.name}].`,
+        `因子 [${factor.name}] に設定された _MASK_ 水準に対する制約式が` +
+        `定義されていないか、または不備があります。` +
+        `どういう条件で _MASK_ 水準になるか、そしてそれ以外の時には ` +
+        `_MASK_ 水準になってはいけないという制約関係が必要なはずです。`,
       range: maskNode.range,
     })
   }

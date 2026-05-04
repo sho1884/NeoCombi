@@ -630,12 +630,15 @@ requirements:
       iterative authoring, while silent acceptance is what UR-008 is
       explicitly preventing — so warning is the right middle ground.
     rule: |
-      For each `_MASK_` level declared on factor F, at least one constraint
-      in the model must bind F to `_MASK_` (i.e., a clause whose consequence
-      assigns F = `"_MASK_"`, such as IF <condition> THEN [F] = "_MASK_").
-      If no such binding exists, the model is incomplete: `_MASK_` can
-      never become active in any generated test case, which is almost
-      always an authoring oversight rather than intent.
+      Each `_MASK_` level on factor F requires a complete binding: a
+      constraint specifying when F is `_MASK_`, and a constraint
+      specifying that F must not be `_MASK_` otherwise. Without these,
+      PICT treats `_MASK_` as a regular level and pairs it with arbitrary
+      values of other factors — generating test cases where F is in the
+      mask state under conditions that should not allow it. The warning
+      currently fires when no constraint binds F to `_MASK_` at all (the
+      most common oversight); the reverse direction is part of the
+      required spec but is not separately detected in this check.
     scenarios:
       - context: "Factor F declares _MASK_ level; no constraint binds F to _MASK_"
         action: "Validation runs"

@@ -186,7 +186,7 @@ mask 水準の authoring 補助。DSL は変更せず、固定トークン `_MAS
 |---|---|---|
 | SR-090 | Recognize a level as the mask level via the fixed sentinel value `_MASK_` | 全因子共通の固定文字列 `_MASK_`（case-sensitive、前後アンダースコア込み）を mask 水準として識別。PICT-PAPP の `MASK` 命名継承＋姉妹ツール NeoCEG の MASK 制約との概念リンクを明示。アンダースコアで囲んで「framework-magic name」感を出すと同時に、PICT 識別子規則と完全互換（DSL ソースを直接 PICT へ渡せる、ADR-001 の subset 原則を満たす）。Factor 表で rename 不可（削除＋再追加のみ）、因子あたり最大 1 個 |
 | SR-091 | Display mask levels distinctly across level-displaying views | 因子・水準表 / 禁則マトリクス（列ヘッダ）/ coverage マトリクス（行・列ヘッダ）/ テストケース表 の **4 面** で統一的に muted-italic 表示（色 + 字体の 2 チャネル）。値文字列はそのまま `_MASK_`（コピペ・CSV エクスポートで literal 維持）。**DSL エディタは対象外** — 素 textarea ゆえスタイル付与に syntax-highlight エディタ移行が必要で UR-008 のスコープを超える |
-| SR-092 | Warn when a mask level has no triggering constraint | `_MASK_` 水準が宣言されているのに、その水準を consequence として束縛する IF-THEN が無ければ「永遠に active にならない」モデル不備として **warning**（severity = warning、PICT 実行はブロックしない）。クリックで Factor 行へジャンプ |
+| SR-092 | Warn when a mask level has no triggering constraint | `_MASK_` 水準には「いつ `_MASK_` になるか」と「それ以外の場合は `_MASK_` であってはならない」を両方指定する制約式が必要。これが無いと PICT は `_MASK_` を普通の水準として他因子の任意の値とペア被覆し、本来 mask にならないはずの場面で mask 状態のテストケースが生成される。モデル不備として **warning**（severity = warning、PICT 実行はブロックしない）。現在のチェックは「`_MASK_` への束縛が一切無い」場合のみ検知（reverse direction 専用チェックは未実装）。クリックで Factor 行へジャンプ |
 
 ## 5. Traceability Matrix（UR ↔ SR）
 
