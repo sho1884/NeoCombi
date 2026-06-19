@@ -5,9 +5,10 @@ import { runDecisionTable } from '../services/runDecisionTable'
 import { formatTestSuite, testSuiteToHtml } from '../engines/pict'
 import {
   formatDecisionTable,
+  FORBIDDEN_MARK,
   type DecisionTableOutRow,
 } from '../engines/dsl/formatDecisionTable'
-import { copyTableToClipboard } from '../services/clipboardWrite'
+import { copyTableToClipboard, escapeHtml } from '../services/clipboardWrite'
 import { isHostedDeployment } from '../services/demoMode'
 import { MASK_LEVEL } from '../engines/dsl/maskLevel'
 import type { TestSuite } from '../types/testCase'
@@ -20,13 +21,37 @@ function isDecisionTable(suite: TestSuite | null): boolean {
 
 /** Render a decision-table suite in the requested text format (forbidden + expected columns). */
 function formatDecisionSuite(suite: TestSuite, format: 'csv' | 'json'): string {
-  const rows: DecisionTableOutRow[] = suite.rows.map(r => {
+  return formatDecisionTable(suite.factorOrder, decisionOutRows(suite), format)
+}
+
+function decisionOutRows(suite: TestSuite): DecisionTableOutRow[] {
+  return suite.rows.map(r => {
     const values = suite.factorOrder.map(n => r.values[n] ?? '')
     return r.expected !== undefined
       ? { values, forbidden: r.forbidden ?? false, expected: r.expected }
       : { values, forbidden: r.forbidden ?? false }
   })
-  return formatDecisionTable(suite.factorOrder, rows, format)
+}
+
+/**
+ * HTML <table> for the clipboard that MATCHES the on-screen decision table:
+ * a Forbidden column (same marker as CSV) plus Expected. Kept in step with the
+ * plain-text payload so both clipboard flavours carry the same columns.
+ */
+function decisionSuiteToHtml(suite: TestSuite): string {
+  const headers = [...suite.factorOrder, 'Forbidden', 'Expected']
+  const headerHtml = headers.map(h => `<th>${escapeHtml(h)}</th>`).join('')
+  const rowsHtml = decisionOutRows(suite)
+    .map(row => {
+      const cells = [
+        ...row.values,
+        row.forbidden ? FORBIDDEN_MARK : '',
+        row.expected ?? '',
+      ]
+      return '<tr>' + cells.map(c => `<td>${escapeHtml(c)}</td>`).join('') + '</tr>'
+    })
+    .join('')
+  return `<table><thead><tr>${headerHtml}</tr></thead><tbody>${rowsHtml}</tbody></table>`
 }
 
 export function TestCasesTab() {
@@ -129,7 +154,9 @@ export function TestCasesTab() {
     // selection drives the text/plain payload so VS Code / pytest /
     // automation tools see the format they actually want, while
     // Excel / Sheets keep working through the HTML path.
-    const html = testSuiteToHtml(testSuite)
+    const html = showForbidden
+      ? decisionSuiteToHtml(testSuite)
+      : testSuiteToHtml(testSuite)
     const plain = showForbidden
       ? formatDecisionSuite(testSuite, format)
       : formatTestSuite(testSuite, format)
@@ -171,20 +198,32 @@ export function TestCasesTab() {
 
   const hostedBanner = isHostedDeployment() ? (
     <div className="test-cases-tab__hosted-banner" role="status">
-      <strong>Demo mode.</strong> A 50-factor sample is preloaded; the
-      cases below come from a frozen PICT run baked into the bundle.
-      Editing the model on this hosted page works (authoring, forbidden
-      matrix, save / open all live) but <strong>Re-generate</strong>{' '}
-      will fail because the PICT service isn&apos;t running here. Run
-      NeoCombi locally to generate from your own model (
-      <a
-        href="https://github.com/sho1884/NeoCombi#author-in-the-gui"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        setup
-      </a>
-      ).
+      {generationMode === 'decision-table' ? (
+        <>
+          <strong>Demo mode.</strong> Decision-table generation runs entirely
+          in your browser, so <strong>Generate</strong> works here — no PICT
+          service needed. (Pairwise mode is the one that needs a local PICT
+          service.)
+        </>
+      ) : (
+        <>
+          <strong>Demo mode.</strong> A 50-factor sample is preloaded; the
+          cases below come from a frozen PICT run baked into the bundle.
+          Editing the model on this hosted page works (authoring, forbidden
+          matrix, save / open all live) but <strong>Re-generate</strong>{' '}
+          will fail because the PICT service isn&apos;t running here — switch
+          Mode to <strong>Decision table</strong> to generate in-browser, or
+          run NeoCombi locally (
+          <a
+            href="https://github.com/sho1884/NeoCombi#author-in-the-gui"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            setup
+          </a>
+          ).
+        </>
+      )}
     </div>
   ) : null
 
@@ -212,14 +251,16 @@ export function TestCasesTab() {
           {error ? <span className="test-cases-tab__error">{error}</span> : null}
         </div>
         <div className="test-cases-tab__no-suite">
-          <h2 className="test-cases-tab__no-suite-title">No test cases yet</h2>
+          <h2 className="test-cases-tab__no-suite-title">
+            {generationMode === 'decision-table' ? 'No decision table yet' : 'No test cases yet'}
+          </h2>
           <p className="test-cases-tab__no-suite-lede">
-            Add factors and levels (DSL or Factors &amp; Levels tab); test cases
-            will be generated automatically once the DSL parses cleanly. Or click{' '}
+            Add factors and levels (DSL or Factors &amp; Levels tab); output is
+            generated automatically once the DSL parses cleanly. Or click{' '}
             <strong>Generate</strong>.{' '}
             {generationMode === 'decision-table'
-              ? 'Decision-table mode lists every combination (forbidden ones marked).'
-              : 'Pairwise mode runs PICT.'}
+              ? 'Decision-table mode lists every combination in-browser (forbidden ones marked) — no PICT needed.'
+              : 'Pairwise mode runs PICT to produce a reduced covering set.'}
           </p>
         </div>
       </div>
@@ -252,7 +293,11 @@ export function TestCasesTab() {
           type="button"
           className="test-cases-tab__copy-btn"
           onClick={() => void onCopy()}
-          title="Copy as HTML table + TSV (paste-friendly to Excel and to plain-text editors)"
+          title={
+            showForbidden
+              ? `Copy the decision table — HTML for Excel + ${format.toUpperCase()} text, both with the Forbidden column`
+              : `Copy as an HTML table for Excel + ${format.toUpperCase()} text for plain-text editors`
+          }
         >
           {copied ? '✓ Copied' : 'Copy'}
         </button>
@@ -271,7 +316,11 @@ export function TestCasesTab() {
           type="button"
           className="test-cases-tab__download"
           onClick={() => void onDownload()}
-          title="Download as a file (CSV / TSV / JSON)"
+          title={
+            showForbidden
+              ? `Download the decision table as ${format.toUpperCase()} (includes the Forbidden column)`
+              : `Download as ${format.toUpperCase()}`
+          }
         >
           Download
         </button>
@@ -311,7 +360,7 @@ export function TestCasesTab() {
                 <th className="test-cases-tab__col-idx" scope="row">{idx + 1}</th>
                 {showForbidden ? (
                   <td className="test-cases-tab__col-forbidden" aria-label={row.forbidden ? 'forbidden' : 'allowed'}>
-                    {row.forbidden ? '✕' : ''}
+                    {row.forbidden ? FORBIDDEN_MARK : ''}
                   </td>
                 ) : null}
                 {testSuite.factorOrder.map(name => {
