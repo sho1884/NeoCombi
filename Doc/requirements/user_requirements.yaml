@@ -6,7 +6,7 @@
 # See Doc/PROJECT_KICKOFF.md for the architectural rationale and final vision.
 
 version: "0.2-draft"
-last_updated: "2026-05-04"
+last_updated: "2026-06-19"
 
 requirements:
   UR-001:
@@ -111,3 +111,46 @@ requirements:
         binding the designer should resolve (a mask level with no
         triggering condition is almost always an incomplete model).
     priority: medium
+
+  UR-009:
+    task: "Design test cases with a decision table (all-combination generation)"
+    background: >
+      Decision-table test design: when the factor set is small, the designer
+      wants every combination of the factors' levels laid out, the infeasible
+      ones marked, and an expected result filled per combination — each allowed
+      combination then being a test case. This is the predecessor tool
+      PICT-PAPP's "all-combination (decision-table)" feature, which NeoCombi
+      inherits but is currently missing. It is the complement of pairwise
+      (UR-001): pairwise (PICT) is for many factors where the full product
+      explodes; the decision table is for few factors where exhaustive coverage
+      is the goal. The designer chooses between the two as a generation mode.
+
+      Confirmed against PICT-PAPP's behavior (by the tool's author): the table
+      is the FULL Cartesian product of all factors' levels with EVERY row kept
+      and the forbidden rows MARKED, not excluded. Forbidden marking reuses
+      NeoCombi's built-in DSL evaluator (the same one behind the forbidden view,
+      UR-003), so PICT is not involved — PICT cannot emit a marked full product.
+      The expected-value column (UR-005) and CSV/JSON export apply.
+
+      Scale guardrail: because forbidden rows are kept, the product is not
+      reduced, so generation is refused when the product exceeds 512
+      combinations (a decision table is a small-factor-set technique, but a
+      user may build an oversized model anyway). The count and the limit are
+      shown; nothing partial is produced.
+
+      Three deployments, each a co-equal deliverable, each a DIFFERENT
+      configuration of one shared pure-TypeScript core:
+        - GUI (browser): the core runs in-browser; the decision table is a
+          generation mode of the test case table.
+        - CLI (Node, CI/CD): the core runs in one process; reads .tmodel, writes
+          CSV/JSON or fails with an exit code. No PICT, no network.
+        - HTTP API (server, CI/CD): the core runs in the service (the existing
+          pict-service gains a /decision-table endpoint beside /generate); a
+          remote caller invokes it over the network.
+      What matters is that it can be embedded in a CI/CD pipeline as either a
+      CLI or an API. Output is atomic in every deployment — a complete table or
+      a clean error; a partial table is never emitted. The detailed interfaces
+      (core contract, CLI exit codes, HTTP status codes) and the three
+      configuration diagrams are in the system requirements and
+      Requirements_Specification.md.
+    priority: high

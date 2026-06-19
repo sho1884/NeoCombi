@@ -12,10 +12,12 @@
 #   persistence          SR-070..079  (.tmodel file I/O)
 #   cli_mode             SR-080..089  (CI/CD pipeline use)
 #   mask_level           SR-090..099  (UR-008 — mask-level authoring assistance)
+#   all_combinations     SR-100..109  (UR-009 — decision-table: full Cartesian, forbidden marked;
+#                                       GUI/CLI/API deployments of one pure core)
 # UR-007 (NL -> AI -> DSL) is intentionally not realized by any SR yet; deferred to v2.
 
 version: "0.2-draft"
-last_updated: "2026-05-04"
+last_updated: "2026-06-19"
 
 # =============================================================================
 # DSL Authoring (parent: UR-002)
@@ -338,13 +340,25 @@ requirements:
 # =============================================================================
 
   SR-050:
-    parent: [UR-001]
+    parent: [UR-001, UR-009]
     category: test_case_table
-    function: "Display PICT-generated test cases"
+    function: "Display generated test cases"
+    note: |
+      One table serves both generation modes (SR-100). In pairwise / N-wise
+      mode it shows the PICT-reduced set (no forbidden rows). In decision-table
+      mode it shows the full Cartesian product — every row, including forbidden
+      ones — with a forbidden-marker column (SR-102). The expected-value column
+      (SR-051) and export (SR-053) apply in both modes; forbidden rows are not
+      special-cased for expected values (the cell is editable but typically left
+      empty). This is the GUI surface only; the CLI and HTTP API render the same
+      decision-table result in their own formats (SR-104 / SR-105).
     scenarios:
-      - context: "PICT has produced output"
+      - context: "Pairwise / N-wise generation has produced output"
         action: "Test cases tab is rendered"
-        outcome: "Table shows one row per test case; columns are factors + expected value"
+        outcome: "Table shows one row per test case; columns are factors + expected value; no forbidden-marker column"
+      - context: "Decision-table generation has produced output"
+        action: "Test cases tab is rendered"
+        outcome: "Table shows one row per full-factor combination including forbidden ones; columns are factors + forbidden marker + expected value"
       - context: "No generation has run yet"
         action: "Tab is rendered"
         outcome: "Show empty-state message with 'Generate' action"
@@ -377,7 +391,7 @@ requirements:
         outcome: "Expected values for rows that no longer exist are dropped (silently; recoverable via undo)"
 
   SR-053:
-    parent: [UR-001, UR-005]
+    parent: [UR-001, UR-005, UR-009]
     category: test_case_table
     function: "Export test cases as CSV / JSON"
     scenarios:
@@ -387,6 +401,9 @@ requirements:
       - context: "Test cases exist"
         action: "User selects 'Export as JSON'"
         outcome: "Emit JSON array with one object per test case"
+      - context: "Current output is a decision table"
+        action: "User exports"
+        outcome: "Include the forbidden-marker column / field so the exported decision table preserves which rows are forbidden"
 
 # =============================================================================
 # PICT Invocation (parent: UR-001)
@@ -455,7 +472,7 @@ requirements:
       - "DSL source text (single source of truth for factors, levels, constraints)"
       - "Expected values keyed by stable factor / level ids"
       - "View state: current bottom-pane tab, factor-checkbox visibility, forbidden-view slice configurations"
-      - "PICT generation settings: order N (path is user-level, not project-level)"
+      - "Generation settings: generation mode (pairwise/N-wise vs decision-table) and order N (PICT path is user-level, not project-level)"
     scenarios:
       - context: "Project has unsaved changes"
         action: "User selects 'Save'"
@@ -485,13 +502,16 @@ requirements:
 # Headless invocation for CI/CD. Same deterministic behavior as GUI generation.
 
   SR-080:
-    parent: [UR-006]
+    parent: [UR-006, UR-009]
     category: cli_mode
     function: "Run NeoCombi as CLI consuming .tmodel input"
     scenarios:
       - context: "User runs 'neocombi generate <input.tmodel>'"
         action: "CLI executes"
         outcome: "Read .tmodel, invoke PICT, emit test cases (CSV by default) to stdout"
+      - context: "User passes '--decision-table'"
+        action: "CLI executes"
+        outcome: "Generate the decision table via the built-in core (no PICT); behavior and exit codes are specified by SR-104 (atomic output; exit 5 on >512)"
       - context: "User passes '--format json'"
         action: "CLI executes"
         outcome: "Emit JSON array instead of CSV"
@@ -515,12 +535,21 @@ requirements:
         outcome: "Exit code matches the documented set so CI scripts can branch deterministically"
 
   SR-082:
-    parent: [UR-006]
+    parent: [UR-006, UR-009]
     category: cli_mode
     function: "Run headless without GUI dependencies"
+    note: |
+      Applies to BOTH generation modes. Pairwise / N-wise gets a headless path
+      for free because its engine is the external PICT CLI, spawned identically
+      from GUI and CLI (SR-060/080). The decision table has NO such external CLI
+      to inherit — its engine is the built-in pure-TS core (SR-101) — so that
+      core lives in the shared engine layer (ADR-004) and is callable headless,
+      with the GUI (SR-100), CLI (SR-104), and HTTP API (SR-105) as the three
+      thin consumers of that one core. The CLI and API forms are co-equal
+      requirements of UR-009, not optional add-ons.
     scenarios:
       - context: "Environment has no display server (headless CI)"
-        action: "CLI executes"
+        action: "CLI executes (either mode)"
         outcome: "Generation succeeds without loading any GUI module"
       - context: "GUI bundle is not installed"
         action: "CLI executes"
@@ -652,3 +681,178 @@ requirements:
       - context: "User clicks the warning"
         action: "Click is dispatched"
         outcome: "Focus jumps to the Factor / Level table row for F (consistent with existing diagnostic-to-source navigation)"
+
+# =============================================================================
+# Decision-Table (All-Combination) Generation (parent: UR-009)
+# =============================================================================
+# Decision-table test design: enumerate the FULL Cartesian product of all
+# factors' levels, keep every row, and MARK the forbidden ones (do not exclude)
+# so the designer fills an expected result per row and each allowed row becomes
+# a test case. Confirmed against PICT-PAPP's behavior by the tool's author. The
+# complement of pairwise: pairwise (PICT) is for many factors where the product
+# explodes; the decision table is for few factors where exhaustive coverage is
+# wanted. Produced by NeoCombi's own pure-TypeScript core (PICT cannot emit a
+# marked full product), which is shared in-process by three deployments — GUI,
+# CLI, and HTTP API — each with a different configuration (see SR-104/105 and
+# Requirements_Specification.md "Decision-table architecture").
+#
+# The one internal contract every deployment depends on:
+#   generateDecisionTable(model) -> DecisionTableResult
+#     | { ok: true;  columns; rows: [{ values; forbidden }] }
+#     | { ok: false; reason: 'too-large';     count; limit: 512 }
+#     | { ok: false; reason: 'invalid-model'; diagnostics }
+#   Pure, synchronous, no IO/DOM/HTTP. Returns a COMPLETE table or an error —
+#   never a partial table. CLI exit codes and HTTP status codes are both just a
+#   mapping of these three result variants.
+
+  SR-100:
+    parent: [UR-001, UR-009]
+    category: all_combinations
+    function: "Select test-case generation mode (pairwise / N-wise vs decision-table)"
+    note: |
+      The GUI generation control offers two modes. Pairwise / N-wise routes to
+      PICT with /o:N (SR-060/062). Decision-table routes to the built-in core
+      (SR-101) and does not require a configured PICT path. The chosen mode is
+      persisted on the project (SR-070). This SR is the GUI surface; the CLI
+      and HTTP API expose the same decision-table core via SR-104 / SR-105.
+    scenarios:
+      - context: "User opens the generation control"
+        action: "User selects a generation mode"
+        outcome: "The selected mode is stored on the project and used on the next generation run"
+      - context: "Decision-table mode is selected and PICT is not configured"
+        action: "User triggers generation"
+        outcome: "Generation proceeds (PICT is not needed for this mode)"
+
+  SR-101:
+    parent: [UR-009]
+    category: all_combinations
+    function: "Generate the decision table via the built-in core (the shared contract)"
+    note: |
+      generateDecisionTable(model) is a PURE engine-layer function (no IO / DOM /
+      HTTP, synchronous, deterministic). It is the single contract that the GUI
+      (SR-100), CLI (SR-104), and HTTP API (SR-105) all consume — they are thin
+      adapters that map its result to their environment. It reuses the built-in
+      evaluator's Cartesian enumeration (SR-030) for forbidden marking, so the
+      decision table never disagrees with the forbidden view.
+
+      It returns one of exactly three results and NEVER a partial table:
+        - ok:           { columns, rows: [{ values, forbidden }] } — every
+                        full-factor combination in declared order, each marked
+                        forbidden or allowed (SR-102).
+        - too-large:    { count, limit: 512 } when the product exceeds 512
+                        (SR-103); nothing is enumerated.
+        - invalid-model:{ diagnostics } when the DSL does not parse / validate.
+      Because the cap is 512, the whole result fits in memory and is returned
+      atomically; there is no streaming and therefore no way to emit a partial.
+    scenarios:
+      - context: "DSL is valid and the product is within 512"
+        action: "Core is called"
+        outcome: "Returns ok with every combination as a row in declared-factor order, each evaluated for forbidden status"
+      - context: "The model has no constraints"
+        action: "Core is called"
+        outcome: "Returns ok with the full Cartesian product and no row marked forbidden"
+      - context: "DSL is invalid"
+        action: "Core is called"
+        outcome: "Returns invalid-model with diagnostics; no table is produced"
+
+  SR-102:
+    parent: [UR-009, UR-003]
+    category: all_combinations
+    function: "Mark forbidden rows in the decision table"
+    note: |
+      Each enumerated row is evaluated against the DSL constraints by the same
+      built-in evaluator that computes the forbidden view (UR-003). Forbidden
+      rows are marked (a forbidden flag per row; in the GUI a marker column plus
+      row styling) and REMAIN in the table rather than being removed, so the
+      designer sees which combinations are infeasible and which allowed rows are
+      the test cases. The forbidden flag travels in the data model, so CSV / JSON
+      export and the HTTP API response carry it too (SR-053 / SR-105).
+    scenarios:
+      - context: "An enumerated row violates at least one constraint"
+        action: "Result is produced"
+        outcome: "Row carries forbidden=true and is visually distinguished in the GUI; it is retained, not dropped"
+      - context: "An enumerated row satisfies all constraints"
+        action: "Result is produced"
+        outcome: "Row carries forbidden=false (an allowed / executable test case)"
+
+  SR-103:
+    parent: [UR-009]
+    category: all_combinations
+    function: "Refuse decision-table generation above 512 combinations"
+    note: |
+      The product of each factor's level count is computed BEFORE enumeration.
+      Because forbidden rows are kept, no constraint filtering reduces the row
+      count — the raw product is exactly the output size. The fixed limit is
+      512 (decision tables are a small-factor-set technique; a user may
+      nonetheless build an oversized model, so this is a guardrail). This limit
+      is specific to the decision table and is NOT the forbidden view's
+      enumeration limit — the two are independent. Above 512 the core returns
+      too-large and nothing is enumerated (no partial output).
+    scenarios:
+      - context: "The product exceeds 512"
+        action: "Core is called"
+        outcome: "Returns too-large with the computed count and limit 512; nothing is enumerated and no rows are produced"
+      - context: "The product is 512 or fewer"
+        action: "Core is called"
+        outcome: "Enumeration proceeds (SR-101)"
+
+  SR-104:
+    parent: [UR-006, UR-009]
+    category: all_combinations
+    function: "Expose the decision table via the CLI"
+    note: |
+      CLI configuration: a single Node process (typically on a CI runner) reads
+      the .tmodel, calls generateDecisionTable(model) in-process (no PICT, no
+      network), and maps the result to stdout/file plus an exit code. Output is
+      ATOMIC — a complete table or nothing; a partial table is never written.
+      Invocation:
+        neocombi generate <model.tmodel> --decision-table
+          [--format csv|json] [--output <file>]
+      Exit codes (each code has ONE meaning tool-wide; 2 = PICT failure is
+      reserved for pairwise and never used here):
+        0  ok            — complete table written
+        1  invalid-model — DSL parse / validation error (stderr)
+        3  input file not found / unreadable
+        4  output write failed
+        5  too-large     — product > 512 (stderr: count and limit); NEW code,
+                           chosen so CI can distinguish "model too big" from a
+                           DSL error and so it never collides with PICT's codes
+    scenarios:
+      - context: "DSL valid, product within 512"
+        action: "CLI runs with --decision-table"
+        outcome: "Write the complete CSV/JSON to stdout (or --output); exit 0"
+      - context: "Product exceeds 512"
+        action: "CLI runs"
+        outcome: "Write nothing to stdout; print count and limit to stderr; exit 5"
+      - context: "DSL is invalid"
+        action: "CLI runs"
+        outcome: "Write nothing to stdout; print diagnostics to stderr; exit 1"
+
+  SR-105:
+    parent: [UR-006, UR-009]
+    category: all_combinations
+    function: "Expose the decision table via the HTTP API"
+    note: |
+      API configuration: the existing pict-service (Node, containerized) gains a
+      second endpoint beside POST /generate (pairwise -> spawns PICT). The new
+      endpoint calls generateDecisionTable(model) in-process (no PICT needed for
+      this route). A remote caller (CI/CD, another server) invokes it over the
+      network. The response is ATOMIC — a complete table or an error; never a
+      partial body.
+        POST /decision-table        body = DSL source text
+          200  { columns, rows: [{ values, forbidden }] }   — ok
+          400  { reason: 'invalid-model', diagnostics }      — DSL error
+          413  { reason: 'too-large', count, limit: 512 }    — product > 512
+      The pairwise endpoint (POST /generate?order=N -> TSV) is unchanged; the
+      API server therefore carries both the PICT binary (for /generate) and the
+      pure-TS core (for /decision-table).
+    scenarios:
+      - context: "DSL valid, product within 512"
+        action: "Client POSTs /decision-table"
+        outcome: "200 with the complete decision-table JSON (rows carry the forbidden flag)"
+      - context: "Product exceeds 512"
+        action: "Client POSTs /decision-table"
+        outcome: "413 with reason 'too-large', the count, and limit 512; no table body"
+      - context: "DSL is invalid"
+        action: "Client POSTs /decision-table"
+        outcome: "400 with reason 'invalid-model' and diagnostics; no table body"
