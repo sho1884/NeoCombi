@@ -18,6 +18,13 @@ export type ExpectedValueEntry = {
   value: string
 }
 
+/**
+ * Test-case generation mode (UR-009 / SR-100). `pairwise` routes to PICT
+ * (N-wise). `decision-table` routes to the built-in core (full combination,
+ * forbidden rows marked).
+ */
+export type GenerationMode = 'pairwise' | 'decision-table'
+
 export type BottomPaneTab = 'factors' | 'dsl' | 'testcases'
 
 export type TopPaneTab = 'coverage' | 'forbidden'
@@ -69,6 +76,8 @@ export type ProjectState = {
   testSuite: TestSuite | null
   /** PICT generation order (N-wise); default 2 (pairwise). Persisted. */
   pictOrder: number
+  /** Generation mode (pairwise via PICT vs decision-table via built-in core). Persisted. */
+  generationMode: GenerationMode
   /** Session-only. */
   view: ViewState
   /** Has the project changed since last save / load? */

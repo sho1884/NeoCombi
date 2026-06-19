@@ -5,6 +5,26 @@ All notable changes to NeoCombi are recorded here. The format follows
 follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) once
 out of v0.x.
 
+## [Unreleased]
+
+### Added
+
+- **Decision-table generation** (UR-009). The full Cartesian product of all
+  factors with forbidden rows kept and marked (not excluded) — decision-table
+  test design, the complement of pairwise. One pure-TypeScript core
+  (`generateDecisionTable`) is shared by three deployments, each in its own
+  configuration:
+  - **GUI** — a generation-mode toggle (Pairwise / Decision table) in the Test
+    cases tab; the core runs in-browser (no PICT), forbidden rows shown with a
+    marker column and muted styling. Mode persists in the `.tmodel` file.
+  - **CLI** — `neocombi generate <model.tmodel> --decision-table`. Atomic output
+    (a complete table or nothing); a dedicated exit code `5` for too-large that
+    does not collide with PICT's codes.
+  - **HTTP API** — `POST /decision-table` on pict-service (beside `/generate`):
+    `200` with the table, `400` invalid-model, `413` too-large.
+  Refused above 512 combinations. See `Doc/requirements` §4.11 for the
+  interfaces and the three configuration diagrams.
+
 ## [0.1.0] — 2026-05-03
 
 First public MVP. Six of the seven user requirements

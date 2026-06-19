@@ -190,6 +190,31 @@ export type ForbiddenSliceResult = {
   factors: string[]
 }
 
+// =============================================================================
+// Decision table (UR-009 / SR-100..105)
+// =============================================================================
+
+/**
+ * One row of a decision table: the factor values in column order plus whether
+ * the combination is forbidden by the model's constraints. Forbidden rows are
+ * kept (marked), not excluded — that is the point of the decision table.
+ */
+export type DecisionTableRow = {
+  /** Level values in the same order as DecisionTableResult.columns. */
+  values: string[]
+  forbidden: boolean
+}
+
+/**
+ * Result of generateDecisionTable. Exactly one of three variants — and never a
+ * partial table. CLI exit codes and HTTP status codes are both just a mapping
+ * of these variants (see SR-104 / SR-105).
+ */
+export type DecisionTableResult =
+  | { ok: true; columns: string[]; rows: DecisionTableRow[] }
+  | { ok: false; reason: 'too-large'; count: number; limit: number }
+  | { ok: false; reason: 'invalid-model'; diagnostics: Diagnostic[] }
+
 /** Reasons the evaluator may bail out without producing a full result. */
 export type EvaluationFailureReason =
   | 'unknown-factor'

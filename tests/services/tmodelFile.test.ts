@@ -12,6 +12,7 @@ describe('tmodelFile / serialize', () => {
       source: 'OS: Linux, Windows\n',
       expectedValues: [],
       pictOrder: 2, // default — should NOT be emitted
+      generationMode: 'pairwise',
     })
     expect(text).toBe('OS: Linux, Windows\n')
   })
@@ -21,6 +22,7 @@ describe('tmodelFile / serialize', () => {
       source: 'A: 1, 2',
       expectedValues: [],
       pictOrder: 2,
+      generationMode: 'pairwise',
     })
     expect(text).not.toContain('@neocombi:order')
   })
@@ -30,6 +32,7 @@ describe('tmodelFile / serialize', () => {
       source: 'A: 1, 2',
       expectedValues: [],
       pictOrder: 3,
+      generationMode: 'pairwise',
     })
     expect(text).toContain('# @neocombi:order 3')
   })
@@ -41,6 +44,7 @@ describe('tmodelFile / serialize', () => {
         { assignment: { OS: 'Linux', Browser: 'Chrome' }, value: 'Renders OK' },
       ],
       pictOrder: 2,
+      generationMode: 'pairwise',
     })
     expect(text).toContain('# ===== NeoCombi annotations')
     expect(text).toContain('# @neocombi:expected OS=Linux Browser=Chrome | Renders OK')
@@ -53,6 +57,7 @@ describe('tmodelFile / serialize', () => {
         { assignment: { A: '1' }, value: 'before | after' },
       ],
       pictOrder: 2,
+      generationMode: 'pairwise',
     })
     expect(text).toContain('before \\| after')
   })
@@ -64,6 +69,7 @@ describe('tmodelFile / serialize', () => {
         { assignment: { A: '1' }, value: 'line one\nline two' },
       ],
       pictOrder: 2,
+      generationMode: 'pairwise',
     })
     expect(text).toContain('line one line two')
     expect(text).not.toMatch(/line one\nline two/)
@@ -76,6 +82,7 @@ describe('tmodelFile / serialize', () => {
       source: 'A: 1, 2\n# @neocombi:order 9\n',
       expectedValues: [],
       pictOrder: 2,
+      generationMode: 'pairwise',
     })
     expect(text).not.toContain('order 9')
   })
@@ -156,13 +163,48 @@ describe('tmodelFile / round-trip', () => {
         { assignment: { OS: 'Windows', Browser: 'Safari' }, value: 'Edge case' },
       ] satisfies ExpectedValueEntry[],
       pictOrder: 3,
+      generationMode: 'decision-table' as const,
     }
     const text = serialize(input)
     const back = deserialize(text)
     expect(back.source).toBe(input.source)
     expect(back.expectedValues).toEqual(input.expectedValues)
     expect(back.pictOrder).toBe(input.pictOrder)
+    expect(back.generationMode).toBe(input.generationMode)
     expect(back.warnings).toEqual([])
+  })
+})
+
+describe('tmodelFile / generation mode', () => {
+  it('omits the mode annotation for the default (pairwise)', () => {
+    const text = serialize({
+      source: 'A: 1, 2',
+      expectedValues: [],
+      pictOrder: 2,
+      generationMode: 'pairwise',
+    })
+    expect(text).not.toContain('@neocombi:mode')
+  })
+
+  it('emits and re-reads the decision-table mode', () => {
+    const text = serialize({
+      source: 'A: 1, 2',
+      expectedValues: [],
+      pictOrder: 2,
+      generationMode: 'decision-table',
+    })
+    expect(text).toContain('# @neocombi:mode decision-table')
+    expect(deserialize(text).generationMode).toBe('decision-table')
+  })
+
+  it('defaults to pairwise when no mode annotation is present', () => {
+    expect(deserialize('A: 1, 2\n').generationMode).toBe('pairwise')
+  })
+
+  it('warns on a malformed mode annotation', () => {
+    const r = deserialize('# @neocombi:mode sideways\nA: 1\n')
+    expect(r.generationMode).toBe('pairwise')
+    expect(r.warnings.some(w => /mode/.test(w.reason))).toBe(true)
   })
 })
 

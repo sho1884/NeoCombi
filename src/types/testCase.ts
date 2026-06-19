@@ -11,6 +11,12 @@ export type TestCase = {
   values: Record<string, string>
   /** Optional expected output attached by the user. */
   expected?: string
+  /**
+   * Decision-table mode only (UR-009 / SR-102): true when this combination is
+   * forbidden by the model's constraints. Undefined for pairwise rows (PICT
+   * never emits forbidden rows).
+   */
+  forbidden?: boolean
 }
 
 export type TestSuite = {

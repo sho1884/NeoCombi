@@ -4,6 +4,7 @@
 // annotations expressed as PICT-compatible comments:
 //
 //   # @neocombi:order N                  PICT generation order N (default 2 omitted)
+//   # @neocombi:mode decision-table      Generation mode (default 'pairwise' omitted)
 //   # @neocombi:expected K=V K=V | text  Expected value for the test case identified
 //                                        by the given factor=level pairs. The pipe
 //                                        separates the assignment from the free-text
@@ -14,16 +15,18 @@
 // returned `source`. On save, the source is emitted verbatim and a fresh annotations
 // block is appended after a header comment line.
 
-import type { ExpectedValueEntry } from '../types/project'
+import type { ExpectedValueEntry, GenerationMode } from '../types/project'
 
 const ANNOTATION_PREFIX = '# @neocombi:'
 const ANNOTATIONS_HEADER_PATTERN = /^# =+ NeoCombi annotations.*=+/
 const DEFAULT_PICT_ORDER = 2
+const DEFAULT_GENERATION_MODE: GenerationMode = 'pairwise'
 
 export type TmodelFileContents = {
   source: string
   expectedValues: ExpectedValueEntry[]
   pictOrder: number
+  generationMode: GenerationMode
 }
 
 export type TmodelLoadWarning = {
@@ -49,6 +52,9 @@ export function serialize(input: TmodelFileContents): string {
   const annotations: string[] = []
   if (input.pictOrder !== DEFAULT_PICT_ORDER) {
     annotations.push(`${ANNOTATION_PREFIX}order ${input.pictOrder}`)
+  }
+  if (input.generationMode !== DEFAULT_GENERATION_MODE) {
+    annotations.push(`${ANNOTATION_PREFIX}mode ${input.generationMode}`)
   }
   for (const ev of input.expectedValues) {
     annotations.push(formatExpectedAnnotation(ev))
@@ -76,6 +82,7 @@ export function deserialize(content: string): TmodelLoadResult {
   const expectedValues: ExpectedValueEntry[] = []
   const warnings: TmodelLoadWarning[] = []
   let pictOrder = DEFAULT_PICT_ORDER
+  let generationMode: GenerationMode = DEFAULT_GENERATION_MODE
 
   const lines = content.split(/\r\n|\r|\n/)
   lines.forEach((line, idx) => {
@@ -89,6 +96,15 @@ export function deserialize(content: string): TmodelLoadResult {
           warnings.push({ line: lineNumber, text: line, reason: 'malformed @neocombi:order' })
         } else {
           pictOrder = n
+        }
+        return
+      }
+      if (rest.startsWith('mode')) {
+        const m = parseModeAnnotation(rest)
+        if (m === null) {
+          warnings.push({ line: lineNumber, text: line, reason: 'malformed @neocombi:mode' })
+        } else {
+          generationMode = m
         }
         return
       }
@@ -116,7 +132,7 @@ export function deserialize(content: string): TmodelLoadResult {
   let source = sourceLines.join('\n').replace(/\n+$/, '')
   if (source.length > 0) source += '\n'
 
-  return { source, expectedValues, pictOrder, warnings }
+  return { source, expectedValues, pictOrder, generationMode, warnings }
 }
 
 /**
@@ -142,6 +158,14 @@ function parseOrderAnnotation(rest: string): number | null {
   const n = Number.parseInt(match[1]!, 10)
   if (!Number.isFinite(n) || n < 1) return null
   return n
+}
+
+function parseModeAnnotation(rest: string): GenerationMode | null {
+  const match = rest.match(/^mode\s+(\S+)\s*$/)
+  if (!match) return null
+  const m = match[1]
+  if (m === 'pairwise' || m === 'decision-table') return m
+  return null
 }
 
 function parseExpectedAnnotation(rest: string): ExpectedValueEntry | null {

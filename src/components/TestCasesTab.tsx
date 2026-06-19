@@ -1,17 +1,41 @@
 import { useState } from 'react'
 import { useProjectStore } from '../stores/projectStore'
 import { runGenerate } from '../services/runGenerate'
+import { runDecisionTable } from '../services/runDecisionTable'
 import { formatTestSuite, testSuiteToHtml } from '../engines/pict'
+import {
+  formatDecisionTable,
+  type DecisionTableOutRow,
+} from '../engines/dsl/formatDecisionTable'
 import { copyTableToClipboard } from '../services/clipboardWrite'
 import { isHostedDeployment } from '../services/demoMode'
 import { MASK_LEVEL } from '../engines/dsl/maskLevel'
+import type { TestSuite } from '../types/testCase'
 import './TestCasesTab.css'
+
+/** A decision table is shown whenever its rows carry the forbidden flag. */
+function isDecisionTable(suite: TestSuite | null): boolean {
+  return suite?.rows.some(r => r.forbidden !== undefined) ?? false
+}
+
+/** Render a decision-table suite in the requested text format (forbidden + expected columns). */
+function formatDecisionSuite(suite: TestSuite, format: 'csv' | 'json'): string {
+  const rows: DecisionTableOutRow[] = suite.rows.map(r => {
+    const values = suite.factorOrder.map(n => r.values[n] ?? '')
+    return r.expected !== undefined
+      ? { values, forbidden: r.forbidden ?? false, expected: r.expected }
+      : { values, forbidden: r.forbidden ?? false }
+  })
+  return formatDecisionTable(suite.factorOrder, rows, format)
+}
 
 export function TestCasesTab() {
   const testSuite = useProjectStore(s => s.testSuite)
   const setTestCaseExpected = useProjectStore(s => s.setTestCaseExpected)
   const source = useProjectStore(s => s.source)
   const diagnostics = useProjectStore(s => s.parseResult.diagnostics)
+  const generationMode = useProjectStore(s => s.generationMode)
+  const setGenerationMode = useProjectStore(s => s.setGenerationMode)
 
   const [error, setError] = useState<string | null>(null)
   const [generating, setGenerating] = useState(false)
@@ -22,11 +46,33 @@ export function TestCasesTab() {
   const [copied, setCopied] = useState(false)
 
   const dslHasErrors = diagnostics.some(d => d.severity === 'error')
+  const showForbidden = isDecisionTable(testSuite)
+  const forbiddenCount = testSuite?.rows.filter(r => r.forbidden).length ?? 0
 
   const onManualGenerate = async () => {
     setGenerating(true)
     setError(null)
     try {
+      if (generationMode === 'decision-table') {
+        const result = runDecisionTable()
+        switch (result.kind) {
+          case 'ok':
+            break
+          case 'skipped':
+            setError(`Cannot generate: ${result.reason.replace('-', ' ')}`)
+            break
+          case 'too-large':
+            setError(
+              `Too many combinations: ${result.count} exceeds the limit of ` +
+                `${result.limit}. Reduce factors or levels, or use pairwise.`,
+            )
+            break
+          case 'invalid-model':
+            setError(`Invalid model: ${result.message}`)
+            break
+        }
+        return
+      }
       const result = await runGenerate()
       switch (result.kind) {
         case 'ok':
@@ -59,6 +105,20 @@ export function TestCasesTab() {
     }
   }
 
+  const modeSelect = (
+    <label className="test-cases-tab__format">
+      Mode:{' '}
+      <select
+        value={generationMode}
+        onChange={e => setGenerationMode(e.target.value as 'pairwise' | 'decision-table')}
+        title="Pairwise (PICT) vs full-combination decision table"
+      >
+        <option value="pairwise">Pairwise</option>
+        <option value="decision-table">Decision table</option>
+      </select>
+    </label>
+  )
+
   // ---------------------------------------------------------------------------
   // Export / copy actions (only meaningful when there is a suite to export)
   // ---------------------------------------------------------------------------
@@ -70,7 +130,9 @@ export function TestCasesTab() {
     // automation tools see the format they actually want, while
     // Excel / Sheets keep working through the HTML path.
     const html = testSuiteToHtml(testSuite)
-    const plain = formatTestSuite(testSuite, format)
+    const plain = showForbidden
+      ? formatDecisionSuite(testSuite, format)
+      : formatTestSuite(testSuite, format)
     const result = await copyTableToClipboard(html, plain)
     if (!result.ok) {
       setError(result.reason)
@@ -83,7 +145,9 @@ export function TestCasesTab() {
 
   const onDownload = () => {
     if (!testSuite) return
-    const text = formatTestSuite(testSuite, format)
+    const text = showForbidden
+      ? formatDecisionSuite(testSuite, format)
+      : formatTestSuite(testSuite, format)
     const ext = format === 'json' ? 'json' : 'csv'
     const mime =
       format === 'json'
@@ -129,6 +193,7 @@ export function TestCasesTab() {
       <div className="test-cases-tab">
         {hostedBanner}
         <div className="test-cases-tab__toolbar">
+          {modeSelect}
           <button
             type="button"
             className="test-cases-tab__generate"
@@ -151,7 +216,10 @@ export function TestCasesTab() {
           <p className="test-cases-tab__no-suite-lede">
             Add factors and levels (DSL or Factors &amp; Levels tab); test cases
             will be generated automatically once the DSL parses cleanly. Or click{' '}
-            <strong>Generate</strong> to run PICT immediately.
+            <strong>Generate</strong>.{' '}
+            {generationMode === 'decision-table'
+              ? 'Decision-table mode lists every combination (forbidden ones marked).'
+              : 'Pairwise mode runs PICT.'}
           </p>
         </div>
       </div>
@@ -163,11 +231,14 @@ export function TestCasesTab() {
       {hostedBanner}
       <div className="test-cases-tab__toolbar">
         <span className="test-cases-tab__count">
-          {testSuite.rows.length} test case{testSuite.rows.length === 1 ? '' : 's'},
+          {testSuite.rows.length} {showForbidden ? 'combination' : 'test case'}
+          {testSuite.rows.length === 1 ? '' : 's'},
           {' '}
           {testSuite.factorOrder.length} factor
           {testSuite.factorOrder.length === 1 ? '' : 's'}
+          {showForbidden ? ` (${forbiddenCount} forbidden)` : ''}
         </span>
+        {modeSelect}
         <button
           type="button"
           className="test-cases-tab__generate"
@@ -220,6 +291,11 @@ export function TestCasesTab() {
           <thead>
             <tr>
               <th className="test-cases-tab__col-idx">#</th>
+              {showForbidden ? (
+                <th className="test-cases-tab__col-forbidden" scope="col" title="Forbidden by a constraint">
+                  Forbidden
+                </th>
+              ) : null}
               {testSuite.factorOrder.map(name => (
                 <th key={`h-${name}`} scope="col">{name}</th>
               ))}
@@ -228,8 +304,16 @@ export function TestCasesTab() {
           </thead>
           <tbody>
             {testSuite.rows.map((row, idx) => (
-              <tr key={`r-${idx}`}>
+              <tr
+                key={`r-${idx}`}
+                className={row.forbidden ? 'test-cases-tab__row--forbidden' : undefined}
+              >
                 <th className="test-cases-tab__col-idx" scope="row">{idx + 1}</th>
+                {showForbidden ? (
+                  <td className="test-cases-tab__col-forbidden" aria-label={row.forbidden ? 'forbidden' : 'allowed'}>
+                    {row.forbidden ? '✕' : ''}
+                  </td>
+                ) : null}
                 {testSuite.factorOrder.map(name => {
                   const v = row.values[name] ?? ''
                   const isMask = v === MASK_LEVEL

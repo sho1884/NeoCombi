@@ -15,6 +15,7 @@ export {
 } from './evaluator'
 export { extractSuggestedSlices } from './extractSlices'
 export { validateModel } from './validator'
+export { generateDecisionTable, DECISION_TABLE_LIMIT } from './decisionTable'
 export { MASK_LEVEL, isMaskLevel, isMaskLevelNode } from './maskLevel'
 export type {
   Model,
@@ -49,6 +50,8 @@ export type {
   ModelTypeInfo,
   ForbiddenSliceCell,
   ForbiddenSliceResult,
+  DecisionTableResult,
+  DecisionTableRow,
   EvaluationOutcome,
   EvaluationFailureReason,
 } from '../../types/dsl'

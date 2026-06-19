@@ -322,3 +322,23 @@
   color: #b0bec5;
   font-style: italic;
 }
+
+/* Decision-table mode (UR-009 / SR-102): forbidden combinations are kept and
+   marked, not excluded. The marker column + muted row styling distinguish them
+   from allowed (executable) rows. */
+.test-cases-tab__col-forbidden {
+  width: 5.5rem;
+  text-align: center;
+  color: #c62828;
+  font-weight: 600;
+}
+
+.test-cases-tab__row--forbidden {
+  background: #fbeaea;
+  color: #8a8a8a;
+}
+
+.test-cases-tab__row--forbidden .test-cases-tab__cell {
+  text-decoration: line-through;
+  text-decoration-color: #d7a3a3;
+}

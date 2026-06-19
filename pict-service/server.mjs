@@ -5,6 +5,12 @@
 // Endpoints:
 //   GET  /health                 health probe; returns the version PICT prints
 //   POST /generate?order=N       body = DSL source text; response = TSV (text/tab-separated-values)
+//   POST /decision-table         body = DSL source text; response = decision-table JSON
+//                                (UR-009 / SR-105) — built-in core, no PICT
+//
+// The decision-table endpoint runs the same pure-TS core (generateDecisionTable)
+// that the GUI and CLI use, bundled to ./core.mjs by `npm run build:pict-core`.
+// PICT is not involved in that route.
 //
 // CORS is wide-open ('*') because this service is meant for local-only use
 // alongside the NeoCombi GUI; do not expose it on a public network.
@@ -14,6 +20,7 @@ import { spawnSync } from 'node:child_process'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { parse, generateDecisionTable } from './core.mjs'
 
 const PORT = Number.parseInt(process.env['PORT'] ?? '8765', 10)
 const PICT_PATH = process.env['NEOCOMBI_PICT_PATH'] ?? 'pict'
@@ -129,6 +136,32 @@ const server = http.createServer(async (req, res) => {
       }
       res.writeHead(200, { 'Content-Type': 'text/tab-separated-values; charset=utf-8' })
       res.end(stdout)
+      return
+    }
+
+    if (req.method === 'POST' && path === '/decision-table') {
+      const source = await readBody(req)
+      if (source.length === 0) {
+        sendJson(res, 400, { error: 'Empty request body' })
+        return
+      }
+      const parsed = parse(source)
+      const errors = parsed.diagnostics.filter(d => d.severity === 'error')
+      if (errors.length > 0 || !parsed.model) {
+        sendJson(res, 400, { reason: 'invalid-model', diagnostics: errors })
+        return
+      }
+      const result = generateDecisionTable(parsed.model)
+      if (!result.ok) {
+        if (result.reason === 'too-large') {
+          // 413 Payload Too Large is the apt status for "result would be too big".
+          sendJson(res, 413, { reason: 'too-large', count: result.count, limit: result.limit })
+        } else {
+          sendJson(res, 400, { reason: 'invalid-model', diagnostics: result.diagnostics })
+        }
+        return
+      }
+      sendJson(res, 200, { columns: result.columns, rows: result.rows })
       return
     }
 

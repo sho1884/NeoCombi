@@ -4,6 +4,7 @@ import type {
   BottomPaneTab,
   ExpectedValueEntry,
   ForbiddenSliceConfig,
+  GenerationMode,
   ProjectState,
   TopPaneTab,
   ViewState,
@@ -42,6 +43,7 @@ function emptyState(): ProjectState {
     expectedValues: [],
     testSuite: null,
     pictOrder: DEFAULT_PICT_ORDER,
+    generationMode: 'pairwise',
     view: { ...DEFAULT_VIEW },
     isDirty: false,
   }
@@ -98,6 +100,8 @@ type Actions = {
   /** Move a level to an absolute index (used by drag-and-drop). */
   moveLevelTo(factorName: string, levelValue: string, targetIndex: number): void
   setPictOrder(order: number): void
+  /** Switch the generation mode (pairwise / decision-table). */
+  setGenerationMode(mode: GenerationMode): void
   /** Add or update an expected value matched by exact assignment. */
   setExpectedValue(assignment: Record<string, string>, value: string): void
   /** Remove the expected value matching the given assignment, if any. */
@@ -199,6 +203,13 @@ export const useProjectStore = create<Store>()((set, get) => ({
   setPictOrder(order) {
     if (order === get().pictOrder) return
     set({ pictOrder: order, isDirty: true })
+  },
+
+  setGenerationMode(mode) {
+    if (mode === get().generationMode) return
+    // Clear the suite: the displayed rows belong to the previous mode (pairwise
+    // rows have no forbidden flag; decision-table rows do). Re-generate.
+    set({ generationMode: mode, testSuite: null, isDirty: true })
   },
 
   setExpectedValue(assignment, value) {
@@ -310,6 +321,7 @@ export const useProjectStore = create<Store>()((set, get) => ({
       expectedValues: result.expectedValues,
       testSuite: null,
       pictOrder: result.pictOrder,
+      generationMode: result.generationMode,
       view: { ...DEFAULT_VIEW },
       isDirty: false,
     })
@@ -321,6 +333,7 @@ export const useProjectStore = create<Store>()((set, get) => ({
       source: state.source,
       expectedValues: state.expectedValues,
       pictOrder: state.pictOrder,
+      generationMode: state.generationMode,
     })
   },
 
@@ -359,10 +372,14 @@ export const useProjectStore = create<Store>()((set, get) => ({
       const target = rows[index]!
       const trimmed = value
 
-      // Replace the test-case row (clear vs set).
-      rows[index] = trimmed.length > 0
-        ? { values: target.values, expected: trimmed }
+      // Replace the test-case row (clear vs set), preserving the forbidden
+      // flag (decision-table mode) which is independent of the expected value.
+      const base = target.forbidden !== undefined
+        ? { values: target.values, forbidden: target.forbidden }
         : { values: target.values }
+      rows[index] = trimmed.length > 0
+        ? { ...base, expected: trimmed }
+        : base
 
       // Mirror the user's edit into expectedValues using a full-keys
       // assignment so it scopes to exactly this row. Pre-existing entries
