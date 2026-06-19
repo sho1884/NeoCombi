@@ -200,26 +200,22 @@ export function TestCasesTab() {
     <div className="test-cases-tab__hosted-banner" role="status">
       {generationMode === 'decision-table' ? (
         <>
-          <strong>Demo mode.</strong> Decision-table generation runs entirely
+          <strong>Hosted demo.</strong> Decision-table generation runs entirely
           in your browser, so <strong>Generate</strong> works here — no PICT
-          service needed. (Pairwise mode is the one that needs a local PICT
-          service.)
+          service needed.
         </>
       ) : isPictApiConfigured() ? (
         <>
-          <strong>Demo.</strong> A 50-factor sample is preloaded;{' '}
-          <strong>Re-generate</strong> runs live pairwise generation against the
-          configured PICT service.
+          <strong>Hosted demo.</strong> <strong>Generate</strong> runs live
+          pairwise generation against the configured PICT service (the first
+          request after idle may take a moment).
         </>
       ) : (
         <>
-          <strong>Demo mode.</strong> A 50-factor sample is preloaded; the
-          cases below come from a frozen PICT run baked into the bundle.
-          Editing the model on this hosted page works (authoring, forbidden
-          matrix, save / open all live) but <strong>Re-generate</strong>{' '}
-          will fail because the PICT service isn&apos;t running here — switch
-          Mode to <strong>Decision table</strong> to generate in-browser, or
-          run NeoCombi locally (
+          <strong>Hosted demo.</strong> Pairwise needs a PICT service, which
+          isn&apos;t configured here — switch Mode to{' '}
+          <strong>Decision table</strong> to generate in-browser, or run
+          NeoCombi locally (
           <a
             href="https://github.com/sho1884/NeoCombi#author-in-the-gui"
             target="_blank"

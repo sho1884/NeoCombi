@@ -20,8 +20,7 @@
     "test:coverage": "vitest --coverage",
     "license:check": "license-checker --production --onlyAllow 'MIT;Apache-2.0;ISC;BSD-2-Clause;BSD-3-Clause;BlueOak-1.0.0;0BSD;CC0-1.0;Unlicense;MIT OR CC0-1.0' --excludePackages 'neocombi@0.1.0' --summary",
     "license:check:all": "license-checker --onlyAllow 'MIT;Apache-2.0;ISC;BSD-2-Clause;BSD-3-Clause;BlueOak-1.0.0;0BSD;CC0-1.0;Unlicense;MIT OR CC0-1.0;MIT AND CC-BY-3.0;MPL-2.0;Python-2.0;CC-BY-3.0;CC-BY-4.0' --excludePackages 'neocombi@0.1.0' --summary",
-    "icons:build": "node scripts/genIcons.mjs",
-    "demo:build": "node scripts/genDemoBundle.mjs"
+    "icons:build": "node scripts/genIcons.mjs"
   },
   "dependencies": {
     "i18next": "^24.2.3",

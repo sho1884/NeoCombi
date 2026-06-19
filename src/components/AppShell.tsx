@@ -4,7 +4,7 @@ import { TopPane } from './TopPane'
 import { BottomPane } from './BottomPane'
 import { FileMenu } from './FileMenu'
 import { AutoRegenerator } from './AutoRegenerator'
-import { DemoLoader } from './DemoLoader'
+import { SampleLoader } from './SampleLoader'
 import './AppShell.css'
 
 const MIN_PANE_PX = 120
@@ -43,7 +43,7 @@ export function AppShell() {
 
   return (
     <div className="app">
-      <DemoLoader />
+      <SampleLoader />
       <AutoRegenerator />
       <header className="app__header">
         <h1 className="app__title">NeoCombi</h1>

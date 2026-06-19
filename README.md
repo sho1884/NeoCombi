@@ -4,7 +4,12 @@
 [![CI](https://github.com/sho1884/NeoCombi/actions/workflows/ci.yml/badge.svg)](https://github.com/sho1884/NeoCombi/actions/workflows/ci.yml)
 [![license](https://img.shields.io/github/license/sho1884/NeoCombi?color=blue)](LICENSE)
 
-> **Try the demo:** https://neo-combi.vercel.app/ — DSL authoring, forbidden matrix, file save / open. Test-case generation needs a local PICT service (see [Quick start](#quick-start)).
+> **Try the demo:** https://neo-combi.vercel.app/ — author DSL, visualize forbidden combinations, and generate test cases live. Decision-table generation runs in your browser; pairwise runs against a hosted PICT service.
+>
+> **Open a sample** (loaded via the `?file=<url>` parameter; sample models live outside the app):
+> - [Printer options](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/printer.tmodel) — IF/THEN/ELSE + IN constraints
+> - [Browsers](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/browsers.tmodel) — small pairwise model
+> - [50 factors](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/large-50.tmodel) · [100 factors](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/large-100.tmodel) — HAYST-scale
 
 > **Status: v0.1 (MVP)** — DSL authoring, factor / level editing, forbidden visualization, in-GUI test case generation via a local PICT service, expected-value tracking, and a CLI for CI/CD pipelines. Tested on models up to 100 factors / ~4 levels each.
 
