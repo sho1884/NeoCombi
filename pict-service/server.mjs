@@ -12,8 +12,15 @@
 // that the GUI and CLI use, bundled to ./core.mjs by `npm run build:pict-core`.
 // PICT is not involved in that route.
 //
-// CORS is wide-open ('*') because this service is meant for local-only use
-// alongside the NeoCombi GUI; do not expose it on a public network.
+// This service runs untrusted DSL through the native PICT binary with NO
+// authentication (the NeoCombi/NeoCEG APIs are public by design). The only
+// defenses are guardrails, all configurable via env so local dev stays open
+// while a public deployment can lock down:
+//   ALLOWED_ORIGINS    comma-separated CORS allowlist, or '*' (default '*')
+//   PICT_TIMEOUT_MS    kill a PICT run that exceeds this (default 10000)
+//   MAX_ORDER          reject /generate order above this (default 6)
+//   RATE_LIMIT_PER_MIN per-IP requests/min on work endpoints, 0=off (default 60)
+//   MAX_BODY_BYTES     request body cap (default 2 MiB)
 
 import http from 'node:http'
 import { spawnSync } from 'node:child_process'
@@ -24,14 +31,51 @@ import { parse, generateDecisionTable } from './core.mjs'
 
 const PORT = Number.parseInt(process.env['PORT'] ?? '8765', 10)
 const PICT_PATH = process.env['NEOCOMBI_PICT_PATH'] ?? 'pict'
-const MAX_BODY_BYTES = 2 * 1024 * 1024 // 2 MiB is plenty for a DSL file
+const MAX_BODY_BYTES = Number.parseInt(process.env['MAX_BODY_BYTES'] ?? String(2 * 1024 * 1024), 10)
 const DEFAULT_ORDER = 2
+const PICT_TIMEOUT_MS = Number.parseInt(process.env['PICT_TIMEOUT_MS'] ?? '10000', 10)
+const MAX_ORDER = Number.parseInt(process.env['MAX_ORDER'] ?? '6', 10)
+const RATE_LIMIT_PER_MIN = Number.parseInt(process.env['RATE_LIMIT_PER_MIN'] ?? '60', 10)
+const ALLOWED_ORIGINS = (process.env['ALLOWED_ORIGINS'] ?? '*')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean)
 
-function applyCors(res) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
+function applyCors(res, origin) {
+  if (ALLOWED_ORIGINS.includes('*')) {
+    res.setHeader('Access-Control-Allow-Origin', '*')
+  } else if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin)
+    res.setHeader('Vary', 'Origin')
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   res.setHeader('Access-Control-Max-Age', '86400')
+}
+
+// Fixed-window per-IP rate limiter. In-memory: adequate for a single-instance
+// demo (deploy with a small max-instances). Not shared across instances.
+const rateWindows = new Map()
+function rateLimited(ip) {
+  if (RATE_LIMIT_PER_MIN <= 0) return false
+  const now = Date.now()
+  let w = rateWindows.get(ip)
+  if (!w || now > w.resetAt) {
+    w = { count: 0, resetAt: now + 60_000 }
+    rateWindows.set(ip, w)
+  }
+  w.count += 1
+  // Opportunistic cleanup so the map can't grow without bound.
+  if (rateWindows.size > 10_000) {
+    for (const [k, v] of rateWindows) if (now > v.resetAt) rateWindows.delete(k)
+  }
+  return w.count > RATE_LIMIT_PER_MIN
+}
+
+function clientIp(req) {
+  const fwd = req.headers['x-forwarded-for']
+  if (typeof fwd === 'string' && fwd.length > 0) return fwd.split(',')[0].trim()
+  return req.socket?.remoteAddress ?? 'unknown'
 }
 
 function sendJson(res, status, payload) {
@@ -74,7 +118,16 @@ function runPict(source, order) {
     writeFileSync(inputFile, source, 'utf8')
     const result = spawnSync(PICT_PATH, [inputFile, `/o:${order}`], {
       encoding: 'utf8',
+      timeout: PICT_TIMEOUT_MS,
+      killSignal: 'SIGKILL',
+      maxBuffer: 64 * 1024 * 1024,
     })
+    // A timed-out child surfaces as error.code ETIMEDOUT or signal SIGKILL.
+    if ((result.error && result.error.code === 'ETIMEDOUT') || result.signal === 'SIGKILL') {
+      const err = new Error(`PICT timed out after ${PICT_TIMEOUT_MS} ms`)
+      err.kind = 'timeout'
+      throw err
+    }
     if (result.error) {
       const err = new Error(`Failed to launch PICT (${PICT_PATH}): ${result.error.message}`)
       err.cause = result.error
@@ -95,7 +148,7 @@ function runPict(source, order) {
 }
 
 const server = http.createServer(async (req, res) => {
-  applyCors(res)
+  applyCors(res, req.headers.origin)
   if (req.method === 'OPTIONS') {
     res.writeHead(204)
     res.end()
@@ -110,11 +163,23 @@ const server = http.createServer(async (req, res) => {
       return
     }
 
+    // Rate-limit the work endpoints (the unauthenticated public surface).
+    if (req.method === 'POST' && (path === '/generate' || path === '/decision-table')) {
+      if (rateLimited(clientIp(req))) {
+        sendJson(res, 429, { error: 'Rate limit exceeded; try again shortly' })
+        return
+      }
+    }
+
     if (req.method === 'POST' && path === '/generate') {
       const orderRaw = url.searchParams.get('order')
       const order = orderRaw !== null ? Number.parseInt(orderRaw, 10) : DEFAULT_ORDER
       if (!Number.isFinite(order) || order < 1) {
         sendJson(res, 400, { error: `Invalid order: ${orderRaw}` })
+        return
+      }
+      if (order > MAX_ORDER) {
+        sendJson(res, 400, { error: `Order ${order} exceeds the maximum (${MAX_ORDER})` })
         return
       }
       const source = await readBody(req)
@@ -126,7 +191,8 @@ const server = http.createServer(async (req, res) => {
       try {
         stdout = runPict(source, order)
       } catch (e) {
-        const status = e.kind === 'spawn-failed' ? 502 : 500
+        const status =
+          e.kind === 'spawn-failed' ? 502 : e.kind === 'timeout' ? 504 : 500
         sendJson(res, status, {
           error: e.message,
           kind: e.kind,

@@ -9,7 +9,7 @@ import {
   type DecisionTableOutRow,
 } from '../engines/dsl/formatDecisionTable'
 import { copyTableToClipboard, escapeHtml } from '../services/clipboardWrite'
-import { isHostedDeployment } from '../services/demoMode'
+import { isHostedDeployment, isPictApiConfigured } from '../services/demoMode'
 import { MASK_LEVEL } from '../engines/dsl/maskLevel'
 import type { TestSuite } from '../types/testCase'
 import './TestCasesTab.css'
@@ -204,6 +204,12 @@ export function TestCasesTab() {
           in your browser, so <strong>Generate</strong> works here — no PICT
           service needed. (Pairwise mode is the one that needs a local PICT
           service.)
+        </>
+      ) : isPictApiConfigured() ? (
+        <>
+          <strong>Demo.</strong> A 50-factor sample is preloaded;{' '}
+          <strong>Re-generate</strong> runs live pairwise generation against the
+          configured PICT service.
         </>
       ) : (
         <>

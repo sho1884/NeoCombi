@@ -24,6 +24,18 @@ export function isHostedDeployment(): boolean {
   return true
 }
 
+/**
+ * `true` when a real PICT service URL is baked into the build
+ * (VITE_PICT_API_URL pointing somewhere other than localhost). When set, the
+ * hosted page can run live pairwise generation, so it is no longer a
+ * frozen-pairwise demo — only the preloaded sample is "demo".
+ */
+export function isPictApiConfigured(): boolean {
+  const raw = import.meta.env['VITE_PICT_API_URL'] as string | undefined
+  if (!raw) return false
+  return !/localhost|127\.0\.0\.1|\[::1\]/.test(raw)
+}
+
 export type DemoBundle = {
   source: string
   testSuite: {
