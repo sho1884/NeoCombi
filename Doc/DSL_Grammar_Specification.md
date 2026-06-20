@@ -184,6 +184,37 @@ Letter           ::= [A-Za-z]
 Digit            ::= [0-9]
 NonAsciiLetter   ::= [^\x00-\x7F]    (* Unicode letter, simplified *)
 NewLine          ::= '\r'? '\n' | '\r'
+
+(* === Authoring notes (incl. AI) ======================================
+   When generating DSL, output ONLY text conforming to this grammar
+   (no prose, no code fences). It is also valid Microsoft PICT input.
+
+   Modeling conventions:
+   - Express impossible / infeasible combinations as constraints;
+     anything not ruled out is a valid combination.
+   - A comparison right-hand side and IN { } members must be a "quoted
+     string" or a number — a bare word there is an error (even though a
+     level in a DECLARATION may be written bare).
+   - A factor is numeric only if every level is a number (then > < >= <=
+     compare numerically; otherwise as text).
+   - _MASK_ : NeoCombi reads a level whose value is exactly _MASK_ as that
+     factor's "not applicable" state — use it when a factor is meaningless
+     under some condition (declared and pinned as in the example below).
+
+   Example model (idiomatic — note the masked CardStatus):
+
+     Payment:    Cash, CreditCard, BankTransfer
+     CardStatus: Valid, Expired, _MASK_
+     Shipping:   Standard, Express
+     Region:     Domestic, Overseas
+
+     # CardStatus applies only when paying by credit card
+     IF [Payment] <> "CreditCard" THEN [CardStatus] =  "_MASK_";
+     IF [Payment]  = "CreditCard" THEN [CardStatus] <> "_MASK_";
+     # Cash and Express are domestic-only
+     IF [Payment]  = "Cash"    THEN [Region] = "Domestic";
+     IF [Shipping] = "Express" THEN [Region] = "Domestic";
+   ===================================================================== *)
 ```
 
 ### 4.1 Operator Precedence
