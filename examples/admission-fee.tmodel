@@ -7,10 +7,10 @@
 # 文字列リテラルとしてクォートする。A declaration level may be a bare identifier
 # (digit-leading is fine); a constraint right-hand side is a quoted string.
 
-入場料:   1200円, 1000円, 600円, 500円, 無料
 区分1:    個人, 団体
 区分2:    一般, 小学生, 65歳以上, 6歳未満
 県内在住:  Yes, No
+入場料:   1200円, 1000円, 600円, 500円, 無料
 
 IF [入場料] = "1200円" THEN [区分1] = "個人" AND [区分2] = "一般";
 IF [入場料] = "1000円" THEN [区分1] = "団体" AND [区分2] = "一般";
