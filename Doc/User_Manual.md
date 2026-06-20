@@ -143,10 +143,10 @@ NeoCombi treats a factor as **numeric** if all its levels look like numbers, and
 ## 5. Writing Constraints / 制約を書く
 
 Constraints rule out combinations that can't happen. You write them in the **DSL**
-tab using a small, PICT-style language. The editor checks your text as you type
+tab using a small language that is a subset of PICT. The editor checks your text as you type
 and underlines mistakes.
 
-制約は「起こり得ない組み合わせ」を除外します。**DSL** タブに PICT 風の小さな言語で
+制約は「起こり得ない組み合わせ」を除外します。**DSL** タブに PICT のサブセットである小さな言語で
 書きます。エディタが入力中に検査し、誤りに下線を引きます。
 
 NeoCombi's DSL is a **strict subset of Microsoft PICT's** constraint language
@@ -397,4 +397,4 @@ IF NOT ( [Region] = "APAC" AND [Tier] = "Free" ) THEN [Tier] <> "Free";
 - [Deployment & Operations Guide](Deployment_Guide.md) — for administrators self-hosting NeoCombi.
 - [DSL_Grammar_Specification.md](DSL_Grammar_Specification.md) — DSL grammar v1.0 (full).
 - [Microsoft PICT](https://github.com/microsoft/pict/blob/main/doc/pict.md) — the upstream constraint language.
-- Sibling tools: [NeoCEG](https://github.com/sho1884/NeoCEG), [ModelLogue](https://github.com/sho1884/ModelLogue).
+- Sibling tool: [NeoCEG](https://github.com/sho1884/NeoCEG).
