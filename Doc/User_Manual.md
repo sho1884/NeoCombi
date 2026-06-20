@@ -149,6 +149,29 @@ and underlines mistakes.
 制約は「起こり得ない組み合わせ」を除外します。**DSL** タブに PICT 風の小さな言語で
 書きます。エディタが入力中に検査し、誤りに下線を引きます。
 
+NeoCombi's DSL is a **strict subset of Microsoft PICT's** constraint language
+(**Grammar v1.0**). That gives you two practical benefits:
+
+- **It runs directly in PICT.** Whatever is valid here is valid PICT input — you
+  can paste it straight into the `pict` command-line tool and it works as-is, and
+  you can rely on Microsoft's PICT documentation. No conversion, no lock-in.
+- **It is easy to generate with an AI.** The grammar is small and precisely
+  defined. You can hand your test problem *together with the EBNF*
+  ([§13](#13-appendix-dsl-quick-reference--付録dsl-クイックリファレンス) /
+  [DSL_Grammar_Specification.md](DSL_Grammar_Specification.md)) to an AI assistant
+  and ask it to write the DSL — then review and refine it in NeoCombi.
+
+NeoCombi の DSL は **Microsoft PICT 制約言語の厳密なサブセット**（**文法 v1.0**）です。
+ここから2つの実用的な利点が生まれます：
+
+- **そのまま PICT に直接入力できる。** ここで有効なものは PICT 入力としても有効で、
+  `pict` コマンドにそのまま貼って動きます。Microsoft の PICT ドキュメントもそのまま
+  参照可能。変換不要・ロックインなし。
+- **AI に書かせやすい。** 文法が小さく厳密に定義されているので、テスト対象の説明と
+  **EBNF**（[§13](#13-appendix-dsl-quick-reference--付録dsl-クイックリファレンス) /
+  [DSL_Grammar_Specification.md](DSL_Grammar_Specification.md)）を AI に渡して DSL を
+  生成させ、NeoCombi で確認・修正する、という使い方ができます。
+
 **Declaring factors / 因子の宣言**
 
 ```
@@ -336,10 +359,16 @@ it is also a valid PICT model file and is friendly to version control.
 
 ## 13. Appendix: DSL Quick Reference / 付録：DSL クイックリファレンス
 
-DSL **Grammar version 1.0**. The full formal grammar (EBNF), lexical rules, and
-type inference are in [DSL_Grammar_Specification.md](DSL_Grammar_Specification.md).
+DSL **Grammar version 1.0** — a strict subset of PICT, so DSL you write here is
+also valid PICT input. This grammar is meant to be **used**: read it to author by
+hand, or paste it into an AI assistant (with your test problem) to have the DSL
+generated for you. The full formal grammar (EBNF), lexical rules, and type
+inference are in [DSL_Grammar_Specification.md](DSL_Grammar_Specification.md).
 
-DSL **文法バージョン 1.0**。完全な形式文法（EBNF）・字句規則・型推論は
+DSL **文法バージョン 1.0** ── PICT の厳密なサブセットなので、ここで書いた DSL は
+PICT 入力としても有効です。この文法は**使うためのもの**です ── 自分で書くために読む
+ほか、テスト対象の説明と一緒に AI に渡して DSL を生成させる土台にもなります。完全な
+形式文法（EBNF）・字句規則・型推論は
 [DSL_Grammar_Specification.md](DSL_Grammar_Specification.md) を参照。
 
 ```
