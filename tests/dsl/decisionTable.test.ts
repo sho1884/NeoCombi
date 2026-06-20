@@ -60,14 +60,14 @@ describe('decisionTable / generateDecisionTable', () => {
   })
 
   it('refuses above the limit without enumerating (too-large)', () => {
-    // 3 factors x 10 levels = 1000 > limit 512.
+    // 4 factors x 10 levels = 10000 > limit 4096.
     const ten = Array.from({ length: 10 }, (_, i) => `v${i}`).join(', ')
-    const result = generateDecisionTable(modelOf(`A: ${ten}\nB: ${ten}\nC: ${ten}`))
+    const result = generateDecisionTable(modelOf(`A: ${ten}\nB: ${ten}\nC: ${ten}\nD: ${ten}`))
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.reason).toBe('too-large')
     if (result.reason !== 'too-large') return
-    expect(result.count).toBe(1000)
+    expect(result.count).toBe(10000)
     expect(result.limit).toBe(DECISION_TABLE_LIMIT)
   })
 

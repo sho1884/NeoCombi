@@ -1392,7 +1392,7 @@ function walk(p, visit) {
 }
 
 // src/engines/dsl/decisionTable.ts
-var DECISION_TABLE_LIMIT = 512;
+var DECISION_TABLE_LIMIT = 4096;
 var ZERO_RANGE = {
   start: { line: 1, column: 1, offset: 0 },
   end: { line: 1, column: 1, offset: 0 }

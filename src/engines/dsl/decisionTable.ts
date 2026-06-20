@@ -14,7 +14,7 @@
 //   - ok            { columns, rows: [{ values, forbidden }] }
 //   - too-large     { count, limit }   when the product exceeds the limit
 //   - invalid-model { diagnostics }    when the model is not usable
-// Because the cap is small (512), the whole table fits in memory and is built
+// Because the cap is small (4096), the whole table fits in memory and is built
 // atomically — there is no streaming and therefore no way to emit a partial.
 
 import type {
@@ -29,11 +29,13 @@ import { buildTypeInfo, isAssignmentValid } from './evaluator'
 
 /**
  * Maximum number of combinations (the full Cartesian product) a decision table
- * may contain. Decision-table test design is a small-factor-set technique; the
- * limit is a guardrail against an oversized model, and is independent of the
- * forbidden view's enumeration limit. See SR-103.
+ * may contain. The cap is on the raw product (not the valid/non-forbidden
+ * count, which can't be known without enumerating); it bounds enumeration time
+ * and in-browser rendering. 4096 is large enough for realistic small models
+ * even when constraints forbid most rows, yet small enough to stay responsive.
+ * Independent of the forbidden view's enumeration limit. See SR-103.
  */
-export const DECISION_TABLE_LIMIT = 512
+export const DECISION_TABLE_LIMIT = 4096
 
 const ZERO_RANGE: Range = {
   start: { line: 1, column: 1, offset: 0 },

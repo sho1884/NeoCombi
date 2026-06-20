@@ -25,11 +25,11 @@ describe('runDecisionTable (GUI path)', () => {
 
   it('reports too-large without populating a suite', () => {
     const ten = Array.from({ length: 10 }, (_, i) => `v${i}`).join(', ')
-    useProjectStore.getState().setSource(`A: ${ten}\nB: ${ten}\nC: ${ten}`)
+    useProjectStore.getState().setSource(`A: ${ten}\nB: ${ten}\nC: ${ten}\nD: ${ten}`)
     const result = runDecisionTable()
     expect(result.kind).toBe('too-large')
     if (result.kind !== 'too-large') return
-    expect(result.count).toBe(1000)
+    expect(result.count).toBe(10000)
     expect(useProjectStore.getState().testSuite).toBeNull()
   })
 
