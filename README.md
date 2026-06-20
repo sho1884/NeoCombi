@@ -10,6 +10,7 @@
 > - [Printer options](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/printer.tmodel) — IF/THEN/ELSE + IN constraints
 > - [Shopping site](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/shopping.tmodel) — Japanese factors, a mask level (`_MASK_`) + several constraints
 > - [Multifunction printer](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/mfp.tmodel) — binding-margin geometry: valid gutters depend on orientation × duplex
+> - [Copier N-up & zoom](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/mfp-zoom.tmodel) — when does a factor need a `_MASK_` level? Controls hidden/disabled by other settings
 > - [Browsers](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/browsers.tmodel) — small pairwise model
 > - [50 factors](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/large-50.tmodel) · [100 factors](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/large-100.tmodel) — HAYST-scale
 
