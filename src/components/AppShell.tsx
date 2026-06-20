@@ -4,6 +4,7 @@ import { TopPane } from './TopPane'
 import { BottomPane } from './BottomPane'
 import { FileMenu } from './FileMenu'
 import { HelpMenu } from './HelpMenu'
+import { UnsavedGuard } from './UnsavedGuard'
 import { AutoRegenerator } from './AutoRegenerator'
 import { SampleLoader } from './SampleLoader'
 import './AppShell.css'
@@ -46,6 +47,7 @@ export function AppShell() {
     <div className="app">
       <SampleLoader />
       <AutoRegenerator />
+      <UnsavedGuard />
       <header className="app__header">
         <h1 className="app__title">NeoCombi</h1>
         <span
