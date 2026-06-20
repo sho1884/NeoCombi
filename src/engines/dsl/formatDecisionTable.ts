@@ -23,7 +23,7 @@ export type DecisionTableOutRow = {
  * HTML clipboard, so what is shown always matches what is copied / exported.
  * (JSON uses a real boolean instead; see formatJson.)
  */
-export const FORBIDDEN_MARK = 'x'
+export const FORBIDDEN_MARK = 'X'
 
 export function formatDecisionTable(
   columns: string[],

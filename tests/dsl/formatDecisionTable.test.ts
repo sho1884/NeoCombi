@@ -17,13 +17,13 @@ describe('formatDecisionTable', () => {
     const lines = csv.trimEnd().split('\n')
     expect(lines[0]).toBe('Color,Size,Forbidden,Expected')
     expect(lines[1]).toBe('Red,S,,')
-    expect(lines[2]).toBe('Red,L,x,')
+    expect(lines[2]).toBe('Red,L,X,')
     expect(lines[3]).toBe('Blue,M,,ok')
   })
 
   it('TSV uses tabs', () => {
     const tsv = formatDecisionTable(columns, rows, 'tsv')
-    expect(tsv.split('\n')[2]).toBe('Red\tL\tx\t')
+    expect(tsv.split('\n')[2]).toBe('Red\tL\tX\t')
   })
 
   it('JSON: Forbidden is a boolean; Expected only when present', () => {
