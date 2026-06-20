@@ -11,6 +11,7 @@
 > - [Shopping site](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/shopping.tmodel) — Japanese factors, a mask level (`_MASK_`) + several constraints
 > - [Multifunction printer](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/mfp.tmodel) — binding-margin geometry: valid gutters depend on orientation × duplex
 > - [Copier N-up & zoom](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/mfp-zoom.tmodel) — when a hidden control needs a `_MASK_` level, and when a locked field is just a fixed value
+> - [Admission fee](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/admission-fee.tmodel) — a decision table: inputs determine the fee, enforced by constraints (the fee is an expected-result factor)
 > - [Browsers](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/browsers.tmodel) — small pairwise model
 > - [50 factors](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/large-50.tmodel) · [100 factors](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/large-100.tmodel) — HAYST-scale
 
