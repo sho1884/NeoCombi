@@ -3,6 +3,7 @@ import { useProjectStore } from '../stores/projectStore'
 import { TopPane } from './TopPane'
 import { BottomPane } from './BottomPane'
 import { FileMenu } from './FileMenu'
+import { HelpMenu } from './HelpMenu'
 import { AutoRegenerator } from './AutoRegenerator'
 import { SampleLoader } from './SampleLoader'
 import './AppShell.css'
@@ -58,6 +59,7 @@ export function AppShell() {
           {filePath ?? '(unsaved project)'}
           {isDirty ? ' •' : ''}
         </span>
+        <HelpMenu />
       </header>
 
       <main className="app__main" ref={mainRef} style={mainStyle}>
