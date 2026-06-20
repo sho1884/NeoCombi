@@ -1,31 +1,29 @@
-# 複合機（コピー）の例 — N-up と 倍率：mask 水準の要否を見極めるケース.
-# Multifunction printer: when does a factor need a "_MASK_" level? A control
-# that gets hidden or disabled by other settings is masked in that state.
+# 複合機（コピー）の例 — mask 水準の要否を見極めるケース.
+# Multifunction printer: when does a factor really need a "_MASK_" level?
+# A "_MASK_" means the factor is *not applicable* in that combination — the
+# control is gone, or its value is irrelevant. A control that is merely locked
+# to a single *visible, observable* value is NOT masked: it has that one value.
 #
-# UI から同値分割で水準を挙げたら、必ず問う ──「これで十分か」「UI が隠れる/触れなく
-# なる状態（= mask）を水準として加える必要はないか」。
+# UI から同値分割で水準を挙げたら、必ず問う ──「これで十分か」「UI が消えて/無関係に
+# なる状態（= mask）を水準として加える必要はないか」。ただし mask と「値が一つに固定」
+# は別物。見えていて値が 100% に定まっているなら、それは mask ではなく値 100%。
 #   まとめて1枚   : 常に表示・操作可                         -> mask 不要
-#   倍率を指定する : N-up 選択時に非表示                      -> mask 必要
-#   倍率          : N-up 選択時に非表示、かつ「指定しない」時は操作不可（100% のまま）
-#                                                            -> mask 必要（2つの理由）
-#   印字方向       : N-up 選択時だけ表示（倍率系とは逆位相）   -> mask 必要
-# 同じ N-up がトリガで、倍率系と印字方向は同じ場所で入れ替わる（どちらかだけが見える）。
+#   倍率を指定する : N-up 選択時はコントロールごと消える       -> mask 必要
+#   倍率          : N-up 選択時はコントロールごと消える       -> mask 必要
+#                  「指定しない」時は触れないが 100% で確定し、コピーも 100% で出る
+#                  （観測できる実値）-> これは mask ではなく「値 = 100%」
 
 まとめて1枚:   Nアップしない, N最小の2アップ, N中央の9アップ, N最大の32アップ
 倍率を指定する: 指定しない, 指定する, _MASK_
 倍率:          最小25パーセント, 等倍100パーセント, 最大400パーセント, _MASK_
-印字方向:      順方向, 逆方向, _MASK_
 
-# 「倍率を指定する」は N-up 選択時に非表示 → そのとき mask（それ以外では実値）
+# 「倍率を指定する」は N-up 選択時にコントロールごと消える → そのとき mask
 IF [まとめて1枚] <> "Nアップしない" THEN [倍率を指定する] =  "_MASK_";
 IF [まとめて1枚] =  "Nアップしない" THEN [倍率を指定する] <> "_MASK_";
 
-# 「倍率」は (a) N-up 選択時に非表示、(b)「指定しない」時は操作不可 → どちらでも mask
+# 「倍率」も N-up 選択時はコントロールごと消える → そのとき mask
 IF [まとめて1枚] <> "Nアップしない" THEN [倍率] = "_MASK_";
-IF [倍率を指定する] = "指定しない" THEN [倍率] = "_MASK_";
-# 実値を取るのは「N-up なし」かつ「指定する」のときだけ
+# 「指定しない」時は触れないが値は 100% に確定 → mask ではなく実値 100%
+IF [倍率を指定する] = "指定しない" THEN [倍率] = "等倍100パーセント";
+# 「指定する」時だけユーザが 25 / 100 / 400% を選べる（mask にはならない）
 IF [まとめて1枚] = "Nアップしない" AND [倍率を指定する] = "指定する" THEN [倍率] <> "_MASK_";
-
-# 「印字方向」は倍率系と逆 ── N-up を選んだときだけ現れる
-IF [まとめて1枚] =  "Nアップしない" THEN [印字方向] =  "_MASK_";
-IF [まとめて1枚] <> "Nアップしない" THEN [印字方向] <> "_MASK_";
