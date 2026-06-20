@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useProjectStore } from '../stores/projectStore'
 import { computeForbiddenSlice } from '../engines/dsl'
 import { MASK_LEVEL } from '../engines/dsl/maskLevel'
+import { FORBIDDEN_MARK } from '../engines/dsl/formatDecisionTable'
 import type { Model, ParameterDecl } from '../types/dsl'
 import type { TestSuite } from '../types/testCase'
 import {
@@ -70,7 +71,7 @@ export function ExhaustiveMatrix() {
         <div className="matrix__no-suite-banner" role="status">
           <strong>No test cases imported.</strong> Cells show only the pair
           structure and DSL-derived forbidden marks (
-          <span className="matrix__no-suite-banner-marker">✗</span>). Import
+          <span className="matrix__no-suite-banner-marker">{FORBIDDEN_MARK}</span>). Import
           a CSV in the <strong>Test cases</strong> tab to populate occurrence
           counts.
         </div>
@@ -171,7 +172,7 @@ export function ExhaustiveMatrix() {
                     const isUpperRight = colFactorIdx > rowFactorIdx
 
                     if (forbidden) {
-                      display = '✗'
+                      display = FORBIDDEN_MARK
                       cellClass += ' matrix__cell--forbidden'
                       extraLabel = ': forbidden by DSL constraints'
                     } else if (occurrenceMap === null) {
@@ -245,7 +246,7 @@ export function ExhaustiveMatrix() {
 // =============================================================================
 // Export toolbar: lets the user copy or download the rendered cross-tab
 // matrix as TSV. The TSV uses the same cell values shown in the UI
-// (numbers / "✗" / "?" / "—") so what you see is what you copy.
+// (numbers / FORBIDDEN_MARK / "?" / "—") so what you see is what you copy.
 // =============================================================================
 
 type MatrixExportToolbarProps = {
@@ -350,7 +351,7 @@ function matrixToHtml(
           const va = String(rowLevel.value)
           const vb = String(colLevel.value)
           if (forbiddenMap && isForbidden(forbiddenMap, rowF.name, va, colF.name, vb)) {
-            cells.push('<td>✗</td>')
+            cells.push(`<td>${FORBIDDEN_MARK}</td>`)
             continue
           }
           if (!occurrenceMap) {
@@ -422,7 +423,7 @@ function matrixToCsv(
           const va = String(rowLevel.value)
           const vb = String(colLevel.value)
           if (forbiddenMap && isForbidden(forbiddenMap, rowF.name, va, colF.name, vb)) {
-            cells.push('✗')
+            cells.push(FORBIDDEN_MARK)
             continue
           }
           if (!occurrenceMap) {

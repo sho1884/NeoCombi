@@ -15,8 +15,9 @@ export type DecisionTableOutRow = {
 
 /**
  * The app-wide marker for "forbidden by a constraint": a forbidden cell / row,
- * empty for allowed. Plain ASCII on purpose — a Unicode glyph like ✗ is
- * font-dependent (can fail to render) and awkward in CSV / CI, and in the GUI
+ * empty for allowed. Plain ASCII on purpose — a Unicode cross glyph (U+2717
+ * and friends) is font-dependent (can fail to render) and awkward in CSV / CI,
+ * and in the GUI
  * the meaning is already carried by colour + aria-label, so the text is just a
  * universally-renderable redundant cue. Single source of truth shared by the
  * decision table and the forbidden matrix, across display, CSV/TSV, and the
