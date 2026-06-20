@@ -115,6 +115,40 @@ describe('lexer / strings and numbers', () => {
   })
 })
 
+describe('lexer / digit-leading identifiers (grammar: IdHead may be a Digit)', () => {
+  // A digit-leading run that contains a non-digit identifier character is a
+  // single bare identifier (e.g. "1200円", "65歳以上", "2in1"). PICT accepts
+  // such bare values too; only an all-digit run is a NumberLiteral.
+  it.each(['1200円', '65歳以上', '6歳未満', '2in1', '4in1', '3D'])(
+    'lexes %s as one identifier token',
+    word => {
+      const tokens = lex(word)
+      expect(tokens.map(t => t.kind)).toEqual(['identifier', 'eof'])
+      expect(tokens[0]?.text).toBe(word)
+      expect(tokens[0]?.value).toBe(word)
+    },
+  )
+
+  it.each([
+    ['10', 10],
+    ['42', 42],
+    ['1.5', 1.5],
+    ['1200', 1200],
+  ])('still lexes the all-digit value %s as a number', (word, value) => {
+    const tokens = lex(word)
+    expect(tokens.map(t => t.kind)).toEqual(['number', 'eof'])
+    expect(tokens[0]?.value).toBe(value)
+  })
+
+  it('lexes a bare digit-leading level in a declaration', () => {
+    const tokens = lex('入場料: 1200円, 無料')
+    expect(kinds(tokens)).toEqual([
+      'identifier', 'colon', 'identifier', 'comma', 'identifier', 'eof',
+    ])
+    expect(tokens[2]?.text).toBe('1200円')
+  })
+})
+
 describe('lexer / punctuation and operators', () => {
   it('emits each punctuation token', () => {
     const tokens = lex(':,;{}[]()')

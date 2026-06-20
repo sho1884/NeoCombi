@@ -156,9 +156,33 @@ export function lex(source: string): Token[] {
       continue
     }
 
-    // Number literal: digit-leading.
+    // Digit-leading run: either a NumberLiteral or a digit-leading Identifier.
+    // The grammar allows IdHead = Digit, so a run like "1200円" / "65歳以上" /
+    // "2in1" is a single bare identifier (PICT accepts such bare values too).
+    // It is only a NumberLiteral when the whole run is digits (with an optional
+    // decimal). We decide by scanning the maximal identifier-continuation run
+    // and checking whether it holds any non-digit identifier character.
     if (isDigit(ch)) {
       const start = here()
+      let j = i
+      let hasNonDigit = false
+      while (j < source.length && isIdMid(source[j]!)) {
+        if (!isDigit(source[j]!)) hasNonDigit = true
+        j++
+      }
+      if (hasNonDigit) {
+        i = j
+        const end = here()
+        const text = source.slice(start.offset, i)
+        tokens.push({
+          kind: 'identifier',
+          text,
+          value: text,
+          range: { start, end },
+        })
+        continue
+      }
+      // Pure number (integer or decimal).
       while (i < source.length && isDigit(source[i]!)) i++
       if (source[i] === '.' && isDigit(peek(1))) {
         i++

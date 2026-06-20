@@ -96,6 +96,24 @@ function lex(source) {
     }
     if (isDigit(ch)) {
       const start = here();
+      let j = i;
+      let hasNonDigit = false;
+      while (j < source.length && isIdMid(source[j])) {
+        if (!isDigit(source[j])) hasNonDigit = true;
+        j++;
+      }
+      if (hasNonDigit) {
+        i = j;
+        const end2 = here();
+        const text2 = source.slice(start.offset, i);
+        tokens.push({
+          kind: "identifier",
+          text: text2,
+          value: text2,
+          range: { start, end: end2 }
+        });
+        continue;
+      }
       while (i < source.length && isDigit(source[i])) i++;
       if (source[i] === "." && isDigit(peek(1))) {
         i++;
