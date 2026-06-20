@@ -89,7 +89,7 @@ NeoCEG / NeoCombi は決定論変換器（AI 不内蔵）。AI 連携は n8n 経
 - **Priority:** high
 - **Background:** 因子が少ない時に、**全因子水準の全組み合わせを並べ、あり得ない（禁則）組み合わせに印を付け、各組み合わせに期待結果を書いて 1 組み合わせ＝1 テストケースとして設計する** ── 普通のデシジョンテーブルによるテスト設計。前身 PICT-PAPP の機能で、NeoCombi には欠落している。ペアワイズ（UR-001）の補完関係：因子が多く全直積が爆発する時はペアワイズ（PICT）、因子が少なく網羅したい時はデシジョンテーブル。設計者は生成モードとして使い分ける。
 - **著者確認済みの挙動：** 表は**全直積を全行残し、禁則行は除外せず印**を付ける。禁則判定は内製 DSL 評価器（forbidden view と同じ、UR-003）を再利用し、PICT は使わない（PICT は「印付きの全直積」を出せない）。期待値列（UR-005）と CSV/JSON エクスポートが乗る。
-- **スケールのガードレール：** 禁則を残すので直積は減らない。**組み合わせ数が 512 を超えたら生成を断る**（デシジョンテーブルは本来少因子向けだが、ユーザが過大なモデルを作る可能性への歯止め）。件数と上限を示し、部分的な表は一切出さない。
+- **スケールのガードレール：** 禁則を残すので直積は減らない。**組み合わせ数が 4096 を超えたら生成を断る**（デシジョンテーブルは本来少因子向けだが、ユーザが過大なモデルを作る可能性への歯止め）。件数と上限を示し、部分的な表は一切出さない。
 - **3 つのデプロイ（いずれも同格・1 つの共有純粋コアの異なる構成）：** GUI（ブラウザ内でコア実行・テストケース表の生成モード）／ CLI（CI/CD・1 プロセス内でコア実行、PICT もネットワークも不要）／ HTTP API（サーバ内でコア実行、pict-service に `/decision-table` を追加、外部から呼ぶ）。**CI/CD パイプラインに CLI でも API でも組み込めること**が要点。どのデプロイでも出力は原子的（完全な表か、きれいなエラーか。部分表は出さない）。詳細なインタフェースと 3 構成図は §4.11 を参照。
 
 ## 4. System Requirements
@@ -206,7 +206,7 @@ mask 水準の authoring 補助。DSL は変更せず、固定トークン `_MAS
 | SR-100 | Select generation mode (pairwise/N-wise vs decision-table) | GUI の生成コントロールで 2 モード選択。pairwise/N-wise は PICT（`/o:N`）、デシジョンテーブルは内製コア（PICT path 不要）。選択はプロジェクトに永続化（SR-070） |
 | SR-101 | Generate the decision table via the built-in core (shared contract) | `generateDecisionTable(model)` ── **純粋・同期・IO 非依存**のエンジン層関数。GUI/CLI/API が共有する唯一の契約。全因子の全水準割当を**全行**列挙（禁則も残す）、各行を禁則判定。**完全な表 / too-large / invalid-model の 3 値**のみ返し、**部分表は返さない** |
 | SR-102 | Mark forbidden rows in the decision table | 各行を禁則ビューと同じ評価器で判定し、禁則フラグを付与（GUI ではマーカー列＋行スタイル）。除外せず残す。フラグはデータモデルに乗り、エクスポート・API 応答にも含まれる |
-| SR-103 | Refuse decision-table generation above 512 combinations | 列挙前に直積（各因子水準数の積）を計算。**512 超なら too-large を返し列挙しない**（部分出力なし）。禁則ビューの上限とは**独立した固定値 512** |
+| SR-103 | Refuse decision-table generation above 4096 combinations | 列挙前に直積（各因子水準数の積）を計算。**4096 超なら too-large を返し列挙しない**（部分出力なし）。禁則ビューの上限とは**独立した固定値 4096** |
 | SR-104 | Expose the decision table via the CLI | 1 Node プロセスでコアを in-process 実行。`neocombi generate <m.tmodel> --decision-table [--format csv\|json] [--output f]`。出力は原子的。終了コード：0 成功／1 invalid-model／3 入力不可／4 出力失敗／**5 too-large**（2=PICT 失敗はこのモードでは不使用） |
 | SR-105 | Expose the decision table via the HTTP API | pict-service に `/decision-table` を追加（`/generate` と並置）。`POST /decision-table`（body=DSL）→ **200** 完全な表／**400** invalid-model／**413** too-large。応答は原子的。サーバは `/generate` 用に PICT、`/decision-table` 用に純粋コアの両方を持つ |
 
@@ -220,14 +220,14 @@ function generateDecisionTable(model: Model): DecisionTableResult
 
 type DecisionTableResult =
   | { ok: true;  columns: string[]; rows: { values: string[]; forbidden: boolean }[] }
-  | { ok: false; reason: 'too-large';     count: number; limit: 512 }
+  | { ok: false; reason: 'too-large';     count: number; limit: 4096 }
   | { ok: false; reason: 'invalid-model'; diagnostics: Diagnostic[] }
 ```
 
 | コア結果 | CLI 終了コード | HTTP ステータス |
 |---|---|---|
 | `ok` | 0（完全な表を出力） | 200（表 JSON） |
-| `too-large` | 5（件数・上限を stderr） | 413（`{reason,count,limit:512}`） |
+| `too-large` | 5（件数・上限を stderr） | 413（`{reason,count,limit:4096}`） |
 | `invalid-model` | 1（診断を stderr） | 400（`{reason,diagnostics}`） |
 | 入力ファイル不可（CLI のみ） | 3 | — |
 | 出力書き込み失敗（CLI のみ） | 4 | — |

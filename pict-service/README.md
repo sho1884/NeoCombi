@@ -54,7 +54,7 @@ defenses are the guardrails above. When exposing it publicly, set them:
 - `ALLOWED_ORIGINS=https://your-gui-origin` (locks CORS to your GUI)
 - keep `PICT_TIMEOUT_MS`, `MAX_ORDER`, `RATE_LIMIT_PER_MIN` on (bound runaway / abuse)
 - deploy with a small **max-instances** so a burst can't fan out cost
-- the decision-table endpoint is additionally capped at 512 combinations
+- the decision-table endpoint is additionally capped at 4096 combinations
 
 The container already runs the server as the unprivileged `node` user, writes
 each model to an ephemeral temp dir, and passes PICT arguments as an array

@@ -133,7 +133,7 @@ requirements:
       The expected-value column (UR-005) and CSV/JSON export apply.
 
       Scale guardrail: because forbidden rows are kept, the product is not
-      reduced, so generation is refused when the product exceeds 512
+      reduced, so generation is refused when the product exceeds 4096
       combinations (a decision table is a small-factor-set technique, but a
       user may build an oversized model anyway). The count and the limit are
       shown; nothing partial is produced.

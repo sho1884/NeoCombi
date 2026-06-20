@@ -274,10 +274,10 @@ control; 2 = pairwise). Forbidden combinations are left out.
 **Decision-table mode / デシジョンテーブル**
 Lists **every** combination of all factors, in order, with forbidden rows kept and
 marked **`X`** in a *Forbidden* column. Because every row is kept, this is meant
-for **small** factor sets — NeoCombi refuses to generate more than **512**
+for **small** factor sets — NeoCombi refuses to generate more than **4096**
 combinations and tells you the count.
 全因子の**全組み合わせ**を並べ、禁止行は残して *Forbidden* 列に **`X`**。全行を残すので
-**少因子向け**で、**512** 通りを超えると件数を示して生成を断ります。
+**少因子向け**で、**4096** 通りを超えると件数を示して生成を断ります。
 
 Switching mode clears the current table (its rows belong to the previous mode);
 just generate again. モードを切り替えると現在の表はクリアされます（再生成してください）。
@@ -350,7 +350,7 @@ it is also a valid PICT model file and is friendly to version control.
 | Symptom / 症状 | What to do / 対処 |
 |---|---|
 | Pairwise **Generate** fails or hangs / ペアワイズが失敗・遅い | On the public demo the PICT service may be waking from idle — wait and retry. Or switch to **Decision table** (runs in your browser). 待って再試行、またはデシジョンテーブルへ |
-| "Too many combinations (… > 512)" | A decision table is for small factor sets. Remove factors/levels, or use **Pairwise**. 因子/水準を減らすかペアワイズへ |
+| "Too many combinations (… > 4096)" | A decision table is for small factor sets. Remove factors/levels, or use **Pairwise**. 因子/水準を減らすかペアワイズへ |
 | A constraint seems to have no effect / 制約が効かない | A value on the right of a comparison or in `IN { }` must be quoted or a number, not a bare word ([§5](#5-writing-constraints--制約を書く)). 値はクォートか数値に |
 | "unsupported in MVP" appears / 未対応と出る | You used `LIKE`, `~`, `{…}@N`, or a weight `(N)` — not in this release. これらは対象外 |
 | A masked case never shows up / マスク状況が出ない | You probably forgot the `_MASK_` level and its constraint ([§10](#10-mask-levels--マスク水準)). マスク水準の付け忘れ |

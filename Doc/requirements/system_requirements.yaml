@@ -511,7 +511,7 @@ requirements:
         outcome: "Read .tmodel, invoke PICT, emit test cases (CSV by default) to stdout"
       - context: "User passes '--decision-table'"
         action: "CLI executes"
-        outcome: "Generate the decision table via the built-in core (no PICT); behavior and exit codes are specified by SR-104 (atomic output; exit 5 on >512)"
+        outcome: "Generate the decision table via the built-in core (no PICT); behavior and exit codes are specified by SR-104 (atomic output; exit 5 on >4096)"
       - context: "User passes '--format json'"
         action: "CLI executes"
         outcome: "Emit JSON array instead of CSV"
@@ -699,7 +699,7 @@ requirements:
 # The one internal contract every deployment depends on:
 #   generateDecisionTable(model) -> DecisionTableResult
 #     | { ok: true;  columns; rows: [{ values; forbidden }] }
-#     | { ok: false; reason: 'too-large';     count; limit: 512 }
+#     | { ok: false; reason: 'too-large';     count; limit: 4096 }
 #     | { ok: false; reason: 'invalid-model'; diagnostics }
 #   Pure, synchronous, no IO/DOM/HTTP. Returns a COMPLETE table or an error —
 #   never a partial table. CLI exit codes and HTTP status codes are both just a
@@ -739,13 +739,13 @@ requirements:
         - ok:           { columns, rows: [{ values, forbidden }] } — every
                         full-factor combination in declared order, each marked
                         forbidden or allowed (SR-102).
-        - too-large:    { count, limit: 512 } when the product exceeds 512
+        - too-large:    { count, limit: 4096 } when the product exceeds 4096
                         (SR-103); nothing is enumerated.
         - invalid-model:{ diagnostics } when the DSL does not parse / validate.
-      Because the cap is 512, the whole result fits in memory and is returned
+      Because the cap is 4096, the whole result fits in memory and is returned
       atomically; there is no streaming and therefore no way to emit a partial.
     scenarios:
-      - context: "DSL is valid and the product is within 512"
+      - context: "DSL is valid and the product is within 4096"
         action: "Core is called"
         outcome: "Returns ok with every combination as a row in declared-factor order, each evaluated for forbidden status"
       - context: "The model has no constraints"
@@ -778,21 +778,26 @@ requirements:
   SR-103:
     parent: [UR-009]
     category: all_combinations
-    function: "Refuse decision-table generation above 512 combinations"
+    function: "Refuse decision-table generation above 4096 combinations"
     note: |
       The product of each factor's level count is computed BEFORE enumeration.
       Because forbidden rows are kept, no constraint filtering reduces the row
-      count — the raw product is exactly the output size. The fixed limit is
-      512 (decision tables are a small-factor-set technique; a user may
-      nonetheless build an oversized model, so this is a guardrail). This limit
-      is specific to the decision table and is NOT the forbidden view's
-      enumeration limit — the two are independent. Above 512 the core returns
-      too-large and nothing is enumerated (no partial output).
+      count — the raw product is exactly the output size. The limit is applied
+      to the RAW PRODUCT (not the valid/non-forbidden count) on purpose: the
+      valid count cannot be known without enumerating, and bounding the product
+      gives a predictable ceiling on enumeration time and on rows rendered in
+      the browser. The fixed limit is 4096 — large enough for realistic small
+      models even when constraints forbid most rows (e.g. a 1080-row model with
+      only ~190 valid cases now generates), yet small enough to stay responsive
+      as a plain in-browser table. It is specific to the decision table and is
+      NOT the forbidden view's enumeration limit — the two are independent.
+      Above 4096 the core returns too-large and nothing is enumerated (no
+      partial output).
     scenarios:
-      - context: "The product exceeds 512"
+      - context: "The product exceeds 4096"
         action: "Core is called"
-        outcome: "Returns too-large with the computed count and limit 512; nothing is enumerated and no rows are produced"
-      - context: "The product is 512 or fewer"
+        outcome: "Returns too-large with the computed count and limit 4096; nothing is enumerated and no rows are produced"
+      - context: "The product is 4096 or fewer"
         action: "Core is called"
         outcome: "Enumeration proceeds (SR-101)"
 
@@ -814,14 +819,14 @@ requirements:
         1  invalid-model — DSL parse / validation error (stderr)
         3  input file not found / unreadable
         4  output write failed
-        5  too-large     — product > 512 (stderr: count and limit); NEW code,
+        5  too-large     — product > 4096 (stderr: count and limit); NEW code,
                            chosen so CI can distinguish "model too big" from a
                            DSL error and so it never collides with PICT's codes
     scenarios:
-      - context: "DSL valid, product within 512"
+      - context: "DSL valid, product within 4096"
         action: "CLI runs with --decision-table"
         outcome: "Write the complete CSV/JSON to stdout (or --output); exit 0"
-      - context: "Product exceeds 512"
+      - context: "Product exceeds 4096"
         action: "CLI runs"
         outcome: "Write nothing to stdout; print count and limit to stderr; exit 5"
       - context: "DSL is invalid"
@@ -842,17 +847,17 @@ requirements:
         POST /decision-table        body = DSL source text
           200  { columns, rows: [{ values, forbidden }] }   — ok
           400  { reason: 'invalid-model', diagnostics }      — DSL error
-          413  { reason: 'too-large', count, limit: 512 }    — product > 512
+          413  { reason: 'too-large', count, limit: 4096 }    — product > 4096
       The pairwise endpoint (POST /generate?order=N -> TSV) is unchanged; the
       API server therefore carries both the PICT binary (for /generate) and the
       pure-TS core (for /decision-table).
     scenarios:
-      - context: "DSL valid, product within 512"
+      - context: "DSL valid, product within 4096"
         action: "Client POSTs /decision-table"
         outcome: "200 with the complete decision-table JSON (rows carry the forbidden flag)"
-      - context: "Product exceeds 512"
+      - context: "Product exceeds 4096"
         action: "Client POSTs /decision-table"
-        outcome: "413 with reason 'too-large', the count, and limit 512; no table body"
+        outcome: "413 with reason 'too-large', the count, and limit 4096; no table body"
       - context: "DSL is invalid"
         action: "Client POSTs /decision-table"
         outcome: "400 with reason 'invalid-model' and diagnostics; no table body"

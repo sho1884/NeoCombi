@@ -160,7 +160,7 @@ are guardrails — set them when exposing the service publicly.
 - **`RATE_LIMIT_PER_MIN`** — per-IP request cap on the work endpoints → HTTP 429.
 - **`MAX_BODY_BYTES`** — request body cap (default 2 MiB).
 - **Deploy with a small `--max-instances`** so an abusive burst can't fan out cost.
-- The decision-table endpoint is additionally capped at **512** combinations.
+- The decision-table endpoint is additionally capped at **4096** combinations.
 
 The container already runs as a non-root user, writes each model to an ephemeral
 temp dir, and passes PICT arguments as an array (no shell — no command injection).
@@ -242,7 +242,7 @@ neocombi generate <input.tmodel> [options]
 | 2 | PICT invocation failed (pairwise) |
 | 3 | input file not found / unreadable |
 | 4 | output write failed |
-| 5 | decision table too large (> 512) |
+| 5 | decision table too large (> 4096) |
 
 Pairwise via the CLI spawns the PICT binary locally, so the runner needs PICT
 installed (or use `--decision-table`, which needs nothing external).
@@ -266,7 +266,7 @@ The PICT service is the API for programmatic / CI callers.
 
 - **200** `{ columns: string[], rows: [{ values: string[], forbidden: boolean }] }`
 - **400** `{ reason: "invalid-model", diagnostics }` — the DSL did not parse
-- **413** `{ reason: "too-large", count, limit: 512 }` — over the limit
+- **413** `{ reason: "too-large", count, limit: 4096 }` — over the limit
 
 **`POST /generate`** errors: **400** invalid order / empty body; **502** PICT failed
 to launch; **504** PICT timed out; **429** rate-limited. Responses are atomic.
