@@ -6,7 +6,7 @@
 # See Doc/PROJECT_KICKOFF.md for the architectural rationale and final vision.
 
 version: "0.2-draft"
-last_updated: "2026-06-19"
+last_updated: "2026-06-21"
 
 requirements:
   UR-001:
@@ -50,13 +50,16 @@ requirements:
     priority: medium
 
   UR-005:
-    task: "Record expected values for test cases"
+    task: "Record a free-form note per test case"
     background: >
-      Test cases without expected outputs are not executable. NeoCombi adds
-      an "expected value" column to each generated test case so the designer
-      can fill in the predicted result per row. This column is preserved
-      across regenerations as long as factor / level identity is stable.
-      (Feature not present in the original PICT-PAPP.)
+      Each generated test case carries a free-form text column the designer can
+      fill in per row. It was originally framed as an "expected value", but in
+      practice it is a design-time memo — an expected result is only one possible
+      use; remarks, references, and rationale are equally valid. The column is
+      therefore named "Notes / メモ・備考" (annotation key @neocombi:note). It is
+      preserved with the test set (see UR-011) and travels in CSV/JSON export and
+      in the round-trip CSV (see UR-010). (Feature not present in the original
+      PICT-PAPP.)
     priority: high
 
   UR-006:
@@ -153,4 +156,54 @@ requirements:
       (core contract, CLI exit codes, HTTP status codes) and the three
       configuration diagrams are in the system requirements and
       Requirements_Specification.md.
+    priority: high
+
+  UR-010:
+    task: "Gate coverage by a per-case count flag, with stable IDs for external round-trip"
+    background: >
+      The coverage rate today is "planned coverage" — it assumes every generated
+      test case will pass. Real, achieved coverage exists only once a case has
+      actually been run and accepted. A case may instead fail (a bug), be
+      impossible to run (an overlooked constraint), or simply not be run yet;
+      for coverage these are all the same — they do not count.
+
+      NeoCombi therefore gives every generated test case a binary
+      "count toward coverage" flag (default = counted). The coverage matrix and
+      coverage rate (UR-004) count only flagged-in cases; a pair that is covered
+      only by flagged-out cases shows as uncovered, so the designer can see
+      exactly which combinations have lost real coverage and need a re-test or a
+      new case. The flag is deliberately neutral ("counted / not counted") rather
+      than "pass / fail", so a team can map it to whatever its workflow means.
+
+      NeoCombi does NOT manage test execution — that belongs to a separate
+      system. To let that system write results back, every test case carries a
+      stable, persisted, human-readable ID: pairwise cases are P + a sequence
+      number, decision-table cases are D + a sequence number, zero-padded to the
+      digit width of that table's case count (e.g. P01..P11, D0001..D1944). The
+      ID is shown in the GUI (humans verify it too). The flag (and the note,
+      UR-005) can be set by hand in the GUI or written back from the external
+      system through a fixed three-column CSV — ID, count flag, note — matched by
+      ID. This keeps NeoCombi a deterministic pre/post processor with a clean
+      integration seam, not a test-execution manager.
+    priority: high
+
+  UR-011:
+    task: "Persist the generated test set and resume work without regenerating"
+    background: >
+      To use the count flag (UR-010) and notes (UR-005) across sessions and with
+      an external execution system, the generated test set itself must be saved
+      and restored verbatim — the rows, their IDs, flags, and notes — and loading
+      must NOT regenerate. Two reasons: pairwise output is not guaranteed
+      identical across PICT runs, so regenerating would detach the recorded flags
+      and notes from the exact rows that were tested; and the designer wants to
+      reopen a project after testing and continue from the recorded state.
+      Regeneration becomes an explicit action rather than an automatic one on
+      load.
+
+      Because flags and notes are easy to lose and costly to recreate, any
+      operation that would discard them — regenerating, or a DSL edit that
+      invalidates the saved set — must first ask the user, whenever at least one
+      flag or note is present, whether it is acceptable to lose all of them; the
+      user then chooses to proceed or to stay. Nothing recorded is discarded
+      silently.
     priority: high

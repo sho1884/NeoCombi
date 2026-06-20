@@ -6,10 +6,10 @@
 #   factor_level_table   SR-010..019
 #   bottom_pane          SR-020..029
 #   forbidden_view       SR-030..039  (built-in evaluator + reference matrix)
-#   coverage_view        SR-040..049  (top-pane exhaustive matrix)
-#   test_case_table      SR-050..059  (test cases + expected values)
+#   coverage_view        SR-040..049  (top-pane exhaustive matrix; SR-044 = count-flag gating, UR-010)
+#   test_case_table      SR-050..059  (test cases + notes + ids + count flag; SR-054..056, UR-005/010)
 #   pict_invocation      SR-060..069  (external PICT CLI)
-#   persistence          SR-070..079  (.tmodel file I/O)
+#   persistence          SR-070..079  (.tmodel file I/O; SR-072 persisted set, SR-073 destructive guard, UR-011)
 #   cli_mode             SR-080..089  (CI/CD pipeline use)
 #   mask_level           SR-090..099  (UR-008 — mask-level authoring assistance)
 #   all_combinations     SR-100..109  (UR-009 — decision-table: full Cartesian, forbidden marked;
@@ -17,7 +17,7 @@
 # UR-007 (NL -> AI -> DSL) is intentionally not realized by any SR yet; deferred to v2.
 
 version: "0.2-draft"
-last_updated: "2026-06-19"
+last_updated: "2026-06-21"
 
 # =============================================================================
 # DSL Authoring (parent: UR-002)
@@ -335,8 +335,30 @@ requirements:
         action: "Matrix renders"
         outcome: "Highlight the missed cell prominently so the designer can investigate (indirect forbidden vs DSL bug vs PICT result quirk)"
 
+  SR-044:
+    parent: [UR-010, UR-004]
+    category: coverage_view
+    function: "Count only flagged-in cases toward coverage"
+    note: |
+      The count flag (SR-055) gates every coverage computation: occurrence
+      overlay (SR-042), missed-cell marking (SR-043), and the coverage rate.
+      A test case whose flag is off contributes nothing. This realizes
+      "achieved coverage" — coverage that real, accepted runs have earned —
+      as opposed to the planned coverage of a freshly generated set (where all
+      cases are flagged in by default, so the two coincide initially).
+    scenarios:
+      - context: "Some test cases are flagged out (not counted)"
+        action: "Coverage matrix / rate is computed"
+        outcome: "Only flagged-in cases contribute occurrence counts and the rate; flagged-out cases are ignored entirely"
+      - context: "An allowed pair is covered only by flagged-out cases"
+        action: "Matrix renders"
+        outcome: "Cell is shown as missed (same style as SR-043), so the lost coverage is visible"
+      - context: "All cases are flagged in (e.g., a freshly generated set)"
+        action: "Coverage is computed"
+        outcome: "Result equals the planned coverage (no behavioral change from the pre-UR-010 baseline)"
+
 # =============================================================================
-# Test Case Table (parent: UR-001, UR-005)
+# Test Case Table (parent: UR-001, UR-005, UR-010)
 # =============================================================================
 
   SR-050:
@@ -347,18 +369,20 @@ requirements:
       One table serves both generation modes (SR-100). In pairwise / N-wise
       mode it shows the PICT-reduced set (no forbidden rows). In decision-table
       mode it shows the full Cartesian product — every row, including forbidden
-      ones — with a forbidden-marker column (SR-102). The expected-value column
-      (SR-051) and export (SR-053) apply in both modes; forbidden rows are not
-      special-cased for expected values (the cell is editable but typically left
-      empty). This is the GUI surface only; the CLI and HTTP API render the same
+      ones — with a forbidden-marker column (SR-102). Every displayed test case
+      also carries a stable ID (SR-054) and a "count toward coverage" flag
+      (SR-055); the notes column (SR-051) and export (SR-053) apply in both
+      modes. Forbidden rows are not test cases: they get no ID, no count flag,
+      and are excluded from coverage; their notes cell is editable but typically
+      empty. This is the GUI surface only; the CLI and HTTP API render the same
       decision-table result in their own formats (SR-104 / SR-105).
     scenarios:
       - context: "Pairwise / N-wise generation has produced output"
         action: "Test cases tab is rendered"
-        outcome: "Table shows one row per test case; columns are factors + expected value; no forbidden-marker column"
+        outcome: "Table shows one row per test case; columns are ID + count flag + factors + notes; no forbidden-marker column"
       - context: "Decision-table generation has produced output"
         action: "Test cases tab is rendered"
-        outcome: "Table shows one row per full-factor combination including forbidden ones; columns are factors + forbidden marker + expected value"
+        outcome: "Table shows one row per full-factor combination; columns are ID + count flag + factors + forbidden marker + notes; forbidden rows have no ID and no flag"
       - context: "No generation has run yet"
         action: "Tab is rendered"
         outcome: "Show empty-state message with 'Generate' action"
@@ -366,44 +390,110 @@ requirements:
   SR-051:
     parent: [UR-005]
     category: test_case_table
-    function: "Provide expected-value column"
+    function: "Provide a free-form notes column"
+    note: |
+      Column label "Notes / メモ・備考"; annotation key @neocombi:note. Formerly
+      framed as an "expected value" — an expected result is one use among others
+      (remarks, references, rationale), so the column is general free text.
     scenarios:
       - context: "Test case row exists"
-        action: "User clicks the expected-value cell"
+        action: "User clicks the notes cell"
         outcome: "Cell becomes editable; user enters free text"
-      - context: "Expected value is set"
+      - context: "A note is set"
         action: "Row renders"
-        outcome: "Value is displayed in the cell"
+        outcome: "Note text is displayed in the cell"
 
   SR-052:
-    parent: [UR-005]
+    parent: [UR-005, UR-011]
     category: test_case_table
-    function: "Preserve expected values across regeneration"
+    function: "Keep notes and flags attached to their test cases"
+    note: |
+      The persisted test set (SR-072) keeps each note and count flag bound to its
+      case ID, so loading restores them without regeneration. Matching is by
+      stable case ID, never by display position. Explicit regeneration is the
+      only thing that can drop them, and only behind the destructive-action guard
+      (SR-073).
     scenarios:
-      - context: "Expected values exist; user regenerates test cases"
+      - context: "A project with notes / flags is reloaded"
+        action: "Load runs"
+        outcome: "Each note and flag is restored to its case by ID; no regeneration occurs"
+      - context: "The user explicitly regenerates after confirming the guard (SR-073)"
         action: "Generation completes"
-        outcome: "For rows whose factor / level combination is unchanged, expected values are retained; for new rows, expected value is empty"
-      - context: "A factor or level was renamed between regenerations"
-        action: "Generation completes"
-        outcome: "Match by stable id (not display name); expected values follow the renamed identity"
-      - context: "A factor or level was deleted"
-        action: "Generation completes"
-        outcome: "Expected values for rows that no longer exist are dropped (silently; recoverable via undo)"
+        outcome: "A fresh test set with fresh IDs replaces the old one; prior notes / flags are discarded as warned"
+      - context: "A factor or level was renamed (display name only) while the saved set is kept"
+        action: "Rename applies"
+        outcome: "Saved rows and their notes / flags are unaffected (rows store level identity, not display text)"
 
   SR-053:
-    parent: [UR-001, UR-005, UR-009]
+    parent: [UR-001, UR-005, UR-009, UR-010]
     category: test_case_table
     function: "Export test cases as CSV / JSON"
     scenarios:
       - context: "Test cases exist"
         action: "User selects 'Export as CSV'"
-        outcome: "Emit CSV file with one row per test case, columns = factors + expected value"
+        outcome: "Emit CSV file with one row per test case, columns = ID + count flag + factors + notes"
       - context: "Test cases exist"
         action: "User selects 'Export as JSON'"
-        outcome: "Emit JSON array with one object per test case"
+        outcome: "Emit JSON array with one object per test case, including id, count flag, and note"
       - context: "Current output is a decision table"
         action: "User exports"
         outcome: "Include the forbidden-marker column / field so the exported decision table preserves which rows are forbidden"
+
+  SR-054:
+    parent: [UR-010]
+    category: test_case_table
+    function: "Assign a stable ID to each test case"
+    note: |
+      Pairwise cases are "P" + a sequence number; decision-table cases are
+      "D" + a sequence number. The number is zero-padded to the digit width of
+      that table's case count (11 cases -> P01..P11; 1944 cases -> D0001..D1944).
+      IDs are assigned at generation, persisted (SR-072), shown in the GUI, and
+      reassigned only on explicit regeneration. Forbidden decision-table rows are
+      not test cases and receive no ID.
+    scenarios:
+      - context: "A test set is generated"
+        action: "Generation completes"
+        outcome: "Each case gets an ID with the mode prefix and a width-matched sequence; the ID column is shown in the GUI"
+      - context: "A project is reloaded"
+        action: "Load runs"
+        outcome: "IDs are restored verbatim from the file; they do not change"
+
+  SR-055:
+    parent: [UR-010]
+    category: test_case_table
+    function: "Provide a per-case 'count toward coverage' flag"
+    note: |
+      Binary, default = counted. Deliberately neutral ("counted / not counted"),
+      not "pass / fail", so a team can map it to its own workflow. It gates all
+      coverage computation (SR-044). Forbidden rows have no flag.
+    scenarios:
+      - context: "A test case row exists"
+        action: "User toggles its count flag"
+        outcome: "Flag flips; coverage (SR-044) recomputes immediately"
+      - context: "A test case is newly generated"
+        action: "Row renders"
+        outcome: "Flag defaults to counted (in)"
+
+  SR-056:
+    parent: [UR-010]
+    category: test_case_table
+    function: "Write back results from a three-column CSV matched by ID"
+    note: |
+      A separate import path from any factor-column CSV: the round-trip file has
+      exactly three columns — ID, count flag, note — with a header row
+      'id,count,note' and the flag as true / false. Each row is matched to an
+      existing case by ID; the case's flag and note are updated. This is how the
+      external execution system writes results back into NeoCombi.
+    scenarios:
+      - context: "User imports a results CSV"
+        action: "Import runs"
+        outcome: "For each row whose ID matches a case, set that case's count flag and note from the CSV"
+      - context: "A CSV row's ID matches no current case"
+        action: "Import runs"
+        outcome: "Skip that row and report it (e.g., 'N rows did not match any case'); do not create a case"
+      - context: "Importing would overwrite existing flags / notes"
+        action: "Import starts"
+        outcome: "Apply the destructive-action guard (SR-073) before overwriting"
 
 # =============================================================================
 # PICT Invocation (parent: UR-001)
@@ -460,17 +550,18 @@ requirements:
         outcome: "Show parse error with the offending line; previous test cases are retained"
 
 # =============================================================================
-# Persistence (parent: UR-001, UR-002, UR-005, UR-006)
+# Persistence (parent: UR-001, UR-002, UR-005, UR-006, UR-011)
 # =============================================================================
-# .tmodel file = single-file project. Contains DSL + expected values + view state.
+# .tmodel file = single-file project. Contains DSL + the persisted test set
+# (rows, ids, count flags, notes) + view state.
 
   SR-070:
-    parent: [UR-001, UR-002, UR-005]
+    parent: [UR-001, UR-002, UR-005, UR-010, UR-011]
     category: persistence
     function: "Save project as .tmodel file"
     file_contents:
       - "DSL source text (single source of truth for factors, levels, constraints)"
-      - "Expected values keyed by stable factor / level ids"
+      - "Persisted test set: each generated case with its ID, count flag, note, and level values (keyed by stable factor / level ids), so it reloads without regeneration"
       - "View state: current bottom-pane tab, factor-checkbox visibility, forbidden-view slice configurations"
       - "Generation settings: generation mode (pairwise/N-wise vs decision-table) and order N (PICT path is user-level, not project-level)"
     scenarios:
@@ -482,19 +573,55 @@ requirements:
         outcome: "Prompt for a path; then write"
 
   SR-071:
-    parent: [UR-001, UR-002, UR-005, UR-006]
+    parent: [UR-001, UR-002, UR-005, UR-006, UR-011]
     category: persistence
     function: "Load project from .tmodel file"
     scenarios:
-      - context: "User opens a .tmodel file"
+      - context: "User opens a .tmodel file with a persisted test set"
         action: "Load runs"
-        outcome: "DSL, expected values, and view state are restored; PICT settings reflect the loaded project"
+        outcome: "DSL, the test set (rows, IDs, count flags, notes), and view state are restored; NO regeneration runs; PICT settings reflect the loaded project"
       - context: "File is from an older format version"
         action: "Load runs"
         outcome: "Apply forward migration; if migration is impossible, show error without partial load"
       - context: "DSL inside file fails to parse"
         action: "Load runs"
         outcome: "Open the project anyway; surface DSL errors so the user can fix them in editor"
+
+  SR-072:
+    parent: [UR-011]
+    category: persistence
+    function: "Treat the persisted test set as authoritative; do not auto-regenerate"
+    note: |
+      The saved rows (with IDs, flags, notes) are the source of truth on load,
+      because pairwise output is not guaranteed identical across PICT runs and
+      the recorded flags / notes must stay bound to the exact rows tested.
+      Regeneration is an explicit user action, never automatic on load or on
+      project open.
+    scenarios:
+      - context: "A project with a persisted test set is opened"
+        action: "Load completes"
+        outcome: "The saved rows are shown as-is; generation is not invoked"
+      - context: "The DSL parses cleanly on load"
+        action: "Load completes"
+        outcome: "Still no automatic regeneration; the user must invoke 'Re-generate' explicitly"
+
+  SR-073:
+    parent: [UR-011, UR-010, UR-005]
+    category: persistence
+    function: "Guard destructive actions when flags or notes exist"
+    note: |
+      Any action that would discard recorded count flags or notes — explicit
+      regeneration, or a DSL edit that invalidates the saved set, or a results
+      import that overwrites (SR-056) — must first confirm. The guard fires only
+      when at least one flag or note is present; otherwise the action proceeds
+      without prompting. Nothing recorded is discarded silently.
+    scenarios:
+      - context: "At least one count flag or note exists; user triggers a discarding action"
+        action: "Action is requested"
+        outcome: "Ask whether it is acceptable to lose all flags / notes; offer proceed or stay; do nothing until the user chooses"
+      - context: "No flags or notes exist; user triggers the same action"
+        action: "Action is requested"
+        outcome: "Proceed without prompting"
 
 # =============================================================================
 # CLI Mode (parent: UR-006)
