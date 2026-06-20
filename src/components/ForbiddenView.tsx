@@ -164,7 +164,7 @@ function SliceTabs({
         onClick={onSuggestFromConstraints}
         title="Auto-generate slices from the model's constraints"
       >
-        ✨ Suggest from constraints
+        Suggest from constraints
       </button>
     </div>
   )
@@ -364,7 +364,7 @@ function ForbiddenExportToolbar({
         onClick={onCopy}
         title="Copy as HTML table + CSV"
       >
-        {copied ? '✓ Copied' : 'Copy'}
+        {copied ? 'Copied' : 'Copy'}
       </button>
       <button type="button" className="forbidden-view__export-btn" onClick={onDownload}>
         Download CSV

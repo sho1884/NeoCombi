@@ -12,7 +12,7 @@ import {
 import './ExhaustiveMatrix.css'
 
 /**
- * Single cross-tabulation matrix in the PICT-PAPP "総当たり表" style:
+ * Single cross-tabulation matrix in the PICT-PAPP all-pairs ("soatari") style:
  * one large square table whose rows and columns are every (factor, level)
  * pair across the visible factors. Diagonal blocks (same factor on both
  * axes) are blocked. Off-diagonal cells are the level-pair intersections.
@@ -294,7 +294,7 @@ function MatrixExportToolbar({
         onClick={onCopy}
         title="Copy as HTML table + CSV (paste-friendly to Excel and plain-text editors / IDEs)"
       >
-        {copied ? '✓ Copied' : 'Copy'}
+        {copied ? 'Copied' : 'Copy'}
       </button>
       <button
         type="button"

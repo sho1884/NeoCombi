@@ -289,7 +289,7 @@ export function TestCasesTab() {
               : `Copy as an HTML table for Excel + ${format.toUpperCase()} text for plain-text editors`
           }
         >
-          {copied ? '✓ Copied' : 'Copy'}
+          {copied ? 'Copied' : 'Copy'}
         </button>
         <span className="test-cases-tab__divider" aria-hidden="true" />
         <label className="test-cases-tab__format">

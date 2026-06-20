@@ -54,7 +54,7 @@ export function DslEditor() {
           disabled={source.length === 0}
           title="Copy the DSL source to the clipboard"
         >
-          {copied ? '✓ Copied' : 'Copy DSL'}
+          {copied ? 'Copied' : 'Copy DSL'}
         </button>
       </div>
       <textarea

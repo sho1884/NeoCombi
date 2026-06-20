@@ -192,8 +192,8 @@
   /* Rotate column-level labels so the matrix stays roughly square even
      when level names are long. `text-orientation: mixed` keeps CJK
      characters upright while laying Latin / digits on their side, so
-     "Windows" and "Linux" read top-to-bottom while "たて" reads
-     naturally as proper vertical Japanese. */
+     "Windows" and "Linux" read top-to-bottom while Japanese level names
+     stay upright and read naturally as vertical text. */
   writing-mode: vertical-rl;
   text-orientation: mixed;
   vertical-align: bottom;
