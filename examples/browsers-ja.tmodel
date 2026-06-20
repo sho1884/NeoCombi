@@ -1,0 +1,17 @@
+# NeoCombi サンプル（browsers.tmodel の日本語版）: 定番の ブラウザ / OS / メモリ
+# マトリクスに制約を1つ。
+#
+# リポジトリ直下から実行:
+#   node bin/neocombi.mjs generate examples/browsers-ja.tmodel
+# または GUI の「開く...」ボタンからこのファイルを開く。
+
+OS:       Linux, Windows, macOS
+ブラウザ: Chrome, Firefox, Safari
+メモリ:   4, 8, 16
+
+# Safari は macOS でのみ利用可能。
+IF [ブラウザ] = "Safari" THEN [OS] = "macOS";
+
+# ===== NeoCombi annotations (auto-generated; do not edit) =====
+# @neocombi:expected OS=Linux ブラウザ=Chrome | デフォルトテーマで正しく表示される
+# @neocombi:expected OS=Linux ブラウザ=Firefox | 正しく表示される（フォントのフォールバックを確認）

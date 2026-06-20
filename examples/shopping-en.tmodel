@@ -1,0 +1,26 @@
+# Shopping-site order — combinatorial test example (English version of shopping.tmodel).
+# Shows a mask level: the credit-card status only matters when paying by credit
+# card. (Example assumptions, not a real site's rules.)
+
+MemberType:   Guest, Regular, Premium
+Shipping:     Standard, Express
+Delivery:     DropOff, InPerson, ConvenienceStore
+Payment:      CreditCard, ConveniencePay, BankTransfer, CashOnDelivery
+CardStatus:   Unregistered, Expired, Valid, Invalid, _MASK_
+Installments: Single, Installment, Revolving
+
+# For non-credit-card payment the card status is not applicable (mask level).
+IF [Payment] <> "CreditCard" THEN [CardStatus] = "_MASK_";
+# For credit-card payment the card status is not masked (it holds a real state).
+IF [Payment] = "CreditCard" THEN [CardStatus] <> "_MASK_";
+
+# Installment / revolving are credit-card only (other payments are single).
+IF [Payment] <> "CreditCard" THEN [Installments] = "Single";
+# Guests cannot use installment / revolving (single only).
+IF [MemberType] = "Guest" THEN [Installments] = "Single";
+
+# Cash on delivery requires in-person receipt (no drop-off / convenience store).
+IF [Payment] = "CashOnDelivery" THEN [Delivery] = "InPerson";
+
+# Express shipping is members-only (no guests).
+IF [Shipping] = "Express" THEN [MemberType] IN { "Regular", "Premium" };

@@ -1,0 +1,29 @@
+# Multifunction printer / copier, copy job (English version of mfp.tmodel).
+# Which gutter (binding-margin) positions are valid depends on the original
+# orientation and the duplex binding edge — a good "forbidden combination"
+# example. Paper size / color / N-up are ordinary, independent copy settings.
+
+PaperSize:   A3, A4, B4, B5
+Orientation: Portrait, Landscape
+Duplex:      None, ShortEdge, LongEdge
+Gutter:      NoGutter, ShortTop, ShortLeft, ShortRight, ShortBottom, LongTop, LongLeft, LongRight, LongBottom
+ColorMode:   Color, Mono, Grayscale
+NUp:         NoNUp, 2in1, 4in1
+
+# Landscape originals cannot take a gutter on the short-edge top/bottom or the long-edge left/right.
+IF [Orientation] = "Landscape" THEN [Gutter] <> "ShortTop" AND [Gutter] <> "ShortBottom" AND [Gutter] <> "LongLeft" AND [Gutter] <> "LongRight";
+
+# Portrait originals cannot take a gutter on the short-edge left/right or the long-edge top/bottom.
+IF [Orientation] = "Portrait" THEN [Gutter] <> "ShortLeft" AND [Gutter] <> "ShortRight" AND [Gutter] <> "LongTop" AND [Gutter] <> "LongBottom";
+
+# Portrait + short-edge duplex: long-edge left/right not allowed.
+IF [Orientation] = "Portrait" AND [Duplex] = "ShortEdge" THEN [Gutter] <> "LongLeft" AND [Gutter] <> "LongRight";
+
+# Portrait + long-edge duplex: short-edge top/bottom not allowed.
+IF [Orientation] = "Portrait" AND [Duplex] = "LongEdge" THEN [Gutter] <> "ShortTop" AND [Gutter] <> "ShortBottom";
+
+# Landscape + long-edge duplex: short-edge left/right not allowed.
+IF [Orientation] = "Landscape" AND [Duplex] = "LongEdge" THEN [Gutter] <> "ShortLeft" AND [Gutter] <> "ShortRight";
+
+# Landscape + short-edge duplex: long-edge top/bottom not allowed.
+IF [Orientation] = "Landscape" AND [Duplex] = "ShortEdge" THEN [Gutter] <> "LongTop" AND [Gutter] <> "LongBottom";

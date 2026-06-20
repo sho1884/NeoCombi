@@ -1,0 +1,31 @@
+# Copier N-up & zoom (English version of mfp-zoom.tmodel) — when does a factor
+# really need a "_MASK_" level? A "_MASK_" means the factor is *not applicable*
+# in that combination: the control is gone, or its value is irrelevant. A control
+# that is merely locked to a single *visible, observable* value is NOT masked —
+# it has that one value.
+#
+# After listing levels by equivalence partitioning, always ask: "is this enough?"
+# and "do I need a mask level for a control that disappears / becomes irrelevant?"
+# But a mask is not the same as "fixed to one value": if it is visible and pinned
+# at 100%, that is the value 100%, not a mask.
+#   NUp        : always visible / enabled                 -> no mask
+#   SpecifyZoom: the whole control disappears under N-up   -> mask needed
+#   Zoom       : the whole control disappears under N-up   -> mask needed
+#                when SpecifyZoom is Off it is inert but pinned at 100%, and the
+#                copy really comes out at 100% (an observable value)
+#                -> that is value = 100%, not a mask
+
+NUp:         NoNUp, Min2Up, Mid9Up, Max32Up
+SpecifyZoom: Off, On, _MASK_
+Zoom:        Min25pct, Equal100pct, Max400pct, _MASK_
+
+# SpecifyZoom's whole control disappears when N-up is selected -> mask then.
+IF [NUp] <> "NoNUp" THEN [SpecifyZoom] =  "_MASK_";
+IF [NUp] =  "NoNUp" THEN [SpecifyZoom] <> "_MASK_";
+
+# Zoom's whole control also disappears when N-up is selected -> mask then.
+IF [NUp] <> "NoNUp" THEN [Zoom] = "_MASK_";
+# When SpecifyZoom is Off the field is inert but pinned at 100% -> value, not mask.
+IF [SpecifyZoom] = "Off" THEN [Zoom] = "Equal100pct";
+# Only when SpecifyZoom is On can the user pick 25 / 100 / 400% (never masked).
+IF [NUp] = "NoNUp" AND [SpecifyZoom] = "On" THEN [Zoom] <> "_MASK_";

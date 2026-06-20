@@ -1,0 +1,18 @@
+# Admission-fee decision table (English version of admission-fee.tmodel),
+# museum / aquarium style. Party × AgeBand × InPrefecture determine the fee.
+# Fee is an expected-result factor; the constraints pin it to the inputs, so
+# every generated row carries the correct fee.
+#
+# A declaration level may be a bare identifier (digit-leading like 1200yen is
+# fine); a constraint right-hand side is a quoted string.
+
+Party:        Individual, Group
+AgeBand:      Adult, Elementary, Senior65Plus, Under6
+InPrefecture: Yes, No
+Fee:          1200yen, 1000yen, 600yen, 500yen, Free
+
+IF [Fee] = "1200yen" THEN [Party] = "Individual" AND [AgeBand] = "Adult";
+IF [Fee] = "1000yen" THEN [Party] = "Group" AND [AgeBand] = "Adult";
+IF [Fee] = "600yen"  THEN [Party] = "Individual" AND [AgeBand] = "Elementary" AND [InPrefecture] = "No";
+IF [Fee] = "500yen"  THEN [Party] = "Group" AND [AgeBand] = "Elementary" AND [InPrefecture] = "No";
+IF [Fee] = "Free"    THEN ([AgeBand] = "Elementary" AND [InPrefecture] = "Yes") OR [AgeBand] = "Senior65Plus" OR [AgeBand] = "Under6";
