@@ -14,10 +14,14 @@ export type DecisionTableOutRow = {
 }
 
 /**
- * Text marker for a forbidden row; empty for an allowed row. The single source
- * of truth shared by every textual representation — CSV, TSV, the GUI cell, and
- * the HTML clipboard payload — so what is shown always matches what is copied /
- * exported. (JSON uses a real boolean instead; see formatJson.)
+ * The app-wide marker for "forbidden by a constraint": a forbidden cell / row,
+ * empty for allowed. Plain ASCII on purpose — a Unicode glyph like ✗ is
+ * font-dependent (can fail to render) and awkward in CSV / CI, and in the GUI
+ * the meaning is already carried by colour + aria-label, so the text is just a
+ * universally-renderable redundant cue. Single source of truth shared by the
+ * decision table and the forbidden matrix, across display, CSV/TSV, and the
+ * HTML clipboard, so what is shown always matches what is copied / exported.
+ * (JSON uses a real boolean instead; see formatJson.)
  */
 export const FORBIDDEN_MARK = 'x'
 

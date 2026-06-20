@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useProjectStore } from '../stores/projectStore'
 import { computeForbiddenSlice, extractSuggestedSlices } from '../engines/dsl'
 import { MASK_LEVEL } from '../engines/dsl/maskLevel'
+import { FORBIDDEN_MARK } from '../engines/dsl/formatDecisionTable'
 import type { ForbiddenSliceCell } from '../types/dsl'
 import type { ForbiddenSliceConfig } from '../types/project'
 import {
@@ -415,7 +416,7 @@ function forbiddenSliceToHtml(
         const cell = row.cells.find(
           c => String(c.assignment[constrainedFactor]) === colLv,
         )
-        return `<td>${cell?.forbidden ? '✗' : '·'}</td>`
+        return `<td>${cell?.forbidden ? FORBIDDEN_MARK : ''}</td>`
       })
       .join('')
     return `<tr>${tupleCells}${dataCells}</tr>`
@@ -467,7 +468,7 @@ function forbiddenSliceToCsv(
       const cell = row.cells.find(
         c => String(c.assignment[constrainedFactor]) === colLv,
       )
-      cells_.push(cell?.forbidden ? '✗' : '·')
+      cells_.push(cell?.forbidden ? FORBIDDEN_MARK : '')
     }
     lines.push(cells_.map(escape).join(','))
   }
@@ -580,7 +581,7 @@ function ForbiddenMatrix({
                       (cell.forbidden ? 'forbidden' : 'allowed')
                     }
                   >
-                    {cell.forbidden ? '✗' : '·'}
+                    {cell.forbidden ? FORBIDDEN_MARK : ''}
                   </td>
                 )
               })}
