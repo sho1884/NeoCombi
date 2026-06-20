@@ -204,8 +204,8 @@ Pages does). The reference layout mirrors NeoCEG:
 任意の静的ホスト（GitHub Pages 等）に置きます。配置は NeoCEG に倣います：
 
 ```
-public-files/NeoCombi/Samples/printer.tmodel
-  → https://sho1884.github.io/public-files/NeoCombi/Samples/printer.tmodel
+public-files/NeoCombi/Samples/mfp.tmodel
+  → https://sho1884.github.io/public-files/NeoCombi/Samples/mfp.tmodel
   → open: https://your-gui/?file=<that url>
 ```
 

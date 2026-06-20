@@ -334,7 +334,7 @@ Testing should still represent that "masked" situation.
   from that address — handy for sharing examples. `?file=<url>` 付きで開くと、その
   アドレスの `.tmodel` を読み込みます（例の共有に便利）。
   ```
-  https://neo-combi.vercel.app/?file=https://…/printer.tmodel
+  https://neo-combi.vercel.app/?file=https://…/mfp.tmodel
   ```
 
 A `.tmodel` is plain text (PICT input plus a few `# @neocombi:` comment lines), so
