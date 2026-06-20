@@ -196,38 +196,26 @@ export function TestCasesTab() {
   // Render
   // ---------------------------------------------------------------------------
 
-  const hostedBanner = isHostedDeployment() ? (
-    <div className="test-cases-tab__hosted-banner" role="status">
-      {generationMode === 'decision-table' ? (
-        <>
-          <strong>Hosted demo.</strong> Decision-table generation runs entirely
-          in your browser, so <strong>Generate</strong> works here — no PICT
-          service needed.
-        </>
-      ) : isPictApiConfigured() ? (
-        <>
-          <strong>Hosted demo.</strong> <strong>Generate</strong> runs live
-          pairwise generation against the configured PICT service (the first
-          request after idle may take a moment).
-        </>
-      ) : (
-        <>
-          <strong>Hosted demo.</strong> Pairwise needs a PICT service, which
-          isn&apos;t configured here — switch Mode to{' '}
-          <strong>Decision table</strong> to generate in-browser, or run
-          NeoCombi locally (
-          <a
-            href="https://github.com/sho1884/NeoCombi#author-in-the-gui"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            setup
-          </a>
-          ).
-        </>
-      )}
-    </div>
-  ) : null
+  // Only worth a banner when there is something to act on: pairwise mode on a
+  // hosted page with no PICT service configured. When generation just works
+  // (decision-table in-browser, or pairwise with a configured service), say
+  // nothing.
+  const hostedBanner =
+    isHostedDeployment() && generationMode !== 'decision-table' && !isPictApiConfigured() ? (
+      <div className="test-cases-tab__hosted-banner" role="status">
+        <strong>Pairwise needs a PICT service</strong>, which isn&apos;t
+        configured here — switch Mode to <strong>Decision table</strong> to
+        generate in-browser, or run NeoCombi locally (
+        <a
+          href="https://github.com/sho1884/NeoCombi#author-in-the-gui"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          setup
+        </a>
+        ).
+      </div>
+    ) : null
 
   if (!testSuite || testSuite.rows.length === 0) {
     return (
