@@ -9,6 +9,7 @@
 > **Open a sample** (loaded via the `?file=<url>` parameter; sample models live outside the app):
 > - [Printer options](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/printer.tmodel) — IF/THEN/ELSE + IN constraints
 > - [Shopping site](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/shopping.tmodel) — Japanese factors, a mask level (`_MASK_`) + several constraints
+> - [Multifunction printer](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/mfp.tmodel) — binding-margin geometry: valid gutters depend on orientation × duplex
 > - [Browsers](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/browsers.tmodel) — small pairwise model
 > - [50 factors](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/large-50.tmodel) · [100 factors](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/large-100.tmodel) — HAYST-scale
 
