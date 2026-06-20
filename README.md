@@ -11,7 +11,7 @@
 > - [Browsers](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/browsers.tmodel) — small pairwise model
 > - [50 factors](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/large-50.tmodel) · [100 factors](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/large-100.tmodel) — HAYST-scale
 
-> **User manual:** [`Doc/User_Manual.md`](Doc/User_Manual.md) — full bilingual guide (GUI, DSL grammar v1.0, CLI, API, self-hosting).
+> **Docs:** [`Doc/User_Manual.md`](Doc/User_Manual.md) — for people *using* the tool (GUI, DSL, generation, export). · [`Doc/Deployment_Guide.md`](Doc/Deployment_Guide.md) — for administrators *self-hosting* it (PICT service, CLI in CI/CD, HTTP API, security). Both bilingual.
 
 > **Status: v0.1 (MVP)** — DSL authoring, factor / level editing, forbidden visualization, in-GUI test case generation via a local PICT service, expected-value tracking, and a CLI for CI/CD pipelines. Tested on models up to 100 factors / ~4 levels each.
 
