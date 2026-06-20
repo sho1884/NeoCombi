@@ -267,7 +267,11 @@ export function TestCasesTab() {
           {' '}
           {testSuite.factorOrder.length} factor
           {testSuite.factorOrder.length === 1 ? '' : 's'}
-          {showForbidden ? ` (${forbiddenCount} forbidden)` : ''}
+          {showForbidden
+            ? `, ${testSuite.rows.length - forbiddenCount} valid test case${
+                testSuite.rows.length - forbiddenCount === 1 ? '' : 's'
+              }, ${forbiddenCount} forbidden`
+            : ''}
         </span>
         {modeSelect}
         <button
