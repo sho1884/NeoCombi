@@ -215,11 +215,10 @@ Link them from your README / docs so users can open them in one click.
 
 ## 9. CLI in CI/CD / CI-CD での CLI
 
-The CLI runs headless and is deterministic — identical inputs always produce
-identical output, with **atomic** results (a complete table or nothing; never a
-partial file).
+The CLI runs headless, with **atomic** results (a complete table or nothing;
+never a partial file).
 
-CLI は headless・決定論的で、出力は**原子的**（完全な表か何も出さないか。途中までの
+CLI は headless で、出力は**原子的**（完全な表か何も出さないか。途中までの
 ファイルは作りません）。
 
 ```bash
