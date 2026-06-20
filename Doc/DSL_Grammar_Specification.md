@@ -3,6 +3,8 @@
 > NeoCombi の制約 DSL の文法仕様。PICT 制約言語の最小サブセットを EBNF として独立定義し、PICT BNF からの差分（捨てた要素）を明示する。
 >
 > Status: draft (2026-05-04). MVP 対応範囲を定義する一次資料。
+> **Grammar version: 1.0** — the EBNF in §4 is versioned independently of this
+> document's status so tools and the user manual can pin a known grammar.
 > Related: [ADR-001](adr/ADR-001-mirror-pict-bnf-subset.yaml), [ADR-005](adr/ADR-005-builtin-dsl-evaluator.yaml).
 
 ## 1. 目的とスコープ — Purpose & Scope
@@ -88,11 +90,18 @@ The NeoCombi DSL is a strict subset of the PICT constraint language. It serves b
 
 `IF`, `THEN`, `ELSE`, `AND`, `OR`, `NOT`, `IN` は **case-insensitive**（PICT 互換）。本仕様では大文字で記述するが、`if`, `And` 等も等価。識別子としては使用できない（予約語）。
 
-## 4. EBNF Grammar
+## 4. EBNF Grammar — Version 1.0
 
 W3C-style EBNF 表記。`?` はオプション、`*` はゼロ回以上、`+` は 1 回以上、`|` は選択、`( ... )` はグループ化、`'literal'` または `"literal"` は終端記号。
 
+> **Grammar version 1.0.** This is the first stable grammar version. Any change
+> that alters what source text parses (new construct, relaxed/tightened rule)
+> bumps the version; an editorial change that does not affect parsing does not.
+
 ```ebnf
+(* ====================================================================
+   NeoCombi DSL Grammar — Version 1.0
+   ==================================================================== *)
 (* ====================================================================
    File structure
    ==================================================================== *)
