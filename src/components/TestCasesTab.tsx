@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useProjectStore } from '../stores/projectStore'
 import { runGenerate } from '../services/runGenerate'
+import { checkPictApiHealth, DEFAULT_PICT_API_URL } from '../services/pictApi'
 import { runDecisionTable } from '../services/runDecisionTable'
 import { formatTestSuite, testSuiteToHtml } from '../engines/pict'
 import {
@@ -81,6 +82,29 @@ export function TestCasesTab() {
 
   const stale = useMemo(() => inspectTestSuite(testSuite, model), [testSuite, model])
 
+  // Whether pairwise generation expects a reachable PICT service here. On a
+  // hosted page with no service configured, the hostedBanner already explains
+  // it, so we don't probe (the probe would hit the wrong URL anyway).
+  const expectsService =
+    generationMode === 'pairwise' && !(isHostedDeployment() && !isPictApiConfigured())
+
+  // null = not yet probed / not applicable; true = unreachable or PICT missing.
+  const [serviceDown, setServiceDown] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    // Only probe when a service is expected; the banner is gated on
+    // expectsService anyway, so a stale value while not applicable is harmless.
+    if (!expectsService) return
+    let cancelled = false
+    void checkPictApiHealth().then(r => {
+      if (cancelled) return
+      setServiceDown(!r.ok || r.value.available === false)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [expectsService])
+
   const [error, setError] = useState<string | null>(null)
   const [generating, setGenerating] = useState(false)
   const [importInfo, setImportInfo] = useState<string | null>(null)
@@ -126,11 +150,13 @@ export function TestCasesTab() {
       const result = await runGenerate()
       switch (result.kind) {
         case 'ok':
+          setServiceDown(false)
           break
         case 'skipped':
           setError(`Cannot generate: ${result.reason.replace('-', ' ')}`)
           break
         case 'network-error':
+          setServiceDown(true)
           setError(
             `Cannot reach the PICT generator. ${result.message}`,
           )
@@ -289,10 +315,25 @@ export function TestCasesTab() {
       </div>
     ) : null
 
+  // The PICT service is expected here (local, or a configured remote) but can't
+  // be reached / has no PICT. Pairwise can't run; say so explicitly instead of
+  // failing silently.
+  const serviceBanner =
+    expectsService && serviceDown ? (
+      <div className="test-cases-tab__stale-banner" role="alert">
+        <strong>Can&apos;t reach the PICT service</strong> at{' '}
+        <code>{DEFAULT_PICT_API_URL}</code>. Pairwise generation needs it running
+        — start it (<code>docker compose up -d pict-service</code>) and click{' '}
+        <strong>Generate</strong>, or switch <strong>Mode</strong> to{' '}
+        <strong>Decision table</strong> to generate in-browser (no PICT needed).
+      </div>
+    ) : null
+
   if (!testSuite || testSuite.rows.length === 0) {
     return (
       <div className="test-cases-tab">
         {hostedBanner}
+        {serviceBanner}
         <div className="test-cases-tab__toolbar">
           {modeSelect}
           <button
@@ -332,6 +373,7 @@ export function TestCasesTab() {
   return (
     <div className="test-cases-tab">
       {hostedBanner}
+        {serviceBanner}
       <div className="test-cases-tab__toolbar">
         <span className="test-cases-tab__count">
           {testSuite.rows.length} {showForbidden ? 'combination' : 'test case'}

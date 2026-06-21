@@ -408,7 +408,7 @@ NeoCombi ファイルはプレーンテキスト（PICT 入力＋少数の `# @n
 
 | Symptom / 症状 | What to do / 対処 |
 |---|---|
-| Pairwise **Generate** fails or hangs / ペアワイズが失敗・遅い | On the public demo the PICT service may be waking from idle — wait and retry. Or switch to **Decision table** (runs in your browser). 待って再試行、またはデシジョンテーブルへ |
+| Pairwise produces nothing / a "Can't reach the PICT service" banner appears / ペアワイズで何も出ない | Pairwise needs the external PICT service. **Running locally:** start it — `docker compose up -d pict-service` — then click **Generate** (check `curl http://localhost:8765/health`). **Public demo:** the service may be waking from idle — wait and retry. Either way you can switch **Mode** to **Decision table** to generate in-browser (no PICT). ローカルは `docker compose up -d pict-service` で起動、デモは少し待って再試行、または Decision table へ |
 | "Too many combinations (… > 4096)" | A decision table is for small factor sets. Remove factors/levels, or use **Pairwise**. 因子/水準を減らすかペアワイズへ |
 | A constraint seems to have no effect / 制約が効かない | A value on the right of a comparison or in `IN { }` must be quoted or a number, not a bare word ([§5](#5-writing-constraints--制約を書く)). 値はクォートか数値に |
 | "unsupported in MVP" appears / 未対応と出る | You used `LIKE`, `~`, `{…}@N`, or a weight `(N)` — not in this release. これらは対象外 |
