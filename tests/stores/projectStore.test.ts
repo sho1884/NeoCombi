@@ -154,8 +154,22 @@ describe('projectStore / view state', () => {
   })
 })
 
-describe('projectStore / test suite + expected values', () => {
-  it('attaches a partial-key expected entry to every matching test case row', () => {
+describe('projectStore / test suite: IDs, notes, count flags', () => {
+  it('assigns stable P-IDs and default count flags on a fresh pairwise suite', () => {
+    const store = useProjectStore.getState()
+    store.setTestSuite({
+      factorOrder: ['OS', 'Browser'],
+      rows: [
+        { values: { OS: 'Linux', Browser: 'Chrome' } },
+        { values: { OS: 'Windows', Browser: 'Safari' } },
+      ],
+    })
+    const suite = useProjectStore.getState().testSuite
+    expect(suite?.rows.map(r => r.id)).toEqual(['P1', 'P2'])
+    expect(suite?.rows.every(r => r.count === true)).toBe(true)
+  })
+
+  it('attaches a partial-key expected entry as the note on every matching row', () => {
     const store = useProjectStore.getState()
     store.setExpectedValue({ OS: 'Linux' }, 'hello')
     store.setTestSuite({
@@ -167,9 +181,9 @@ describe('projectStore / test suite + expected values', () => {
       ],
     })
     const suite = useProjectStore.getState().testSuite
-    expect(suite?.rows[0]?.expected).toBe('hello')
-    expect(suite?.rows[1]?.expected).toBe('hello')
-    expect(suite?.rows[2]?.expected).toBeUndefined()
+    expect(suite?.rows[0]?.note).toBe('hello')
+    expect(suite?.rows[1]?.note).toBe('hello')
+    expect(suite?.rows[2]?.note).toBeUndefined()
   })
 
   it('a more-specific expected entry wins over a partial one on auto-attach', () => {
@@ -184,14 +198,11 @@ describe('projectStore / test suite + expected values', () => {
       ],
     })
     const suite = useProjectStore.getState().testSuite
-    expect(suite?.rows[0]?.expected).toBe('specific')
-    expect(suite?.rows[1]?.expected).toBe('partial')
+    expect(suite?.rows[0]?.note).toBe('specific')
+    expect(suite?.rows[1]?.note).toBe('partial')
   })
 
-  it('editing one row does not lose the partial-key entry that drives others', () => {
-    // Reproduces the bug fixed by introducing full-key matching for edits:
-    // a partial entry "OS=Linux | hello" used to be REPLACED by a full-key
-    // entry on edit, which orphaned the other Linux rows.
+  it('editing a row note writes only to that row, not the rule layer', () => {
     const store = useProjectStore.getState()
     store.setExpectedValue({ OS: 'Linux' }, 'hello')
     store.setTestSuite({
@@ -201,36 +212,43 @@ describe('projectStore / test suite + expected values', () => {
         { values: { OS: 'Linux', Browser: 'Firefox' } },
       ],
     })
-    store.setTestCaseExpected(0, 'override-for-chrome')
+    store.setTestCaseNote(0, 'override-for-chrome')
     const after = useProjectStore.getState()
-    // Row 0 has the override.
-    expect(after.testSuite?.rows[0]?.expected).toBe('override-for-chrome')
-    // Row 1 still tracks the partial entry's value (no in-suite override yet).
-    expect(after.testSuite?.rows[1]?.expected).toBe('hello')
-    // expectedValues now contains BOTH the partial (OS=Linux | hello) and
-    // the full-key override (OS=Linux Browser=Chrome | override-for-chrome).
-    const partial = after.expectedValues.find(
-      ev => Object.keys(ev.assignment).length === 1,
-    )
-    const full = after.expectedValues.find(
-      ev => Object.keys(ev.assignment).length === 2,
-    )
-    expect(partial?.value).toBe('hello')
-    expect(full?.value).toBe('override-for-chrome')
+    expect(after.testSuite?.rows[0]?.note).toBe('override-for-chrome')
+    // The other row keeps the value seeded at generation; nothing else changed.
+    expect(after.testSuite?.rows[1]?.note).toBe('hello')
+    // The note edit is bound to the persisted row, not mirrored into the
+    // assignment-based expectedValues rule layer (UR-011 / SR-052).
+    expect(after.expectedValues).toEqual([{ assignment: { OS: 'Linux' }, value: 'hello' }])
+    expect(after.isDirty).toBe(true)
   })
 
-  it('clearing a row expected value drops only the matching full-key entry', () => {
+  it('clearing a row note removes it from that row', () => {
     const store = useProjectStore.getState()
     store.setTestSuite({
       factorOrder: ['OS', 'Browser'],
+      rows: [{ values: { OS: 'Linux', Browser: 'Chrome' }, note: 'first' }],
+    })
+    store.setTestCaseNote(0, '')
+    expect(useProjectStore.getState().testSuite?.rows[0]?.note).toBeUndefined()
+  })
+
+  it('toggles the count flag; forbidden rows have no flag to toggle', () => {
+    const store = useProjectStore.getState()
+    store.setGenerationMode('decision-table')
+    store.setTestSuite({
+      factorOrder: ['OS'],
       rows: [
-        { values: { OS: 'Linux', Browser: 'Chrome' }, expected: 'first' },
+        { values: { OS: 'Linux' }, forbidden: false },
+        { values: { OS: 'Windows' }, forbidden: true },
       ],
     })
-    store.setTestCaseExpected(0, '')
-    const after = useProjectStore.getState()
-    expect(after.testSuite?.rows[0]?.expected).toBeUndefined()
-    expect(after.expectedValues).toEqual([])
+    store.setTestCaseCount(0, false)
+    expect(useProjectStore.getState().testSuite?.rows[0]?.count).toBe(false)
+    // Forbidden row is unaffected (it never had a flag).
+    store.setTestCaseCount(1, false)
+    expect(useProjectStore.getState().testSuite?.rows[1]?.count).toBeUndefined()
+    expect(useProjectStore.getState().hasFlagsOrNotes()).toBe(true)
   })
 })
 
@@ -242,7 +260,7 @@ describe('projectStore / load and save', () => {
       '# @neocombi:expected OS=Linux | runs OK',
       '',
     ].join('\n')
-    useProjectStore.getState().loadFromTmodel(tmodel, '/tmp/example.tmodel')
+    useProjectStore.getState().loadProjectFile(tmodel, '/tmp/example.tmodel')
     const s = useProjectStore.getState()
     expect(s.filePath).toBe('/tmp/example.tmodel')
     expect(s.pictOrder).toBe(3)
@@ -253,12 +271,12 @@ describe('projectStore / load and save', () => {
     expect(s.isDirty).toBe(false)
   })
 
-  it('serializes back to a .tmodel string via toTmodel', () => {
+  it('serializes back to a .tmodel string via toProjectFile', () => {
     const store = useProjectStore.getState()
     store.setSource('OS: Linux, Windows\n')
     store.setPictOrder(3)
     store.setExpectedValue({ OS: 'Linux' }, 'OK')
-    const text = useProjectStore.getState().toTmodel()
+    const text = useProjectStore.getState().toProjectFile()
     expect(text).toContain('OS: Linux, Windows')
     expect(text).toContain('# @neocombi:order 3')
     expect(text).toContain('# @neocombi:expected OS=Linux | OK')
@@ -273,10 +291,10 @@ describe('projectStore / load and save', () => {
       '# @neocombi:expected OS=Linux Browser=Chrome | renders OK',
       '',
     ].join('\n')
-    useProjectStore.getState().loadFromTmodel(initial)
-    const text = useProjectStore.getState().toTmodel()
+    useProjectStore.getState().loadProjectFile(initial)
+    const text = useProjectStore.getState().toProjectFile()
     useProjectStore.getState().resetToEmpty()
-    useProjectStore.getState().loadFromTmodel(text)
+    useProjectStore.getState().loadProjectFile(text)
     const s = useProjectStore.getState()
     expect(s.pictOrder).toBe(3)
     expect(s.expectedValues).toEqual([
@@ -284,6 +302,25 @@ describe('projectStore / load and save', () => {
     ])
     expect(s.source).toContain('OS: Linux, Windows')
     expect(s.source).toContain('IF [OS] = "Linux"')
+  })
+
+  it('toModelFile omits the persisted test set; toProjectFile includes it', () => {
+    const store = useProjectStore.getState()
+    store.setSource('OS: Linux, Windows\n')
+    store.setTestSuite({
+      factorOrder: ['OS'],
+      rows: [{ values: { OS: 'Linux' }, note: 'memo' }],
+    })
+    const model = useProjectStore.getState().toModelFile()
+    const project = useProjectStore.getState().toProjectFile()
+    expect(model).not.toContain('@neocombi:case')
+    expect(model).toContain('OS: Linux, Windows')
+    expect(project).toContain('@neocombi:case')
+    // A model file round-trips with no test set; a project file restores it.
+    useProjectStore.getState().loadProjectFile(model)
+    expect(useProjectStore.getState().testSuite).toBeNull()
+    useProjectStore.getState().loadProjectFile(project)
+    expect(useProjectStore.getState().testSuite?.rows[0]?.note).toBe('memo')
   })
 
   it('markSaved clears the dirty flag and updates the file path when given', () => {

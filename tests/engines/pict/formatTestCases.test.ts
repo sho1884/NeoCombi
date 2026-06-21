@@ -2,28 +2,29 @@ import { describe, it, expect } from 'vitest'
 import { formatTestSuite } from '../../../src/engines/pict/formatTestCases'
 import type { TestSuite } from '../../../src/types/testCase'
 
+// Column layout (UR-010 / SR-053): ID, Count, <factors...>, Notes.
 const SAMPLE: TestSuite = {
   factorOrder: ['OS', 'Browser'],
   rows: [
-    { values: { OS: 'Linux', Browser: 'Chrome' }, expected: 'Renders OK' },
-    { values: { OS: 'Windows', Browser: 'Safari' } },
+    { id: 'P1', count: true, values: { OS: 'Linux', Browser: 'Chrome' }, note: 'Renders OK' },
+    { id: 'P2', count: false, values: { OS: 'Windows', Browser: 'Safari' } },
   ],
 }
 
 describe('formatTestSuite / csv', () => {
-  it('emits an Expected column even when no row has expected value', () => {
+  it('emits ID + Count + Notes columns even when no row has a note', () => {
     const out = formatTestSuite(
-      { factorOrder: ['A'], rows: [{ values: { A: 'x' } }] },
+      { factorOrder: ['A'], rows: [{ id: 'P1', count: true, values: { A: 'x' } }] },
       'csv',
     )
-    expect(out).toBe('A,Expected\nx,\n')
+    expect(out).toBe('ID,Count,A,Notes\nP1,true,x,\n')
   })
 
-  it('emits expected text in the last column', () => {
+  it('emits the note text in the last column and the count flag as true/false', () => {
     expect(formatTestSuite(SAMPLE, 'csv')).toBe(
-      'OS,Browser,Expected\n' +
-        'Linux,Chrome,Renders OK\n' +
-        'Windows,Safari,\n',
+      'ID,Count,OS,Browser,Notes\n' +
+        'P1,true,Linux,Chrome,Renders OK\n' +
+        'P2,false,Windows,Safari,\n',
     )
   })
 
@@ -31,7 +32,7 @@ describe('formatTestSuite / csv', () => {
     const suite: TestSuite = {
       factorOrder: ['A'],
       rows: [
-        { values: { A: 'has, comma' }, expected: 'has "quote" and\nnewline' },
+        { id: 'P1', count: true, values: { A: 'has, comma' }, note: 'has "quote" and\nnewline' },
       ],
     }
     const out = formatTestSuite(suite, 'csv')
@@ -44,20 +45,20 @@ describe('formatTestSuite / tsv', () => {
   it('emits tab-separated values without quoting', () => {
     const out = formatTestSuite(SAMPLE, 'tsv')
     expect(out).toBe(
-      'OS\tBrowser\tExpected\n' +
-        'Linux\tChrome\tRenders OK\n' +
-        'Windows\tSafari\t\n',
+      'ID\tCount\tOS\tBrowser\tNotes\n' +
+        'P1\ttrue\tLinux\tChrome\tRenders OK\n' +
+        'P2\tfalse\tWindows\tSafari\t\n',
     )
   })
 })
 
 describe('formatTestSuite / json', () => {
-  it('emits an array of objects keyed by factor name + Expected', () => {
+  it('emits an array of objects with id, count, factor names + note', () => {
     const out = formatTestSuite(SAMPLE, 'json')
-    const parsed = JSON.parse(out) as Array<Record<string, string>>
+    const parsed = JSON.parse(out) as Array<Record<string, string | boolean>>
     expect(parsed).toEqual([
-      { OS: 'Linux', Browser: 'Chrome', Expected: 'Renders OK' },
-      { OS: 'Windows', Browser: 'Safari' },
+      { id: 'P1', count: true, OS: 'Linux', Browser: 'Chrome', note: 'Renders OK' },
+      { id: 'P2', count: false, OS: 'Windows', Browser: 'Safari' },
     ])
   })
 })

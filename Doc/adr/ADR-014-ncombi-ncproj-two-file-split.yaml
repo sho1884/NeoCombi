@@ -1,0 +1,86 @@
+id: ADR-014
+title: "永続ファイルを .ncombi（モデル）と .ncproj（プロジェクト）の2形式に分割する"
+date: "2026-06-21"
+status: accepted
+superseded_by: null
+
+participants:
+  author: "sho1884"
+  approver: "sho1884"
+  last_updated: "2026-06-21"
+
+context:
+  problem: |
+    ADR-009 はプロジェクトファイル拡張子を .tmodel（test model）に決定した。その
+    選定理由の核は「ファイルが保持するのはテストケース（組合せ）そのものではなく、
+    組合せを導出する因子・水準・制約の model である（テストケースは PICT が都度生成
+    する派生物でファイルには記録されない、当時の SR-070）」という前提だった。
+
+    UR-011 がこの前提を覆した。網羅率を「達成網羅」へ引き上げるカウント対象フラグ
+    （UR-010）と、行に紐づく自由記述メモ（UR-005）をセッション跨ぎ・外部実行系跨ぎで
+    生存させるには、生成済みテストセット（行・ID・フラグ・メモ・水準値）そのものを
+    ファイルに永続化し、読込で再生成しない必要がある（SR-070/072 改訂）。結果、従来
+    「model だけを持つ」はずだったファイルが、生成結果（テストケース）まで抱えるように
+    なり、「.tmodel = model」という名前と実体が乖離した。
+  drivers:
+    - "ファイル名が中身を正確に表す（model なのか、テストケースを含むプロジェクトなのか）"
+    - "CI/共有向けにモデルだけを diff しやすい純粋な形で版管理したい"
+    - "GUI 作業の永続化（フラグ・メモ付きテストセット）を別物として保存したい"
+    - "CLI（CI）がモデルから決定論的に再生成する経路と、保存セットの混同を避ける"
+
+decision:
+  summary: "DSL モデルは .ncombi、テストセットを含むプロジェクトは .ncproj に分け、旧 .tmodel は後方互換で読み込む"
+  detail: |
+    永続ファイルを2形式に分割することにした。
+
+      - .ncombi = DSL モデルのみ。因子・水準・制約 ＋ 生成設定（order/mode）＋
+        期待値ルール（@neocombi:expected）。永続テストセットは含まない。CI・共有・
+        版管理の対象はこちら。CLI の標準入力もこれ。
+      - .ncproj = プロジェクト。.ncombi の内容に加え、永続テストセット
+        （@neocombi:caseset-factors ＋ 行ごとの @neocombi:case = 行・ID・カウント
+        フラグ・メモ）を持つ。GUI 作業を再生成なしで再開するための形式。
+
+    オンディスク文法は1つ（PICT DSL subset ＋ @neocombi: 注釈）で共通とし、両者の差は
+    「テストセットの @neocombi:case 行を書くか否か」だけにした。serialize は
+    testSuite が非 null のときだけ case 行を出すので、保存内容（model か project か）は
+    呼び出し側が「保存先の拡張子」から決める（.ncombi → モデル、それ以外 → プロジェクト）。
+    deserialize はどちらも同じ経路で読む。
+
+    旧 .tmodel は後方互換で読み込み可能とし、保存はプロジェクト扱い（テストセットがあれば
+    含める）。ユーザは Save As で .ncproj を選べば移行できる。
+
+    拡張子 .ncombi は ADR-009 で一度却下した案だが、却下理由「n+combi が『combi（組合せ）を
+    否定』と読まれうる」よりも「ツール名 NeoCombi 由来で素直」という肯定読みを優先し、
+    今回ユーザ判断で採用した。NeoCEG の .nceg と nc 接頭で対称性も改善する。
+
+neglected:
+  - option: ".tmodel を維持し、中にテストセットも入れる（ADR-009 のまま）"
+    because: "「model」という名前がテストケースまで含む実体と乖離する。CLI が保存セットと再生成結果のどちらを出すか曖昧になる"
+  - option: ".tmodel（モデル）に一本化し、テストセットは永続化しない"
+    because: "UR-010/011 を満たせない（フラグ・メモが保存できず、再生成で迷子になる）"
+  - option: "1形式（.ncproj 等）に統一し、モデルだけの保存形を持たない"
+    because: "CI・共有用に DSL だけを純粋に版管理したい要求に応えられない（生成結果のノイズが混じる）"
+  - option: ".ncmbprj をプロジェクト拡張子にする"
+    because: "母音を潰した綴りでハッシュのように読みにくい。.ncombi と綴りが揃わない。.ncproj の方が読める"
+
+consequences:
+  positive:
+    - "ファイル名が実体に一致する（.ncombi=モデル、.ncproj=プロジェクト）"
+    - "CI は .ncombi を読んで常に再生成 → 保存セットとの食い違い問題が原理的に発生しない"
+    - "モデルだけを diff しやすい純粋な形で版管理できる"
+    - "保存内容を拡張子から自動決定でき、UI が単純（Save As で形式を選ぶだけ）"
+    - "NeoCEG の .nceg と nc 接頭で対称性が改善（ADR-009 が挙げた非対称リスクの緩和）"
+  negative:
+    - "拡張子が2つに増え、ユーザはモデル/プロジェクトの違いを理解する必要がある"
+    - "ADR-009 を覆す決定で、既存 .tmodel 資産の移行（読込互換＋Save As）が必要"
+    - "examples/ と公開 Samples/ の拡張子・参照・ドキュメントURL を一括更新する作業が発生"
+  risks:
+    - "ユーザが .ncombi に手作業でテストセットを足す等、規約外の使い方をすると整合が崩れる（保存時は拡張子で内容が決まる前提）"
+    - "永続ケースは因子の表示名でキーするため、DSL での因子改名でセットが orphan し得る（SR-052 シナリオ3 の未充足。安定 ID 基盤は別タスク）"
+
+references:
+  - "ADR-009（本 ADR が supersede）"
+  - "ADR-008（期待値列 → メモ列への再定義、UR-005）"
+  - "Doc/requirements/user_requirements.yaml UR-010 / UR-011"
+  - "Doc/requirements/system_requirements.yaml SR-070..073"
+  - "src/services/projectFile.ts"

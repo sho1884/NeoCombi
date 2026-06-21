@@ -1,4 +1,4 @@
-# Admission-fee decision table (English version of admission-fee.tmodel),
+# Admission-fee decision table (English version of admission-fee.ncombi),
 # museum / aquarium style. Party × AgeBand × InState determine the fee.
 # Fee is an expected-result factor; the constraints pin it to the inputs, so
 # every generated row carries the correct fee. (Dollar tiers mirror NeoCEG's

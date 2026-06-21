@@ -269,16 +269,32 @@
   z-index: 1;
 }
 
-.test-cases-tab__col-idx {
+.test-cases-tab__col-id {
   text-align: right !important;
-  color: #90a4ae;
+  color: #607d8b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-variant-numeric: tabular-nums;
-  width: 2.5rem;
+  width: 4rem;
 }
 
-.test-cases-tab__col-expected {
+.test-cases-tab__col-count {
+  text-align: center;
+  width: 3.5rem;
+}
+
+.test-cases-tab__col-notes {
   width: auto;
   min-width: 18rem;
+}
+
+/* UR-010: a case flagged out of coverage reads as de-emphasised, so the
+   designer sees at a glance which rows no longer earn coverage. */
+.test-cases-tab__row--uncounted {
+  color: #9aa7ad;
+}
+
+.test-cases-tab__row--uncounted .test-cases-tab__cell {
+  opacity: 0.6;
 }
 
 .test-cases-tab__cell {
@@ -296,7 +312,7 @@
   font-style: italic;
 }
 
-.test-cases-tab__expected-input {
+.test-cases-tab__notes-input {
   width: 100%;
   padding: 0.15rem 0.35rem;
   border: 1px solid transparent;
@@ -307,18 +323,18 @@
   color: #1a1a1a;
 }
 
-.test-cases-tab__expected-input:hover {
+.test-cases-tab__notes-input:hover {
   background: #f5f7f8;
   border-color: #cfd8dc;
 }
 
-.test-cases-tab__expected-input:focus {
+.test-cases-tab__notes-input:focus {
   outline: none;
   background: #fff;
   border-color: #37474f;
 }
 
-.test-cases-tab__expected-input::placeholder {
+.test-cases-tab__notes-input::placeholder {
   color: #b0bec5;
   font-style: italic;
 }

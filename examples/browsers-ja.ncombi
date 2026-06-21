@@ -1,8 +1,8 @@
-# NeoCombi サンプル（browsers.tmodel の日本語版）: 定番の ブラウザ / OS / メモリ
+# NeoCombi サンプル（browsers.ncombi の日本語版）: 定番の ブラウザ / OS / メモリ
 # マトリクスに制約を1つ。
 #
 # リポジトリ直下から実行:
-#   node bin/neocombi.mjs generate examples/browsers-ja.tmodel
+#   node bin/neocombi.mjs generate examples/browsers-ja.ncombi
 # または GUI の「開く...」ボタンからこのファイルを開く。
 
 OS:       Linux, Windows, macOS

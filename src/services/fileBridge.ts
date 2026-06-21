@@ -1,4 +1,5 @@
-// Browser file I/O for .tmodel project files.
+// Browser file I/O for NeoCombi files (.ncombi model / .ncproj project; legacy
+// .tmodel still opens).
 //
 // Two implementations are provided behind one interface:
 //
@@ -44,11 +45,19 @@ type FsApi = {
 
 let activeHandle: FsHandle | null = null
 
-const ACCEPT: FsAcceptType[] = [
+// Open offers every NeoCombi file (including legacy .tmodel). Save offers both
+// native extensions so the user can pick model vs project; the caller derives
+// the file CONTENT from the chosen name (see FileMenu).
+const ACCEPT_OPEN: FsAcceptType[] = [
   {
-    description: 'NeoCombi model file (.tmodel)',
-    accept: { 'text/plain': ['.tmodel'] },
+    description: 'NeoCombi file (.ncombi / .ncproj)',
+    accept: { 'text/plain': ['.ncombi', '.ncproj', '.tmodel'] },
   },
+]
+
+const ACCEPT_SAVE: FsAcceptType[] = [
+  { description: 'NeoCombi project (.ncproj)', accept: { 'text/plain': ['.ncproj'] } },
+  { description: 'NeoCombi model (.ncombi)', accept: { 'text/plain': ['.ncombi'] } },
 ]
 
 export type OpenResult = { content: string; name: string }
@@ -57,6 +66,17 @@ export type SaveResult = { name: string }
 export type SaveOptions = {
   saveAs?: boolean
   suggestedName?: string
+}
+
+/**
+ * Content for a save. Either a fixed string, or a provider that receives the
+ * resolved file NAME and returns the bytes — so the caller can choose model vs
+ * project content from the extension the user picks in the Save dialog.
+ */
+export type SaveContent = string | ((name: string) => string)
+
+function resolveContent(content: SaveContent, name: string): string {
+  return typeof content === 'function' ? content(name) : content
 }
 
 function fsApi(): FsApi | null {
@@ -75,11 +95,16 @@ export function clearActiveHandle(): void {
   activeHandle = null
 }
 
-export async function openTmodel(): Promise<OpenResult | null> {
+/** Name of the active file handle, or null when there is none. */
+export function activeHandleName(): string | null {
+  return activeHandle?.name ?? null
+}
+
+export async function openProjectFile(): Promise<OpenResult | null> {
   const api = fsApi()
   if (api) {
     try {
-      const [handle] = await api.showOpenFilePicker({ types: ACCEPT, multiple: false })
+      const [handle] = await api.showOpenFilePicker({ types: ACCEPT_OPEN, multiple: false })
       if (!handle) return null
       const file = await handle.getFile()
       const content = await file.text()
@@ -94,8 +119,8 @@ export async function openTmodel(): Promise<OpenResult | null> {
   return await openWithInput()
 }
 
-export async function saveTmodel(
-  content: string,
+export async function saveProjectFile(
+  content: SaveContent,
   options: SaveOptions = {},
 ): Promise<SaveResult | null> {
   const api = fsApi()
@@ -104,8 +129,8 @@ export async function saveTmodel(
     if (options.saveAs || !handle) {
       try {
         handle = await api.showSaveFilePicker({
-          types: ACCEPT,
-          suggestedName: options.suggestedName ?? 'project.tmodel',
+          types: ACCEPT_SAVE,
+          suggestedName: options.suggestedName ?? 'project.ncproj',
         })
       } catch (e) {
         if (isAbort(e)) return null
@@ -115,13 +140,13 @@ export async function saveTmodel(
     if (!handle) return null
     activeHandle = handle
     const writable = await handle.createWritable()
-    await writable.write(content)
+    await writable.write(resolveContent(content, handle.name))
     await writable.close()
     return { name: handle.name }
   }
   // Fallback: trigger download.
-  const name = options.suggestedName ?? 'project.tmodel'
-  await triggerDownload(content, name)
+  const name = options.suggestedName ?? 'project.ncproj'
+  await triggerDownload(resolveContent(content, name), name)
   // Cannot persist a handle; subsequent saves will re-download.
   activeHandle = null
   return { name }
@@ -135,7 +160,7 @@ function openWithInput(): Promise<OpenResult | null> {
   return new Promise(resolve => {
     const input = document.createElement('input')
     input.type = 'file'
-    input.accept = '.tmodel,text/plain'
+    input.accept = '.ncombi,.ncproj,.tmodel,text/plain'
     input.style.display = 'none'
     input.addEventListener('change', async () => {
       const file = input.files?.[0]

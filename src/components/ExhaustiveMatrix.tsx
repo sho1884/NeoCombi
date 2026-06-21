@@ -199,7 +199,7 @@ export function ExhaustiveMatrix() {
                         const first = info.ids[0]!
                         const rest = info.ids.length - 1
                         cellClass += ' matrix__cell--ids'
-                        extraLabel = `: covered by ${info.ids.map(id => '#' + id).join(', ')}`
+                        extraLabel = `: covered by ${info.ids.join(', ')}`
                         return (
                           <td
                             key={`cell-${colFactor.name}::${vb}`}
@@ -209,7 +209,7 @@ export function ExhaustiveMatrix() {
                           >
                             <span className="matrix__cell-content">
                               <span className="matrix__cell-first-id">
-                                #{first}
+                                {first}
                               </span>
                               {rest > 0 && (
                                 <span className="matrix__cell-rest">
@@ -364,9 +364,7 @@ function matrixToHtml(
           } else if (colFactorIdx > rowFactorIdx) {
             cells.push(`<td>${info.count}</td>`)
           } else {
-            cells.push(
-              `<td>${info.ids.map(id => '#' + id).join(', ')}</td>`,
-            )
+            cells.push(`<td>${escapeHtml(info.ids.join(', '))}</td>`)
           }
         }
       }
@@ -436,7 +434,7 @@ function matrixToCsv(
           } else if (colFactorIdx > rowFactorIdx) {
             cells.push(String(info.count))
           } else {
-            cells.push(info.ids.map(id => '#' + id).join(', '))
+            cells.push(info.ids.join(', '))
           }
         }
       }
@@ -549,14 +547,24 @@ function CoverageSummary({ stats, hasTestSuite }: CoverageSummaryProps) {
 // matrix can render placeholder cells.
 // =============================================================================
 
-type OccurrenceInfo = { count: number; ids: number[] }
+type OccurrenceInfo = { count: number; ids: string[] }
 type OccurrenceMap = Map<string, OccurrenceInfo>
 
+/**
+ * Count, for each pair of (factor, level) values, how many COUNTED test cases
+ * include it (SR-042). Per UR-010 / SR-044 only flagged-in cases contribute:
+ * rows with count === false and forbidden rows are skipped entirely, so a pair
+ * covered only by flagged-out cases reads as missed. Returns null when there
+ * is no test suite, so the matrix can render placeholder cells.
+ */
 function buildOccurrenceMap(suite: TestSuite | null): OccurrenceMap | null {
   if (!suite || suite.rows.length === 0) return null
   const map: OccurrenceMap = new Map()
   for (let r = 0; r < suite.rows.length; r++) {
     const row = suite.rows[r]!
+    if (row.forbidden === true) continue
+    if (row.count === false) continue
+    const label = row.id ?? String(r + 1)
     const factors = suite.factorOrder
     for (let i = 0; i < factors.length; i++) {
       for (let j = 0; j < factors.length; j++) {
@@ -573,7 +581,7 @@ function buildOccurrenceMap(suite: TestSuite | null): OccurrenceMap | null {
           map.set(key, info)
         }
         info.count++
-        info.ids.push(r + 1)
+        info.ids.push(label)
       }
     }
   }

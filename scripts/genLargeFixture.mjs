@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-// Generate a deterministic large-scale .tmodel fixture for stress-testing
+// Generate a deterministic large-scale .ncombi fixture for stress-testing
 // the GUI at HAYST-realistic factor counts (~100 factors, ~4 levels each).
 //
 // Usage:
 //   node scripts/genLargeFixture.mjs [factors] [outputPath]
 //
-// Defaults: 100 factors → examples/large-100.tmodel
+// Defaults: 100 factors → examples/large-100.ncombi
 //
 // The output is deterministic (no Math.random) so the fixture can be
 // regenerated and diffed reliably.
@@ -14,7 +14,7 @@ import { writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 
 const factorCount = Number.parseInt(process.argv[2] ?? '100', 10)
-const outputPath = process.argv[3] ?? `examples/large-${factorCount}.tmodel`
+const outputPath = process.argv[3] ?? `examples/large-${factorCount}.ncombi`
 
 // Linear-congruential generator (seedable, deterministic across Node versions).
 function makeRng(seed) {

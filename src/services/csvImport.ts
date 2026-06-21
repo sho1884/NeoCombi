@@ -4,7 +4,10 @@
 //
 // Recognised columns:
 //   - Factor columns (must match parsed model factor names)
-//   - Optional "Expected" column (case-insensitive match)
+//   - Optional "Notes" (or legacy "Expected") column (case-insensitive)
+//   - Optional "ID" and "Count" columns (from a NeoCombi export). ID is
+//     informational (fresh IDs are reassigned on generation); Count, when a
+//     valid boolean, seeds the count-toward-coverage flag.
 //
 // Returns a TestSuite plus warnings for unparsed / mismatched rows.
 
@@ -33,11 +36,11 @@ export function parseCsv(text: string): CsvImportResult {
   }
 
   const header = rows[0]!.cells.map(c => c.trim())
-  const expectedColIdx = findExpectedColumn(header)
-  const factorOrder =
-    expectedColIdx >= 0
-      ? header.filter((_, i) => i !== expectedColIdx)
-      : header.slice()
+  const noteColIdx = findColumn(header, ['notes', 'note', 'expected'])
+  const idColIdx = findColumn(header, ['id'])
+  const countColIdx = findColumn(header, ['count'])
+  const reserved = new Set([noteColIdx, idColIdx, countColIdx].filter(i => i >= 0))
+  const factorOrder = header.filter((_, i) => !reserved.has(i))
 
   const cases: TestCase[] = []
   for (let i = 1; i < rows.length; i++) {
@@ -52,20 +55,25 @@ export function parseCsv(text: string): CsvImportResult {
     }
     const values: Record<string, string> = {}
     for (let c = 0; c < header.length; c++) {
-      if (c === expectedColIdx) continue
+      if (reserved.has(c)) continue
       values[header[c]!] = (r.cells[c] ?? '').trim()
     }
-    const expected = expectedColIdx >= 0 ? (r.cells[expectedColIdx] ?? '').trim() : ''
+    const note = noteColIdx >= 0 ? (r.cells[noteColIdx] ?? '').trim() : ''
     const tc: TestCase = { values }
-    if (expected.length > 0) tc.expected = expected
+    if (note.length > 0) tc.note = note
+    if (countColIdx >= 0) {
+      const raw = (r.cells[countColIdx] ?? '').trim().toLowerCase()
+      if (raw === 'true' || raw === '1') tc.count = true
+      else if (raw === 'false' || raw === '0') tc.count = false
+    }
     cases.push(tc)
   }
 
   return { suite: { factorOrder, rows: cases }, warnings, separator }
 }
 
-function findExpectedColumn(header: string[]): number {
-  return header.findIndex(h => h.toLowerCase() === 'expected')
+function findColumn(header: string[], names: string[]): number {
+  return header.findIndex(h => names.includes(h.toLowerCase()))
 }
 
 function detectSeparator(text: string): ',' | '\t' {
@@ -86,10 +94,10 @@ function detectSeparator(text: string): ',' | '\t' {
 // `,`-separated CSV and `\t`-separated PICT output).
 // =============================================================================
 
-type Row = { line: number; cells: string[] }
+export type CsvRow = { line: number; cells: string[] }
 
-function parseRows(text: string, separator: ',' | '\t'): Row[] {
-  const rows: Row[] = []
+export function parseRows(text: string, separator: ',' | '\t'): CsvRow[] {
+  const rows: CsvRow[] = []
   let cells: string[] = []
   let cell = ''
   let inQuotes = false

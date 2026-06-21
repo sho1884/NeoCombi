@@ -9,7 +9,7 @@
 #   coverage_view        SR-040..049  (top-pane exhaustive matrix; SR-044 = count-flag gating, UR-010)
 #   test_case_table      SR-050..059  (test cases + notes + ids + count flag; SR-054..056, UR-005/010)
 #   pict_invocation      SR-060..069  (external PICT CLI)
-#   persistence          SR-070..079  (.tmodel file I/O; SR-072 persisted set, SR-073 destructive guard, UR-011)
+#   persistence          SR-070..079  (project file I/O .ncombi/.ncproj; SR-072 persisted set, SR-073 destructive guard, UR-011)
 #   cli_mode             SR-080..089  (CI/CD pipeline use)
 #   mask_level           SR-090..099  (UR-008 — mask-level authoring assistance)
 #   all_combinations     SR-100..109  (UR-009 — decision-table: full Cartesian, forbidden marked;
@@ -552,35 +552,48 @@ requirements:
 # =============================================================================
 # Persistence (parent: UR-001, UR-002, UR-005, UR-006, UR-011)
 # =============================================================================
-# .tmodel file = single-file project. Contains DSL + the persisted test set
-# (rows, ids, count flags, notes) + view state.
+# Two native extensions, one on-disk grammar (ADR-014):
+#   .ncombi  — DSL model only: DSL + generation settings + expected-value rules.
+#              No persisted test set. The shareable, CI-facing model.
+#   .ncproj  — project: everything in .ncombi PLUS the persisted test set
+#              (rows, ids, count flags, notes) + view state.
+# Legacy .tmodel still opens; it is saved back as a project.
 
   SR-070:
     parent: [UR-001, UR-002, UR-005, UR-010, UR-011]
     category: persistence
-    function: "Save project as .tmodel file"
+    function: "Save as a NeoCombi file (.ncombi model / .ncproj project)"
+    note: |
+      One grammar, two extensions (ADR-014). A .ncombi model carries the DSL +
+      settings + expected-value rules only; a .ncproj project additionally
+      embeds the persisted test set. The CONTENT follows the chosen extension:
+      saving to .ncombi omits the test set, saving to .ncproj (or legacy
+      .tmodel) includes it.
     file_contents:
-      - "DSL source text (single source of truth for factors, levels, constraints)"
-      - "Persisted test set: each generated case with its ID, count flag, note, and level values (keyed by stable factor / level ids), so it reloads without regeneration"
-      - "View state: current bottom-pane tab, factor-checkbox visibility, forbidden-view slice configurations"
-      - "Generation settings: generation mode (pairwise/N-wise vs decision-table) and order N (PICT path is user-level, not project-level)"
+      - ".ncombi + .ncproj: DSL source text (single source of truth for factors, levels, constraints)"
+      - ".ncombi + .ncproj: Generation settings (mode pairwise/N-wise vs decision-table, order N) and expected-value rules (PICT path is user-level, not project-level)"
+      - ".ncproj only: Persisted test set — each generated case with its ID, count flag, note, and level values, so it reloads without regeneration"
+      - ".ncproj only: View state (current bottom-pane tab, factor-checkbox visibility, forbidden-view slice configurations)"
     scenarios:
-      - context: "Project has unsaved changes"
+      - context: "Project has unsaved changes and a path"
         action: "User selects 'Save'"
-        outcome: "Write .tmodel file at the current path"
+        outcome: "Write the file at the current path; content matches its extension (model vs project)"
       - context: "Project has no path yet"
         action: "User selects 'Save'"
-        outcome: "Prompt for a path; then write"
+        outcome: "Prompt for a path; default to .ncproj when a test set exists, else .ncombi; then write"
 
   SR-071:
     parent: [UR-001, UR-002, UR-005, UR-006, UR-011]
     category: persistence
-    function: "Load project from .tmodel file"
+    function: "Load a NeoCombi file (.ncombi / .ncproj / legacy .tmodel)"
     scenarios:
-      - context: "User opens a .tmodel file with a persisted test set"
+      - context: "User opens a .ncproj (or legacy .tmodel) with a persisted test set"
         action: "Load runs"
         outcome: "DSL, the test set (rows, IDs, count flags, notes), and view state are restored; NO regeneration runs; PICT settings reflect the loaded project"
-      - context: "File is from an older format version"
+      - context: "User opens a .ncombi model (no persisted test set)"
+        action: "Load runs"
+        outcome: "DSL + settings are restored; test set is empty (the user generates one); no regeneration is forced"
+      - context: "File is from an older format version (e.g. legacy .tmodel)"
         action: "Load runs"
         outcome: "Apply forward migration; if migration is impossible, show error without partial load"
       - context: "DSL inside file fails to parse"
@@ -631,11 +644,11 @@ requirements:
   SR-080:
     parent: [UR-006, UR-009]
     category: cli_mode
-    function: "Run NeoCombi as CLI consuming .tmodel input"
+    function: "Run NeoCombi as CLI consuming a .ncombi model input"
     scenarios:
-      - context: "User runs 'neocombi generate <input.tmodel>'"
+      - context: "User runs 'neocombi generate <input.ncombi>'"
         action: "CLI executes"
-        outcome: "Read .tmodel, invoke PICT, emit test cases (CSV by default) to stdout"
+        outcome: "Read the .ncombi model, invoke PICT, emit test cases (CSV by default) to stdout"
       - context: "User passes '--decision-table'"
         action: "CLI executes"
         outcome: "Generate the decision table via the built-in core (no PICT); behavior and exit codes are specified by SR-104 (atomic output; exit 5 on >4096)"
@@ -934,11 +947,11 @@ requirements:
     function: "Expose the decision table via the CLI"
     note: |
       CLI configuration: a single Node process (typically on a CI runner) reads
-      the .tmodel, calls generateDecisionTable(model) in-process (no PICT, no
+      the model file, calls generateDecisionTable(model) in-process (no PICT, no
       network), and maps the result to stdout/file plus an exit code. Output is
       ATOMIC — a complete table or nothing; a partial table is never written.
       Invocation:
-        neocombi generate <model.tmodel> --decision-table
+        neocombi generate <model.ncombi> --decision-table
           [--format csv|json] [--output <file>]
       Exit codes (each code has ONE meaning tool-wide; 2 = PICT failure is
       reserved for pairwise and never used here):

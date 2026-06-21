@@ -1,6 +1,7 @@
-// In-memory project state types. The persisted file is the .tmodel format
-// (PICT DSL subset + a few `# @neocombi:` annotations); see
-// src/services/tmodelFile.ts for the file ↔ memory translation.
+// In-memory project state types. Persisted as a NeoCombi file (PICT DSL subset
+// + a few `# @neocombi:` annotations): .ncombi for a DSL-only model, .ncproj for
+// a full project (adds the persisted test set). See src/services/projectFile.ts
+// for the file ↔ memory translation.
 
 import type { ParseResult } from './dsl'
 import type { TestSuite } from './testCase'
@@ -44,7 +45,7 @@ export type ForbiddenSliceConfig = {
 }
 
 /**
- * Session-only view state. Not persisted in the .tmodel file (resets to
+ * Session-only view state. Not persisted in the project file (resets to
  * defaults each time a project is opened).
  */
 export type ViewState = {
@@ -69,9 +70,9 @@ export type ProjectState = {
   parseResult: ParseResult
   expectedValues: ExpectedValueEntry[]
   /**
-   * Imported test cases (most recent CLI generation result). Session-only:
-   * not persisted in .tmodel because PICT can re-generate them deterministically
-   * from the DSL. null when the user has not imported anything yet.
+   * The generated / imported test set. Persisted in a project file (.ncproj)
+   * with its IDs, count flags, and notes (UR-011), so it restores without
+   * regenerating; a model file (.ncombi) omits it. null until generated.
    */
   testSuite: TestSuite | null
   /** PICT generation order (N-wise); default 2 (pairwise). Persisted. */

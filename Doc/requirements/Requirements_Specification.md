@@ -31,7 +31,7 @@ NeoCEG / NeoCombi は決定論変換器（AI 不内蔵）。AI 連携は n8n 経
 - 全組み合わせ（デシジョンテーブル）生成（UR-009）── 内製評価器で全因子直積を全行出力、禁則行は除外せず印を付ける。テストケース表の生成モードとして同居。上限超過は拒否
 - テストケース表 + メモ・備考カラム（旧「期待値」、UR-005）。各ケースに安定 ID とカバレッジ「カウント対象」フラグ（UR-010）。網羅集計は対象行のみ
 - 生成済みテストセットの永続化（行・ID・フラグ・メモ）と無再生成での再開、破壊的操作ガード（UR-011）
-- `.tmodel` プロジェクトファイル形式（[ADR-009](../adr/ADR-009-tmodel-file-extension.yaml)）
+- `.ncombi`（DSL モデル）/ `.ncproj`（プロジェクト）2形式のファイル（[ADR-014](../adr/ADR-014-ncombi-ncproj-two-file-split.yaml)、旧 [ADR-009](../adr/ADR-009-tmodel-file-extension.yaml) を supersede）
 - CLI モード（CI/CD 向け headless 実行）
 
 ### 2.2 含めない（v2 以降）
@@ -73,7 +73,7 @@ NeoCEG / NeoCombi は決定論変換器（AI 不内蔵）。AI 連携は n8n 経
 ### UR-006 — Invoke from CI/CD pipeline deterministically
 
 - **Priority:** medium
-- **Background:** テスト設計はバージョン管理された入力から再現可能であるべき。NeoCombi は CLI モードを提供し、`.tmodel` ファイルを入力として CSV/JSON を出力する（GUI 非依存、headless 動作）。同じ入力からは常に同じ出力（AI 不内蔵、非決定性なし）。
+- **Background:** テスト設計はバージョン管理された入力から再現可能であるべき。NeoCombi は CLI モードを提供し、`.ncombi` モデルファイルを入力として CSV/JSON を出力する（GUI 非依存、headless 動作）。同じ入力からは常に同じ出力（AI 不内蔵、非決定性なし）。
 
 ### UR-007 — Draft DSL from natural-language requirements via AI
 
@@ -188,12 +188,12 @@ PICT は外部 CLI として呼ぶ（バンドルしない、[ADR-002](../adr/AD
 
 ### 4.8 persistence（SR-070..073） — Parent: UR-001, UR-002, UR-005, UR-006, UR-011
 
-`.tmodel` 単一ファイルでプロジェクト保存（[ADR-009](../adr/ADR-009-tmodel-file-extension.yaml)）。DSL に加えて**生成済みテストセット（行・ID・フラグ・メモ）**を保存し、読込は無再生成で復元する。
+2形式・1文法でファイル保存（[ADR-014](../adr/ADR-014-ncombi-ncproj-two-file-split.yaml)）。`.ncombi` は DSL モデルのみ、`.ncproj` は**生成済みテストセット（行・ID・フラグ・メモ）**＋ビュー状態も含む。保存内容は拡張子で決まる。旧 `.tmodel` は読込互換。
 
 | ID | Function | 概要 |
 |---|---|---|
-| SR-070 | Save project as .tmodel file | DSL + 永続テストセット（各ケースの ID・カウントフラグ・メモ・水準値、stable id 付き）+ ビュー状態 + 生成設定（モード + N） |
-| SR-071 | Load project from .tmodel file | テストセット（行・ID・フラグ・メモ）含め復元、**再生成しない**。forward migration、DSL parse 失敗時は editor で開いて修正可能 |
+| SR-070 | Save as .ncombi model / .ncproj project | `.ncombi` = DSL + 生成設定 + 期待値ルール。`.ncproj` = それ + 永続テストセット（各ケースの ID・カウントフラグ・メモ・水準値）+ ビュー状態。保存先拡張子で内容が決まる |
+| SR-071 | Load .ncombi / .ncproj / legacy .tmodel | `.ncproj`/`.tmodel` はテストセット（行・ID・フラグ・メモ）含め復元し**再生成しない**。`.ncombi` は DSL のみ。forward migration、DSL parse 失敗時は editor で開いて修正可能 |
 | SR-072 | Treat the persisted test set as authoritative; do not auto-regenerate | 保存行が正。読込・プロジェクト open で自動再生成しない（ペアワイズは PICT 再実行で同一保証なし／記録を実行行に束ねるため）。再生成は明示操作のみ |
 | SR-073 | Guard destructive actions when flags or notes exist | フラグ／メモを捨てる操作（再生成・無効化 DSL 編集・上書きインポート SR-056）は、1件でも記録があれば「すべて失ってよいか」を確認し続行/留まるを選ばせる。無ければ無確認で続行 |
 
@@ -203,7 +203,7 @@ CI/CD 向け headless 実行。GUI と engine 層を共有（[ADR-004](../adr/AD
 
 | ID | Function | 概要 |
 |---|---|---|
-| SR-080 | Run NeoCombi as CLI consuming .tmodel input | `neocombi generate <input.tmodel>` でテストケースを stdout / file に出力。`--decision-table` でデシジョンテーブル生成（詳細・終了コードは SR-104） |
+| SR-080 | Run NeoCombi as CLI consuming a .ncombi model | `neocombi generate <input.ncombi>` でテストケースを stdout / file に出力（DSL を読んで常に再生成、永続セットは無視）。`--decision-table` でデシジョンテーブル生成（詳細・終了コードは SR-104） |
 | SR-081 | Exit with deterministic exit codes | 0=success, 1=parse, 2=PICT failure, 3=I/O input, 4=I/O output（+ SR-104 が **5=too-large** を追加） |
 | SR-082 | Run headless without GUI dependencies | display server なしで動作。GUI bundle 未インストールでも CLI 単独動作。**両モードに適用** ── ペアワイズは外部 PICT CLI を GUI/CLI 双方から spawn して headless がタダで揃うが、デシジョンテーブルは内製の純粋コアを**共有エンジン層に置き headless 呼び出し可能**にし、GUI（SR-100）/ CLI（SR-104）/ HTTP API（SR-105）の 3 つが同一コアを叩く。CLI と API は UR-009 の同格要件 |
 
@@ -227,7 +227,7 @@ mask 水準の authoring 補助。DSL は変更せず、固定トークン `_MAS
 | SR-101 | Generate the decision table via the built-in core (shared contract) | `generateDecisionTable(model)` ── **純粋・同期・IO 非依存**のエンジン層関数。GUI/CLI/API が共有する唯一の契約。全因子の全水準割当を**全行**列挙（禁則も残す）、各行を禁則判定。**完全な表 / too-large / invalid-model の 3 値**のみ返し、**部分表は返さない** |
 | SR-102 | Mark forbidden rows in the decision table | 各行を禁則ビューと同じ評価器で判定し、禁則フラグを付与（GUI ではマーカー列＋行スタイル）。除外せず残す。フラグはデータモデルに乗り、エクスポート・API 応答にも含まれる |
 | SR-103 | Refuse decision-table generation above 4096 combinations | 列挙前に直積（各因子水準数の積）を計算。**4096 超なら too-large を返し列挙しない**（部分出力なし）。禁則ビューの上限とは**独立した固定値 4096** |
-| SR-104 | Expose the decision table via the CLI | 1 Node プロセスでコアを in-process 実行。`neocombi generate <m.tmodel> --decision-table [--format csv\|json] [--output f]`。出力は原子的。終了コード：0 成功／1 invalid-model／3 入力不可／4 出力失敗／**5 too-large**（2=PICT 失敗はこのモードでは不使用） |
+| SR-104 | Expose the decision table via the CLI | 1 Node プロセスでコアを in-process 実行。`neocombi generate <m.ncombi> --decision-table [--format csv\|json] [--output f]`。出力は原子的。終了コード：0 成功／1 invalid-model／3 入力不可／4 出力失敗／**5 too-large**（2=PICT 失敗はこのモードでは不使用） |
 | SR-105 | Expose the decision table via the HTTP API | pict-service に `/decision-table` を追加（`/generate` と並置）。`POST /decision-table`（body=DSL）→ **200** 完全な表／**400** invalid-model／**413** too-large。応答は原子的。サーバは `/generate` 用に PICT、`/decision-table` 用に純粋コアの両方を持つ |
 
 #### 共有コアの契約（唯一の真実）
@@ -347,7 +347,8 @@ flowchart LR
 - [ADR-006: UI を上下 2 ペーンとし、下ペーンはタブ切替式にする](../adr/ADR-006-split-pane-with-tabbed-bottom.yaml)
 - [ADR-007: 禁則マトリクスは入力源ではなく、DSL から導出した参照ビューとする](../adr/ADR-007-forbidden-matrix-as-reference-view.yaml)
 - [ADR-008: テストケース表に期待値カラムを持ち、再生成跨ぎで保持する](../adr/ADR-008-expected-value-column-in-test-cases.yaml)
-- [ADR-009: プロジェクトファイル拡張子を .tmodel とする](../adr/ADR-009-tmodel-file-extension.yaml)
+- [ADR-014: 永続ファイルを .ncombi（モデル）と .ncproj（プロジェクト）の2形式に分割する](../adr/ADR-014-ncombi-ncproj-two-file-split.yaml)
+- [ADR-009: プロジェクトファイル拡張子を .tmodel とする（ADR-014 が supersede）](../adr/ADR-009-tmodel-file-extension.yaml)
 - [ADR-010: PICT-PAPP からの clean-room 再実装](../adr/ADR-010-clean-room-reimplementation-from-pictpapp.yaml)
 
 ### External

@@ -9,8 +9,12 @@ export type DecisionTableOutRow = {
   /** Level values in the same order as `columns`. */
   values: string[]
   forbidden: boolean
-  /** Optional expected result attached by the user (UR-005). */
-  expected?: string
+  /** Stable case ID (UR-010); absent for forbidden rows (not test cases). */
+  id?: string
+  /** Count-toward-coverage flag (UR-010); absent for forbidden rows. */
+  count?: boolean
+  /** Optional free-form note attached by the user (UR-005). */
+  note?: string
 }
 
 /**
@@ -44,12 +48,14 @@ function formatDelimited(
   sep: string,
   escape: (s: string) => string,
 ): string {
-  const headers = [...columns, 'Forbidden', 'Expected']
+  // Column layout (SR-053): ID, Count, <factors...>, Forbidden, Notes.
+  const headers = ['ID', 'Count', ...columns, 'Forbidden', 'Notes']
   const lines: string[] = [headers.map(escape).join(sep)]
   for (const row of rows) {
-    const cells = [...row.values]
+    const cells = [row.id ?? '', row.count === undefined ? '' : String(row.count)]
+    cells.push(...row.values)
     cells.push(row.forbidden ? FORBIDDEN_MARK : '')
-    cells.push(row.expected ?? '')
+    cells.push(row.note ?? '')
     lines.push(cells.map(escape).join(sep))
   }
   return lines.join('\n') + '\n'
@@ -58,11 +64,13 @@ function formatDelimited(
 function formatJson(columns: string[], rows: DecisionTableOutRow[]): string {
   const out = rows.map(row => {
     const obj: Record<string, string | boolean> = {}
+    if (row.id !== undefined) obj['id'] = row.id
+    if (row.count !== undefined) obj['count'] = row.count
     for (let i = 0; i < columns.length; i++) {
       obj[columns[i]!] = row.values[i] ?? ''
     }
     obj['Forbidden'] = row.forbidden
-    if (row.expected !== undefined) obj['Expected'] = row.expected
+    if (row.note !== undefined) obj['note'] = row.note
     return obj
   })
   return JSON.stringify(out, null, 2) + '\n'

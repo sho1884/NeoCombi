@@ -51,7 +51,7 @@ describe('projectStore / generationMode', () => {
     expect(useProjectStore.getState().isDirty).toBe(true)
   })
 
-  it('preserves the forbidden flag when editing an expected value', () => {
+  it('preserves the forbidden flag when editing a note', () => {
     useProjectStore.getState().setSource(
       'Color: Red, Blue\nSize: S, M, L\nIF [Color] = "Red" THEN [Size] <> "L";',
     )
@@ -59,9 +59,9 @@ describe('projectStore / generationMode', () => {
     const suite = useProjectStore.getState().testSuite!
     const idx = suite.rows.findIndex(r => r.forbidden)
     expect(idx).toBeGreaterThanOrEqual(0)
-    useProjectStore.getState().setTestCaseExpected(idx, 'should never run')
+    useProjectStore.getState().setTestCaseNote(idx, 'should never run')
     const after = useProjectStore.getState().testSuite!.rows[idx]!
     expect(after.forbidden).toBe(true)
-    expect(after.expected).toBe('should never run')
+    expect(after.note).toBe('should never run')
   })
 })

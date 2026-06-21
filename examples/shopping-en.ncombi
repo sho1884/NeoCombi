@@ -1,4 +1,4 @@
-# Shopping-site order — combinatorial test example (English version of shopping.tmodel).
+# Shopping-site order — combinatorial test example (English version of shopping.ncombi).
 # Shows a mask level: the credit-card status only matters when paying by credit
 # card. (Example assumptions, not a real site's rules.)
 

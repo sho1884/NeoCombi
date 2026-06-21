@@ -3,7 +3,7 @@
 > **このファイルは自動生成されたビューです。直接編集しないでください。**
 > 編集は `Doc/adr/ADR-NNN-*.yaml` に対して行い、`adr` スキルで本ファイルを再生成します。
 >
-> Generated: 2026-05-03 (ADR-013 added)
+> Generated: 2026-06-21 (ADR-014 added; ADR-009 superseded)
 
 ## Summary
 
@@ -17,11 +17,12 @@
 | [ADR-006](adr/ADR-006-split-pane-with-tabbed-bottom.yaml) | UI を上下 2 ペーンとし、下ペーンはタブ切替式にする | 2026-05-02 | accepted | UI を上下 2 ペーンに分け、下ペーンは「因子水準 / DSL / テストケース」のタブ切替とする |
 | [ADR-007](adr/ADR-007-forbidden-matrix-as-reference-view.yaml) | 禁則マトリクスは入力源ではなく、DSL から導出した参照ビューとする | 2026-05-02 | accepted | DSL を一次入力源とし、禁則マトリクスは DSL から導出する参照ビュー（read-only）とする |
 | [ADR-008](adr/ADR-008-expected-value-column-in-test-cases.yaml) | テストケース表に期待値カラムを持ち、再生成跨ぎで保持する | 2026-05-02 | accepted | テストケース表に期待値カラムを持ち、再生成跨ぎで stable id によって期待値を保持する |
-| [ADR-009](adr/ADR-009-tmodel-file-extension.yaml) | プロジェクトファイル拡張子を .tmodel とする | 2026-05-02 | accepted | プロジェクトファイル拡張子を .tmodel（test model）に決定する |
+| [ADR-009](adr/ADR-009-tmodel-file-extension.yaml) | プロジェクトファイル拡張子を .tmodel とする | 2026-05-02 | superseded → ADR-014 | プロジェクトファイル拡張子を .tmodel（test model）に決定する |
 | [ADR-010](adr/ADR-010-clean-room-reimplementation-from-pictpapp.yaml) | PICT-PAPP からの clean-room 再実装 | 2026-05-02 | accepted | PICT-PAPP の VBA ソースは行レベルで一切参照せず、clean-room で再実装する |
 | [ADR-011](adr/ADR-011-suggest-slices-co-occurrence-components.yaml) | 禁則 slice の自動提案は『制約共起グラフの連結成分 + 全ピボット展開』で行う | 2026-05-03 | accepted | DSL 制約集合から共起グラフを作り、Union-Find で連結成分を求め、サイズ ≥3 の各成分について全因子を順にピボットした slice を発行する |
 | [ADR-012](adr/ADR-012-forbidden-enumeration-reachability-scoping.yaml) | 禁則判定の自由因子列挙は『制約到達可能閉包』に絞る | 2026-05-03 | accepted | isPartiallyForbidden の自由因子列挙を、制約共起グラフで slice 因子から到達可能な閉包だけに限定する |
 | [ADR-013](adr/ADR-013-pict-service-utf8-locale.yaml) | pict-service コンテナの locale を C.UTF-8 に設定する | 2026-05-03 | accepted | Dockerfile に `ENV LC_ALL=C.UTF-8` を入れて locale-gen し、PICT が UTF-8 多バイト識別子を正しく処理できるようにする |
+| [ADR-014](adr/ADR-014-ncombi-ncproj-two-file-split.yaml) | 永続ファイルを .ncombi（モデル）と .ncproj（プロジェクト）の2形式に分割する | 2026-06-21 | accepted | DSL モデルは .ncombi、テストセットを含むプロジェクトは .ncproj に分け、旧 .tmodel は後方互換で読み込む |
 
 ---
 
@@ -336,7 +337,7 @@ PICT 生成結果に期待値カラムを追加し、ユーザが各行に自由
 ## ADR-009 — プロジェクトファイル拡張子を .tmodel とする
 
 - **Date:** 2026-05-02
-- **Status:** accepted
+- **Status:** superseded（後継: ADR-014）
 - **Author:** sho1884 / **Approver:** sho1884
 
 ### Context — Problem
@@ -586,3 +587,61 @@ ENV LC_ALL=C.UTF-8
 - ADR-001
 - ADR-002
 - pict-service/Dockerfile
+
+---
+
+## ADR-014 — 永続ファイルを .ncombi（モデル）と .ncproj（プロジェクト）の2形式に分割する
+
+- **Date:** 2026-06-21
+- **Status:** accepted
+- **Author:** sho1884 / **Approver:** sho1884
+
+### Context — Problem
+
+ADR-009 は拡張子を .tmodel（test model）に決めた。その核は「ファイルが持つのはテストケース（組合せ）そのものではなく、組合せを導出する因子・水準・制約の model であり、テストケースは PICT が都度生成する派生物でファイルには記録されない（当時の SR-070）」という前提だった。
+
+UR-011 がこの前提を覆した。カウント対象フラグ（UR-010）と行に紐づくメモ（UR-005）をセッション跨ぎで生存させるには、生成済みテストセット（行・ID・フラグ・メモ・水準値）をファイルに永続化し、読込で再生成しない必要がある。結果、「model だけを持つ」はずのファイルがテストケースまで抱え、「.tmodel = model」という名前と実体が乖離した。
+
+### Decision
+
+**DSL モデルは .ncombi、テストセットを含むプロジェクトは .ncproj に分け、旧 .tmodel は後方互換で読み込む**
+
+- .ncombi = DSL モデルのみ（因子・水準・制約 ＋ 生成設定 ＋ 期待値ルール）。永続テストセットを含まない。CI・共有・版管理の対象、CLI の標準入力。
+- .ncproj = プロジェクト。.ncombi の内容 ＋ 永続テストセット（@neocombi:caseset-factors ＋ 行ごとの @neocombi:case）。
+
+オンディスク文法は1つで共通とし、両者の差は @neocombi:case 行を書くか否かだけ。保存内容は保存先の拡張子から決める（.ncombi → モデル、それ以外 → プロジェクト）。deserialize は両者を同じ経路で読む。旧 .tmodel は読み込み互換、保存はプロジェクト扱い。
+
+.ncombi は ADR-009 で却下した案だが、否定読みより「ツール名 NeoCombi 由来」を優先し採用。NeoCEG の .nceg と nc 接頭で対称性も改善。
+
+### Neglected Options
+
+- **.tmodel を維持し中にテストセットも入れる** — 「model」という名前がテストケースを含む実体と乖離。CLI が保存セットと再生成結果のどちらを出すか曖昧になる
+- **.tmodel（モデル）に一本化しテストセットは永続化しない** — UR-010/011 を満たせない
+- **1形式に統一しモデル専用保存を持たない** — CI・共有用に DSL だけを純粋に版管理したい要求に応えられない
+- **.ncmbprj をプロジェクト拡張子にする** — 母音を潰した綴りで読みにくく、.ncombi と揃わない。.ncproj の方が読める
+
+### Consequences
+
+**Positive:**
+- ファイル名が実体に一致する
+- CI は .ncombi を読んで常に再生成 → 保存セットとの食い違いが原理的に起きない
+- モデルだけを diff しやすい形で版管理できる
+- 保存内容を拡張子から自動決定でき UI が単純
+- NeoCEG の .nceg と nc 接頭で対称性が改善
+
+**Negative:**
+- 拡張子が2つに増え、ユーザは違いを理解する必要がある
+- ADR-009 を覆す決定で、既存 .tmodel 資産の移行（読込互換＋Save As）が必要
+- examples/ と公開 Samples/ の拡張子・参照・URL の一括更新が発生
+
+**Risks:**
+- .ncombi に手作業でテストセットを足す等、規約外の使い方をすると整合が崩れる
+- 永続ケースは因子の表示名でキーするため、DSL での因子改名でセットが orphan し得る（SR-052 シナリオ3 の未充足、安定 ID 基盤は別タスク）
+
+### References
+
+- ADR-009（本 ADR が supersede）
+- ADR-008
+- Doc/requirements/user_requirements.yaml UR-010 / UR-011
+- Doc/requirements/system_requirements.yaml SR-070..073
+- src/services/projectFile.ts

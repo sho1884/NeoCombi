@@ -1,7 +1,7 @@
 # NeoCombi sample: classic browser / OS / memory matrix with one constraint.
 #
 # Run from the repo root:
-#   node bin/neocombi.mjs generate examples/browsers.tmodel
+#   node bin/neocombi.mjs generate examples/browsers.ncombi
 # or open this file from the GUI's "Open..." button.
 
 OS:      Linux, Windows, macOS

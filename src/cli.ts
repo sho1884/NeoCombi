@@ -1,10 +1,14 @@
 #!/usr/bin/env node
 // NeoCombi CLI (UR-006 / SR-080..082).
 //
-//   neocombi generate <input.tmodel> [--format csv|tsv|json] [--output <file>]
+//   neocombi generate <input.ncombi> [--format csv|tsv|json] [--output <file>]
 //                                   [--pict <path>] [--order N] [--decision-table]
 //
-// Reads the .tmodel file, validates the DSL, and emits test cases in the
+// Input is a NeoCombi model (.ncombi); a project (.ncproj) or legacy .tmodel is
+// also accepted — the CLI reads the DSL and ALWAYS regenerates, ignoring any
+// persisted test set (CI wants a fresh deterministic set from the model).
+//
+// Reads the file, validates the DSL, and emits test cases in the
 // requested format. By default it spawns the external PICT executable for
 // pairwise / N-wise generation. With --decision-table it instead generates the
 // full-combination decision table via the built-in core (SR-104) — no PICT.
@@ -24,8 +28,9 @@ import type { OutputFormat } from './engines/pict'
 import { formatDecisionTable } from './engines/dsl/formatDecisionTable'
 import type { DecisionTableOutRow } from './engines/dsl/formatDecisionTable'
 import { runPict } from './services/pictRunner'
-import { deserialize } from './services/tmodelFile'
-import type { TestSuite } from './types/testCase'
+import { deserialize } from './services/projectFile'
+import { assignCaseIds } from './services/caseIds'
+import type { TestCase, TestSuite } from './types/testCase'
 import type { ExpectedValueEntry } from './types/project'
 
 type ExitCode = 0 | 1 | 2 | 3 | 4 | 5
@@ -34,7 +39,7 @@ const HELP = `\
 neocombi — combinatorial test design tool (CLI)
 
 Usage:
-  neocombi generate <input.tmodel> [options]
+  neocombi generate <input.ncombi> [options]
 
 Options:
   --format <csv|tsv|json>   Output format (default: csv)
@@ -70,7 +75,7 @@ async function main(argv: string[]): Promise<ExitCode> {
 
   const inputPath = rest[0]
   if (!inputPath || inputPath.startsWith('-')) {
-    process.stderr.write('Missing input .tmodel file path.\n')
+    process.stderr.write('Missing input .ncombi file path.\n')
     return 3
   }
 
@@ -133,11 +138,29 @@ async function main(argv: string[]): Promise<ExitCode> {
       }
       return 1
     }
-    const rows: DecisionTableOutRow[] = table.rows.map(r => {
-      const expected = lookupExpected(table.columns, r.values, file.expectedValues)
-      return expected !== undefined
-        ? { values: r.values, forbidden: r.forbidden, expected }
-        : { values: r.values, forbidden: r.forbidden }
+    // Build a suite, attach notes, then assign stable D-IDs + count flags
+    // (UR-010) before rendering. Forbidden rows are not test cases (no ID/flag).
+    const suite: TestSuite = {
+      factorOrder: table.columns.slice(),
+      rows: table.rows.map(r => {
+        const values: Record<string, string> = {}
+        for (let i = 0; i < table.columns.length; i++) values[table.columns[i]!] = r.values[i] ?? ''
+        const note = lookupExpected(table.columns, r.values, file.expectedValues)
+        const row: TestCase = { values, forbidden: r.forbidden }
+        if (note !== undefined) row.note = note
+        return row
+      }),
+    }
+    const withIds = assignCaseIds(suite, 'decision-table')
+    const rows: DecisionTableOutRow[] = withIds.rows.map(row => {
+      const out: DecisionTableOutRow = {
+        values: table.columns.map(c => row.values[c] ?? ''),
+        forbidden: row.forbidden ?? false,
+      }
+      if (row.id !== undefined) out.id = row.id
+      if (row.count !== undefined) out.count = row.count
+      if (row.note !== undefined) out.note = row.note
+      return out
     })
     const dtOut = formatDecisionTable(table.columns, rows, format)
     return writeOutput(dtOut, outputPath)
@@ -159,7 +182,8 @@ async function main(argv: string[]): Promise<ExitCode> {
 
   const suite = parsePictOutput(result.stdout)
   attachExpectedValues(suite, file.expectedValues)
-  const out = formatTestSuite(suite, format)
+  const withIds = assignCaseIds(suite, 'pairwise')
+  const out = formatTestSuite(withIds, format)
   return writeOutput(out, outputPath)
 }
 
@@ -203,7 +227,7 @@ function attachExpectedValues(suite: TestSuite, entries: ExpectedValueEntry[]): 
   for (const row of suite.rows) {
     for (const entry of entries) {
       if (assignmentMatches(row.values, entry.assignment)) {
-        row.expected = entry.value
+        row.note = entry.value
         break
       }
     }

@@ -9,6 +9,32 @@ out of v0.x.
 
 ### Added
 
+- **Achieved coverage: count flags + stable IDs + results write-back** (UR-010).
+  Every test case now carries a stable, human-readable **ID** (`P01`/`D0001`,
+  zero-padded to the case count) and a **Count toward coverage** flag (default
+  on). The coverage matrix and rate count only flagged-in cases, so a pair
+  covered only by flagged-out cases reads as *missed* — turning "planned"
+  coverage into "achieved" coverage. An **Import results…** action writes back a
+  fixed three-column `id,count,note` CSV, matched to cases by ID, so an external
+  execution system can feed results in.
+- **Persisted test set; resume without regenerating** (UR-011). A project saves
+  its generated set verbatim (rows, IDs, flags, notes); loading restores it and
+  does **not** regenerate. Re-generating, switching mode, clearing, or importing
+  results is guarded — it asks first whenever a count flag or note would be lost.
+
+### Changed
+
+- **File format split into `.ncombi` and `.ncproj`** (ADR-014, supersedes
+  ADR-009). `.ncombi` is the DSL model alone (shareable, CI-facing); `.ncproj`
+  is a full project that also embeds the persisted test set. Both share one
+  on-disk grammar; the save content follows the chosen extension. Legacy
+  `.tmodel` files still open and save back as projects. The CLI takes a
+  `.ncombi` model and always regenerates. Example / sample files renamed to
+  `.ncombi`.
+- **"Expected" column renamed to "Notes"** (UR-005). The per-case free-text
+  column is a design-time memo (annotation key `@neocombi:note`); CSV/JSON
+  exports now carry `ID`, `Count`, factor, and `Notes` columns.
+
 - **Decision-table generation** (UR-009). The full Cartesian product of all
   factors with forbidden rows kept and marked (not excluded) — decision-table
   test design, the complement of pairwise. One pure-TypeScript core
@@ -16,8 +42,8 @@ out of v0.x.
   configuration:
   - **GUI** — a generation-mode toggle (Pairwise / Decision table) in the Test
     cases tab; the core runs in-browser (no PICT), forbidden rows shown with a
-    marker column and muted styling. Mode persists in the `.tmodel` file.
-  - **CLI** — `neocombi generate <model.tmodel> --decision-table`. Atomic output
+    marker column and muted styling. Mode persists in the project file.
+  - **CLI** — `neocombi generate <model.ncombi> --decision-table`. Atomic output
     (a complete table or nothing); a dedicated exit code `5` for too-large that
     does not collide with PICT's codes.
   - **HTTP API** — `POST /decision-table` on pict-service (beside `/generate`):

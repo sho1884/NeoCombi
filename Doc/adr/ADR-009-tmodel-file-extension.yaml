@@ -1,13 +1,13 @@
 id: ADR-009
 title: "プロジェクトファイル拡張子を .tmodel とする"
 date: "2026-05-02"
-status: accepted
-superseded_by: null
+status: superseded
+superseded_by: ADR-014
 
 participants:
   author: "sho1884"
   approver: "sho1884"
-  last_updated: "2026-05-02"
+  last_updated: "2026-06-21"
 
 context:
   problem: |
@@ -58,3 +58,4 @@ consequences:
 references:
   - "Doc/requirements/system_requirements.yaml SR-070..071"
   - "ADR-008"
+  - "ADR-014（本 ADR を supersede。UR-011 がテストケース非記録の前提を覆したため）"

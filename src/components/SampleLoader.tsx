@@ -3,14 +3,15 @@ import { useProjectStore } from '../stores/projectStore'
 
 /**
  * Deep-link loader. When the page is opened with `?file=<url>`, fetch that
- * `.tmodel` and load it into a pristine project. This is how sample models are
- * shared — they live outside the app bundle (e.g. on GitHub Pages) and are
- * pulled in on demand, matching NeoCEG's `?file=` convention.
+ * NeoCombi file (.ncombi / .ncproj / legacy .tmodel) and load it into a
+ * pristine project. This is how sample models are shared — they live outside
+ * the app bundle (e.g. on GitHub Pages) and are pulled in on demand, matching
+ * NeoCEG's `?file=` convention.
  *
  * Only loads into an untouched store; never clobbers in-progress work.
  */
 export function SampleLoader() {
-  const loadFromTmodel = useProjectStore(s => s.loadFromTmodel)
+  const loadProjectFile = useProjectStore(s => s.loadProjectFile)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -30,7 +31,7 @@ export function SampleLoader() {
         // Re-check the store wasn't touched while the fetch was in flight.
         const fresh = useProjectStore.getState()
         if (fresh.source !== '' || fresh.testSuite !== null || fresh.filePath !== null) return
-        loadFromTmodel(text)
+        loadProjectFile(text)
       } catch {
         // Bad URL / network / CORS — leave the empty editor as-is.
       }
@@ -38,7 +39,7 @@ export function SampleLoader() {
     return () => {
       cancelled = true
     }
-  }, [loadFromTmodel])
+  }, [loadProjectFile])
 
   return null
 }

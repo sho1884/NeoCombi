@@ -9,6 +9,7 @@ import {
   type DecisionTableOutRow,
 } from '../engines/dsl/formatDecisionTable'
 import { copyTableToClipboard, escapeHtml } from '../services/clipboardWrite'
+import { applyResultsCsv } from '../services/resultsCsv'
 import { isHostedDeployment, isPictApiConfigured } from '../services/demoMode'
 import { MASK_LEVEL } from '../engines/dsl/maskLevel'
 import type { TestSuite } from '../types/testCase'
@@ -19,7 +20,7 @@ function isDecisionTable(suite: TestSuite | null): boolean {
   return suite?.rows.some(r => r.forbidden !== undefined) ?? false
 }
 
-/** Render a decision-table suite in the requested text format (forbidden + expected columns). */
+/** Render a decision-table suite in the requested text format (id, count, forbidden, notes columns). */
 function formatDecisionSuite(suite: TestSuite, format: 'csv' | 'json'): string {
   return formatDecisionTable(suite.factorOrder, decisionOutRows(suite), format)
 }
@@ -27,26 +28,30 @@ function formatDecisionSuite(suite: TestSuite, format: 'csv' | 'json'): string {
 function decisionOutRows(suite: TestSuite): DecisionTableOutRow[] {
   return suite.rows.map(r => {
     const values = suite.factorOrder.map(n => r.values[n] ?? '')
-    return r.expected !== undefined
-      ? { values, forbidden: r.forbidden ?? false, expected: r.expected }
-      : { values, forbidden: r.forbidden ?? false }
+    const out: DecisionTableOutRow = { values, forbidden: r.forbidden ?? false }
+    if (r.id !== undefined) out.id = r.id
+    if (r.count !== undefined) out.count = r.count
+    if (r.note !== undefined) out.note = r.note
+    return out
   })
 }
 
 /**
  * HTML <table> for the clipboard that MATCHES the on-screen decision table:
- * a Forbidden column (same marker as CSV) plus Expected. Kept in step with the
+ * a Forbidden column (same marker as CSV) plus Notes. Kept in step with the
  * plain-text payload so both clipboard flavours carry the same columns.
  */
 function decisionSuiteToHtml(suite: TestSuite): string {
-  const headers = [...suite.factorOrder, 'Forbidden', 'Expected']
+  const headers = ['ID', 'Count', ...suite.factorOrder, 'Forbidden', 'Notes']
   const headerHtml = headers.map(h => `<th>${escapeHtml(h)}</th>`).join('')
   const rowsHtml = decisionOutRows(suite)
     .map(row => {
       const cells = [
+        row.id ?? '',
+        row.count === undefined ? '' : String(row.count),
         ...row.values,
         row.forbidden ? FORBIDDEN_MARK : '',
-        row.expected ?? '',
+        row.note ?? '',
       ]
       return '<tr>' + cells.map(c => `<td>${escapeHtml(c)}</td>`).join('') + '</tr>'
     })
@@ -54,9 +59,19 @@ function decisionSuiteToHtml(suite: TestSuite): string {
   return `<table><thead><tr>${headerHtml}</tr></thead><tbody>${rowsHtml}</tbody></table>`
 }
 
+/** SR-073 destructive-action guard: confirm before discarding flags / notes. */
+function confirmDiscardFlagsNotes(action: string): boolean {
+  if (!useProjectStore.getState().hasFlagsOrNotes()) return true
+  return window.confirm(
+    `${action} will discard the recorded count flags and notes on the current ` +
+      `test set. This cannot be undone. Continue?`,
+  )
+}
+
 export function TestCasesTab() {
   const testSuite = useProjectStore(s => s.testSuite)
-  const setTestCaseExpected = useProjectStore(s => s.setTestCaseExpected)
+  const setTestCaseNote = useProjectStore(s => s.setTestCaseNote)
+  const setTestCaseCount = useProjectStore(s => s.setTestCaseCount)
   const source = useProjectStore(s => s.source)
   const diagnostics = useProjectStore(s => s.parseResult.diagnostics)
   const generationMode = useProjectStore(s => s.generationMode)
@@ -64,6 +79,7 @@ export function TestCasesTab() {
 
   const [error, setError] = useState<string | null>(null)
   const [generating, setGenerating] = useState(false)
+  const [importInfo, setImportInfo] = useState<string | null>(null)
   // GUI exposes only the two formats engineers actually paste / commit:
   // CSV for code editors and test-automation tooling, JSON for parametrised
   // test runners. TSV stays available in the CLI for spreadsheet pipelines.
@@ -73,10 +89,15 @@ export function TestCasesTab() {
   const dslHasErrors = diagnostics.some(d => d.severity === 'error')
   const showForbidden = isDecisionTable(testSuite)
   const forbiddenCount = testSuite?.rows.filter(r => r.forbidden).length ?? 0
+  const uncountedCount =
+    testSuite?.rows.filter(r => r.forbidden !== true && r.count === false).length ?? 0
 
   const onManualGenerate = async () => {
+    // SR-073: regenerating reassigns IDs and drops flags / notes — confirm.
+    if (!confirmDiscardFlagsNotes('Re-generating')) return
     setGenerating(true)
     setError(null)
+    setImportInfo(null)
     try {
       if (generationMode === 'decision-table') {
         const result = runDecisionTable()
@@ -130,12 +151,21 @@ export function TestCasesTab() {
     }
   }
 
+  const onChangeMode = (mode: 'pairwise' | 'decision-table') => {
+    if (mode === generationMode) return
+    // Switching modes discards the current set (its rows belong to the old
+    // mode); guard the recorded flags / notes first (SR-073).
+    if (!confirmDiscardFlagsNotes('Switching mode')) return
+    setImportInfo(null)
+    setGenerationMode(mode)
+  }
+
   const modeSelect = (
     <label className="test-cases-tab__format">
       Mode:{' '}
       <select
         value={generationMode}
-        onChange={e => setGenerationMode(e.target.value as 'pairwise' | 'decision-table')}
+        onChange={e => onChangeMode(e.target.value as 'pairwise' | 'decision-table')}
         title="Pairwise (PICT) vs full-combination decision table"
       >
         <option value="pairwise">Pairwise</option>
@@ -143,6 +173,23 @@ export function TestCasesTab() {
       </select>
     </label>
   )
+
+  // Results write-back (SR-056): a three-column id,count,note CSV updates the
+  // matching cases' flags and notes. Overwriting recorded values is guarded.
+  const onImportResults = async (file: File) => {
+    setError(null)
+    if (!confirmDiscardFlagsNotes('Importing results')) return
+    const text = await file.text()
+    const result = applyResultsCsv(text)
+    const parts = [`Updated ${result.matched} case${result.matched === 1 ? '' : 's'}`]
+    if (result.unmatchedIds.length > 0) {
+      parts.push(`${result.unmatchedIds.length} row(s) matched no case`)
+    }
+    if (result.warnings.length > 0) {
+      parts.push(`${result.warnings.length} row(s) skipped`)
+    }
+    setImportInfo(parts.join('; ') + '.')
+  }
 
   // ---------------------------------------------------------------------------
   // Export / copy actions (only meaningful when there is a suite to export)
@@ -272,6 +319,7 @@ export function TestCasesTab() {
                 testSuite.rows.length - forbiddenCount === 1 ? '' : 's'
               }, ${forbiddenCount} forbidden`
             : ''}
+          {uncountedCount > 0 ? ` (${uncountedCount} not counted)` : ''}
         </span>
         {modeSelect}
         <button
@@ -319,13 +367,31 @@ export function TestCasesTab() {
           Download
         </button>
         <span className="test-cases-tab__divider" aria-hidden="true" />
+        <label className="test-cases-tab__import-results" title="Write back a three-column id,count,note CSV (UR-010 / SR-056)">
+          Import results…
+          <input
+            type="file"
+            accept=".csv,text/csv"
+            style={{ display: 'none' }}
+            onChange={e => {
+              const f = e.target.files?.[0]
+              e.target.value = ''
+              if (f) void onImportResults(f)
+            }}
+          />
+        </label>
         <button
           type="button"
           className="test-cases-tab__clear"
-          onClick={() => useProjectStore.getState().setTestSuite(null)}
+          onClick={() => {
+            if (!confirmDiscardFlagsNotes('Clearing the test set')) return
+            setImportInfo(null)
+            useProjectStore.getState().setTestSuite(null)
+          }}
         >
           Clear
         </button>
+        {importInfo ? <span className="test-cases-tab__import-info" role="status">{importInfo}</span> : null}
         {error ? <span className="test-cases-tab__error">{error}</span> : null}
       </div>
 
@@ -333,7 +399,14 @@ export function TestCasesTab() {
         <table className="test-cases-tab__table">
           <thead>
             <tr>
-              <th className="test-cases-tab__col-idx">#</th>
+              <th className="test-cases-tab__col-id" scope="col">ID</th>
+              <th
+                className="test-cases-tab__col-count"
+                scope="col"
+                title="Count toward coverage (UR-010): only checked cases contribute to the coverage matrix / rate"
+              >
+                Count
+              </th>
               {showForbidden ? (
                 <th className="test-cases-tab__col-forbidden" scope="col" title="Forbidden by a constraint">
                   Forbidden
@@ -342,16 +415,29 @@ export function TestCasesTab() {
               {testSuite.factorOrder.map(name => (
                 <th key={`h-${name}`} scope="col">{name}</th>
               ))}
-              <th className="test-cases-tab__col-expected" scope="col">Expected</th>
+              <th className="test-cases-tab__col-notes" scope="col">Notes</th>
             </tr>
           </thead>
           <tbody>
             {testSuite.rows.map((row, idx) => (
               <tr
                 key={`r-${idx}`}
-                className={row.forbidden ? 'test-cases-tab__row--forbidden' : undefined}
+                className={
+                  (row.forbidden ? 'test-cases-tab__row--forbidden' : '') +
+                  (row.count === false ? ' test-cases-tab__row--uncounted' : '')
+                }
               >
-                <th className="test-cases-tab__col-idx" scope="row">{idx + 1}</th>
+                <th className="test-cases-tab__col-id" scope="row">{row.id ?? ''}</th>
+                <td className="test-cases-tab__col-count">
+                  {row.forbidden ? null : (
+                    <input
+                      type="checkbox"
+                      checked={row.count !== false}
+                      onChange={e => setTestCaseCount(idx, e.target.checked)}
+                      aria-label={`Count case ${row.id ?? idx + 1} toward coverage`}
+                    />
+                  )}
+                </td>
                 {showForbidden ? (
                   <td className="test-cases-tab__col-forbidden" aria-label={row.forbidden ? 'forbidden' : 'allowed'}>
                     {row.forbidden ? FORBIDDEN_MARK : ''}
@@ -373,10 +459,11 @@ export function TestCasesTab() {
                     </td>
                   )
                 })}
-                <td className="test-cases-tab__col-expected">
-                  <ExpectedCell
-                    initial={row.expected ?? ''}
-                    onCommit={value => setTestCaseExpected(idx, value)}
+                <td className="test-cases-tab__col-notes">
+                  <NotesCell
+                    key={`note-${idx}-${row.note ?? ''}`}
+                    initial={row.note ?? ''}
+                    onCommit={value => setTestCaseNote(idx, value)}
                   />
                 </td>
               </tr>
@@ -388,12 +475,12 @@ export function TestCasesTab() {
   )
 }
 
-type ExpectedCellProps = {
+type NotesCellProps = {
   initial: string
   onCommit: (value: string) => void
 }
 
-function ExpectedCell({ initial, onCommit }: ExpectedCellProps) {
+function NotesCell({ initial, onCommit }: NotesCellProps) {
   const [draft, setDraft] = useState(initial)
 
   const commit = () => {
@@ -404,7 +491,7 @@ function ExpectedCell({ initial, onCommit }: ExpectedCellProps) {
   return (
     <input
       type="text"
-      className="test-cases-tab__expected-input"
+      className="test-cases-tab__notes-input"
       value={draft}
       onChange={e => setDraft(e.target.value)}
       onBlur={commit}
@@ -415,8 +502,8 @@ function ExpectedCell({ initial, onCommit }: ExpectedCellProps) {
           ;(e.target as HTMLInputElement).blur()
         }
       }}
-      placeholder="(no expected value)"
-      aria-label="Expected value"
+      placeholder="(no note)"
+      aria-label="Note"
     />
   )
 }

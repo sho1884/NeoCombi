@@ -3,10 +3,10 @@ import {
   serialize,
   deserialize,
   stripAnnotations,
-} from '../../src/services/tmodelFile'
+} from '../../src/services/projectFile'
 import type { ExpectedValueEntry } from '../../src/types/project'
 
-describe('tmodelFile / serialize', () => {
+describe('projectFile / serialize', () => {
   it('emits source as-is when there are no annotations to add', () => {
     const text = serialize({
       source: 'OS: Linux, Windows\n',
@@ -88,7 +88,7 @@ describe('tmodelFile / serialize', () => {
   })
 })
 
-describe('tmodelFile / deserialize', () => {
+describe('projectFile / deserialize', () => {
   it('extracts default order when no order annotation is present', () => {
     const r = deserialize('OS: Linux, Windows\n')
     expect(r.pictOrder).toBe(2)
@@ -154,7 +154,7 @@ describe('tmodelFile / deserialize', () => {
   })
 })
 
-describe('tmodelFile / round-trip', () => {
+describe('projectFile / round-trip', () => {
   it('serialize ∘ deserialize is identity on the structured fields', () => {
     const input = {
       source: 'OS: Linux, Windows\nBrowser: Chrome, Safari\nIF [OS] = "Linux" THEN [Browser] <> "Safari";\n',
@@ -175,7 +175,7 @@ describe('tmodelFile / round-trip', () => {
   })
 })
 
-describe('tmodelFile / generation mode', () => {
+describe('projectFile / generation mode', () => {
   it('omits the mode annotation for the default (pairwise)', () => {
     const text = serialize({
       source: 'A: 1, 2',
@@ -208,7 +208,80 @@ describe('tmodelFile / generation mode', () => {
   })
 })
 
-describe('tmodelFile / stripAnnotations', () => {
+describe('projectFile / persisted test set (UR-011)', () => {
+  it('round-trips a pairwise set with IDs, count flags, and notes', () => {
+    const text = serialize({
+      source: 'OS: Linux, Windows\nBrowser: Chrome, Safari\n',
+      expectedValues: [],
+      pictOrder: 2,
+      generationMode: 'pairwise',
+      testSuite: {
+        factorOrder: ['OS', 'Browser'],
+        rows: [
+          { id: 'P1', count: true, values: { OS: 'Linux', Browser: 'Chrome' }, note: 'ok' },
+          { id: 'P2', count: false, values: { OS: 'Windows', Browser: 'Safari' } },
+        ],
+      },
+    })
+    expect(text).toContain('# @neocombi:caseset-factors OS Browser')
+    const back = deserialize(text)
+    expect(back.testSuite).toEqual({
+      factorOrder: ['OS', 'Browser'],
+      rows: [
+        { id: 'P1', count: true, values: { OS: 'Linux', Browser: 'Chrome' }, note: 'ok' },
+        { id: 'P2', count: false, values: { OS: 'Windows', Browser: 'Safari' } },
+      ],
+    })
+  })
+
+  it('round-trips a decision table, keeping the forbidden distinction', () => {
+    const text = serialize({
+      source: 'Color: Red, Blue\n',
+      expectedValues: [],
+      pictOrder: 2,
+      generationMode: 'decision-table',
+      testSuite: {
+        factorOrder: ['Color'],
+        rows: [
+          { id: 'D1', count: true, values: { Color: 'Red' }, forbidden: false },
+          { values: { Color: 'Blue' }, forbidden: true },
+        ],
+      },
+    })
+    const back = deserialize(text)
+    expect(back.generationMode).toBe('decision-table')
+    expect(back.testSuite?.rows[0]).toEqual({
+      id: 'D1',
+      count: true,
+      values: { Color: 'Red' },
+      forbidden: false,
+    })
+    expect(back.testSuite?.rows[1]).toEqual({
+      values: { Color: 'Blue' },
+      forbidden: true,
+    })
+  })
+
+  it('escapes pipes in notes', () => {
+    const text = serialize({
+      source: 'A: 1\n',
+      expectedValues: [],
+      pictOrder: 2,
+      generationMode: 'pairwise',
+      testSuite: {
+        factorOrder: ['A'],
+        rows: [{ id: 'P1', count: true, values: { A: '1' }, note: 'a | b' }],
+      },
+    })
+    expect(deserialize(text).testSuite?.rows[0]?.note).toBe('a | b')
+  })
+
+  it('leaves testSuite null when the file has no case lines', () => {
+    expect(deserialize('A: 1, 2\n').testSuite).toBeNull()
+  })
+})
+
+describe('projectFile / stripAnnotations', () => {
   it('removes only @neocombi annotation lines and the auto-generated header', () => {
     const cleaned = stripAnnotations(
       [

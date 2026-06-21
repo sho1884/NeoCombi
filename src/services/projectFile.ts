@@ -1,7 +1,22 @@
-// .tmodel file (de)serialization.
+// NeoCombi file (de)serialization.
 //
-// The .tmodel file is plain PICT DSL (subset) with a small set of NeoCombi-specific
-// annotations expressed as PICT-compatible comments:
+// Two extensions share ONE on-disk grammar (plain PICT DSL subset + NeoCombi
+// annotations as PICT-compatible comments). They differ only in WHAT is written:
+//
+//   .ncombi  — DSL model only: factors / levels / constraints + generation
+//              settings + expected-value rules. No persisted test set. The
+//              shareable, version-controllable, CI-facing model (ADR-014).
+//   .ncproj  — project: everything in .ncombi PLUS the persisted test set
+//              (rows, IDs, count flags, notes) so a session restores without
+//              regenerating (UR-011).
+//   .tmodel  — legacy (pre-rename). Still opened; saved back as a project.
+//
+// `serialize` includes the test set whenever `input.testSuite` is non-null, so
+// the caller (the store, by target extension) decides model vs project by
+// passing testSuite or null. `deserialize` is tolerant: it reads whatever is
+// present, so all three extensions parse through the same path.
+//
+// Annotations:
 //
 //   # @neocombi:order N                  PICT generation order N (default 2 omitted)
 //   # @neocombi:mode decision-table      Generation mode (default 'pairwise' omitted)
@@ -10,12 +25,20 @@
 //                                        separates the assignment from the free-text
 //                                        expected output. Pipes inside the value are
 //                                        escaped as `\|` and de-escaped on load.
+//   # @neocombi:caseset-factors A B C    Column order of the persisted test set.
+//   # @neocombi:case id=P01 count=1 K=V K=V | note
+//                                        One persisted test case (UR-011 / SR-072):
+//                                        reserved keys id / count / forbidden, then
+//                                        factor=level pairs, then the free-text note.
+//                                        Forbidden decision-table rows use
+//                                        `forbidden=1` and carry no id / count.
 //
 // On load, annotations are extracted into structured fields and stripped from the
 // returned `source`. On save, the source is emitted verbatim and a fresh annotations
 // block is appended after a header comment line.
 
 import type { ExpectedValueEntry, GenerationMode } from '../types/project'
+import type { TestCase, TestSuite } from '../types/testCase'
 
 const ANNOTATION_PREFIX = '# @neocombi:'
 const ANNOTATIONS_HEADER_PATTERN = /^# =+ NeoCombi annotations.*=+/
@@ -27,6 +50,11 @@ export type TmodelFileContents = {
   expectedValues: ExpectedValueEntry[]
   pictOrder: number
   generationMode: GenerationMode
+  /**
+   * Persisted test set (UR-011). null / omitted when the file has no saved
+   * cases — the GUI then starts with an empty set and the user generates one.
+   */
+  testSuite?: TestSuite | null
 }
 
 export type TmodelLoadWarning = {
@@ -39,8 +67,24 @@ export type TmodelLoadResult = TmodelFileContents & {
   warnings: TmodelLoadWarning[]
 }
 
+/** Native NeoCombi file extensions. */
+export const MODEL_EXTENSION = '.ncombi'
+export const PROJECT_EXTENSION = '.ncproj'
+export const LEGACY_EXTENSION = '.tmodel'
+
 /**
- * Serialize project fields to the .tmodel file format.
+ * Whether a file name denotes a DSL-only MODEL (.ncombi) rather than a full
+ * project. Used to decide whether to write the persisted test set: model files
+ * never carry it; projects (.ncproj) and legacy (.tmodel) files do.
+ */
+export function isModelFileName(name: string): boolean {
+  return name.toLowerCase().endsWith(MODEL_EXTENSION)
+}
+
+/**
+ * Serialize project fields to the NeoCombi file format. Whether the result is a
+ * model (.ncombi) or a project (.ncproj) depends only on the caller: the test
+ * set is emitted iff `input.testSuite` is non-null.
  *
  * The output ends with a single trailing newline. The annotations block, if
  * any, is placed after the source separated by one blank line so editors
@@ -59,6 +103,13 @@ export function serialize(input: TmodelFileContents): string {
   for (const ev of input.expectedValues) {
     annotations.push(formatExpectedAnnotation(ev))
   }
+  if (input.testSuite && input.testSuite.rows.length > 0) {
+    const suite = input.testSuite
+    annotations.push(`${ANNOTATION_PREFIX}caseset-factors ${suite.factorOrder.join(' ')}`)
+    for (const row of suite.rows) {
+      annotations.push(formatCaseAnnotation(suite.factorOrder, row))
+    }
+  }
 
   const parts: string[] = []
   if (cleanedSource.length > 0) parts.push(cleanedSource)
@@ -71,7 +122,7 @@ export function serialize(input: TmodelFileContents): string {
 }
 
 /**
- * Parse a .tmodel file into structured fields.
+ * Parse a NeoCombi file (.ncombi / .ncproj / legacy .tmodel) into structured fields.
  *
  * Annotation lines and the auto-generated header line are removed from
  * `source`. Other lines (including ordinary `#` comments) are preserved
@@ -83,6 +134,8 @@ export function deserialize(content: string): TmodelLoadResult {
   const warnings: TmodelLoadWarning[] = []
   let pictOrder = DEFAULT_PICT_ORDER
   let generationMode: GenerationMode = DEFAULT_GENERATION_MODE
+  let casesetFactors: string[] | null = null
+  const caseRows: TestCase[] = []
 
   const lines = content.split(/\r\n|\r|\n/)
   lines.forEach((line, idx) => {
@@ -117,6 +170,24 @@ export function deserialize(content: string): TmodelLoadResult {
         }
         return
       }
+      if (rest.startsWith('caseset-factors')) {
+        const f = parseCasesetFactorsAnnotation(rest)
+        if (f === null) {
+          warnings.push({ line: lineNumber, text: line, reason: 'malformed @neocombi:caseset-factors' })
+        } else {
+          casesetFactors = f
+        }
+        return
+      }
+      if (rest.startsWith('case ') || rest === 'case') {
+        const row = parseCaseAnnotation(rest)
+        if (row === null) {
+          warnings.push({ line: lineNumber, text: line, reason: 'malformed @neocombi:case' })
+        } else {
+          caseRows.push(row)
+        }
+        return
+      }
       warnings.push({ line: lineNumber, text: line, reason: 'unknown @neocombi annotation' })
       return
     }
@@ -132,7 +203,28 @@ export function deserialize(content: string): TmodelLoadResult {
   let source = sourceLines.join('\n').replace(/\n+$/, '')
   if (source.length > 0) source += '\n'
 
-  return { source, expectedValues, pictOrder, generationMode, warnings }
+  let testSuite: TestSuite | null = null
+  if (caseRows.length > 0) {
+    const factorOrder = casesetFactors ?? deriveFactorOrder(caseRows)
+    testSuite = { factorOrder, rows: caseRows }
+  }
+
+  return { source, expectedValues, pictOrder, generationMode, testSuite, warnings }
+}
+
+/** Fallback factor order when no caseset-factors line was present: first-seen keys. */
+function deriveFactorOrder(rows: TestCase[]): string[] {
+  const order: string[] = []
+  const seen = new Set<string>()
+  for (const row of rows) {
+    for (const k of Object.keys(row.values)) {
+      if (!seen.has(k)) {
+        seen.add(k)
+        order.push(k)
+      }
+    }
+  }
+  return order
 }
 
 /**
@@ -197,6 +289,81 @@ function lastUnescapedPipe(s: string): number {
     return i
   }
   return -1
+}
+
+// =============================================================================
+// Persisted test set (UR-011)
+// =============================================================================
+
+function parseCasesetFactorsAnnotation(rest: string): string[] | null {
+  const withoutKey = rest.replace(/^caseset-factors\s*/, '').trim()
+  if (withoutKey.length === 0) return null
+  return withoutKey.split(/\s+/)
+}
+
+/**
+ * Format one persisted case as a `# @neocombi:case ...` line. Reserved keys
+ * (id / count / forbidden) come first, then factor=level pairs in column order,
+ * then ` | note`. Like @neocombi:expected, this cannot represent level values
+ * containing whitespace (PICT subset levels are identifiers / numbers).
+ */
+function formatCaseAnnotation(factorOrder: string[], row: TestCase): string {
+  const parts: string[] = []
+  if (row.forbidden === true) {
+    // Forbidden decision-table row: not a test case, no id / count.
+    parts.push('forbidden=1')
+  } else {
+    // A test case. Decision-table rows carry forbidden=0 to keep the mode
+    // distinction on reload; pairwise rows (forbidden undefined) omit the key.
+    if (row.forbidden === false) parts.push('forbidden=0')
+    if (row.id !== undefined) parts.push(`id=${row.id}`)
+    parts.push(`count=${row.count === false ? 0 : 1}`)
+  }
+  for (const name of factorOrder) {
+    parts.push(`${name}=${row.values[name] ?? ''}`)
+  }
+  const safeNote = (row.note ?? '').replace(/\r?\n/g, ' ').replace(/\|/g, '\\|')
+  return `${ANNOTATION_PREFIX}case ${parts.join(' ')} | ${safeNote}`
+}
+
+function parseCaseAnnotation(rest: string): TestCase | null {
+  const withoutKey = rest.replace(/^case\s*/, '')
+  const pipeIdx = lastUnescapedPipe(withoutKey)
+  // The note section is required (even if empty) so we can always split it off.
+  if (pipeIdx < 0) return null
+  const assignmentText = withoutKey.slice(0, pipeIdx).trim()
+  const note = withoutKey.slice(pipeIdx + 1).trim().replace(/\\\|/g, '|')
+
+  const values: Record<string, string> = {}
+  let id: string | undefined
+  let count: boolean | undefined
+  let forbidden = false
+  if (assignmentText.length > 0) {
+    for (const pair of assignmentText.split(/\s+/)) {
+      const eq = pair.indexOf('=')
+      if (eq < 0) return null
+      const k = pair.slice(0, eq).trim()
+      const v = pair.slice(eq + 1).trim()
+      if (!k) return null
+      if (k === 'id') id = v
+      else if (k === 'count') count = v !== '0' && v !== 'false'
+      else if (k === 'forbidden') forbidden = v === '1' || v === 'true' ? true : false
+      else values[k] = v
+    }
+  }
+  const hadForbiddenKey = assignmentText.includes('forbidden=')
+
+  const row: TestCase = { values }
+  if (forbidden) {
+    row.forbidden = true
+  } else {
+    // forbidden=0 marks a decision-table test case; absence marks pairwise.
+    if (hadForbiddenKey) row.forbidden = false
+    if (id !== undefined) row.id = id
+    row.count = count ?? true
+  }
+  if (note.length > 0) row.note = note
+  return row
 }
 
 function formatExpectedAnnotation(ev: ExpectedValueEntry): string {

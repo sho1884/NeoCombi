@@ -1,4 +1,4 @@
-# Multifunction printer / copier, copy job (English version of mfp.tmodel).
+# Multifunction printer / copier, copy job (English version of mfp.ncombi).
 # Which gutter (binding-margin) positions are valid depends on the original
 # orientation and the duplex binding edge — a good "forbidden combination"
 # example. Paper size / color / N-up are ordinary, independent copy settings.

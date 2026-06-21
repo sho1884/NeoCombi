@@ -10,7 +10,8 @@ import type {
   ViewState,
 } from '../types/project'
 import type { TestSuite } from '../types/testCase'
-import { deserialize, serialize } from '../services/tmodelFile'
+import { deserialize, serialize } from '../services/projectFile'
+import { assignCaseIds, suiteHasAnnotations } from '../services/caseIds'
 import {
   addFactor as editAddFactor,
   addLevelToFactor as editAddLevel,
@@ -118,14 +119,25 @@ type Actions = {
   /** Remove a slice by index. Adjusts activeSliceIndex if needed. */
   removeForbiddenSlice(index: number): void
   setActiveSliceIndex(index: number): void
-  /** Replace project state from a .tmodel file's contents. Resets dirty flag. */
-  loadFromTmodel(content: string, filePath?: string | null): void
-  /** Serialize the persistable subset of state to .tmodel format. */
-  toTmodel(): string
-  /** Replace the current test suite (e.g., from CSV import). null clears it. */
+  /** Replace project state from a .ncombi / .ncproj / legacy .tmodel file. Resets dirty. */
+  loadProjectFile(content: string, filePath?: string | null): void
+  /** Serialize as a full project (.ncproj): DSL + settings + persisted test set. */
+  toProjectFile(): string
+  /** Serialize as a DSL-only model (.ncombi): no persisted test set. */
+  toModelFile(): string
+  /**
+   * Replace the current test suite from a fresh generation / import. Enriches
+   * notes from expectedValues and (re)assigns stable IDs + default count flags
+   * for the current generation mode. null clears it. Restoring a persisted set
+   * on load goes through loadFromTmodel instead (no reassignment).
+   */
   setTestSuite(suite: TestSuite | null): void
-  /** Update the expected value of a single test case by row index. */
-  setTestCaseExpected(index: number, value: string): void
+  /** Set the free-form note (UR-005) of a single test case by row index. */
+  setTestCaseNote(index: number, note: string): void
+  /** Set the count-toward-coverage flag (UR-010) of a test case by row index. */
+  setTestCaseCount(index: number, count: boolean): void
+  /** True when any case carries a count flag (off) or note (SR-073 guard). */
+  hasFlagsOrNotes(): boolean
   /** Mark the project as saved (clears dirty flag and updates filePath). */
   markSaved(filePath?: string | null): void
   resetToEmpty(): void
@@ -312,14 +324,17 @@ export const useProjectStore = create<Store>()((set, get) => ({
     set(state => ({ view: { ...state.view, activeSliceIndex: index } }))
   },
 
-  loadFromTmodel(content, filePath) {
+  loadProjectFile(content, filePath) {
     const result = deserialize(content)
     set({
       filePath: filePath ?? null,
       source: result.source,
       parseResult: parse(result.source),
       expectedValues: result.expectedValues,
-      testSuite: null,
+      // UR-011 / SR-072: restore the persisted test set verbatim. No
+      // regeneration runs on load — the saved rows (with their IDs, flags,
+      // notes) are authoritative.
+      testSuite: result.testSuite,
       pictOrder: result.pictOrder,
       generationMode: result.generationMode,
       view: { ...DEFAULT_VIEW },
@@ -327,23 +342,37 @@ export const useProjectStore = create<Store>()((set, get) => ({
     })
   },
 
-  toTmodel() {
+  toProjectFile() {
     const state = get()
     return serialize({
       source: state.source,
       expectedValues: state.expectedValues,
       pictOrder: state.pictOrder,
       generationMode: state.generationMode,
+      testSuite: state.testSuite,
+    })
+  },
+
+  toModelFile() {
+    const state = get()
+    // A model file (.ncombi) is DSL + settings + rules only — the persisted
+    // test set is deliberately omitted (testSuite: null).
+    return serialize({
+      source: state.source,
+      expectedValues: state.expectedValues,
+      pictOrder: state.pictOrder,
+      generationMode: state.generationMode,
+      testSuite: null,
     })
   },
 
   setTestSuite(suite) {
-    // Drop / replace the test suite in place. Importing CSV should also
-    // surface any expected values the user already maintained: walk the
-    // imported rows and attach matching expected entries. More-specific
-    // entries (more keys in the assignment) override less-specific ones.
+    // Replace the test suite from a fresh generation / import. Enrich notes
+    // from any expectedValues rules the user maintained (more-specific entries
+    // override less-specific ones), then assign stable IDs and default count
+    // flags for the current generation mode (UR-010).
     set(state => {
-      if (suite === null) return { testSuite: null }
+      if (suite === null) return { testSuite: null, isDirty: true }
       const sortedEntries = [...state.expectedValues].sort(
         (a, b) =>
           Object.keys(b.assignment).length - Object.keys(a.assignment).length,
@@ -351,64 +380,55 @@ export const useProjectStore = create<Store>()((set, get) => ({
       const enriched: TestSuite = {
         factorOrder: suite.factorOrder.slice(),
         rows: suite.rows.map(row => {
-          if (row.expected !== undefined && row.expected.length > 0) return row
+          if (row.note !== undefined && row.note.length > 0) return row
           for (const ev of sortedEntries) {
             if (assignmentSubsetMatches(ev.assignment, row.values)) {
-              return { ...row, expected: ev.value }
+              return { ...row, note: ev.value }
             }
           }
           return row
         }),
       }
-      return { testSuite: enriched }
+      // The ID prefix follows the data, not the mode setting: decision-table
+      // rows always carry a forbidden flag (true/false), pairwise rows never do.
+      const mode = suite.rows.some(r => r.forbidden !== undefined)
+        ? 'decision-table'
+        : 'pairwise'
+      return { testSuite: assignCaseIds(enriched, mode), isDirty: true }
     })
   },
 
-  setTestCaseExpected(index, value) {
+  setTestCaseNote(index, note) {
     set(state => {
       if (!state.testSuite) return state
       if (index < 0 || index >= state.testSuite.rows.length) return state
       const rows = state.testSuite.rows.slice()
       const target = rows[index]!
-      const trimmed = value
-
-      // Replace the test-case row (clear vs set), preserving the forbidden
-      // flag (decision-table mode) which is independent of the expected value.
-      const base = target.forbidden !== undefined
-        ? { values: target.values, forbidden: target.forbidden }
-        : { values: target.values }
-      rows[index] = trimmed.length > 0
-        ? { ...base, expected: trimmed }
-        : base
-
-      // Mirror the user's edit into expectedValues using a full-keys
-      // assignment so it scopes to exactly this row. Pre-existing entries
-      // with fewer keys (e.g., loaded from a `# @neocombi:expected OS=Linux`
-      // annotation) are left untouched — they continue to attach to other
-      // rows that match their subset, while this specific row now has its
-      // own override.
-      const fullAssignment = state.testSuite.factorOrder.reduce<Record<string, string>>(
-        (acc, name) => {
-          acc[name] = target.values[name] ?? ''
-          return acc
-        },
-        {},
-      )
-      const evCopy = state.expectedValues.slice()
-      const existingIdx = evCopy.findIndex(ev => assignmentEquals(ev.assignment, fullAssignment))
-      if (trimmed.length > 0) {
-        const entry: ExpectedValueEntry = { assignment: fullAssignment, value: trimmed }
-        if (existingIdx >= 0) evCopy[existingIdx] = entry
-        else evCopy.push(entry)
-      } else if (existingIdx >= 0) {
-        evCopy.splice(existingIdx, 1)
-      }
-      return {
-        testSuite: { ...state.testSuite, rows },
-        expectedValues: evCopy,
-        isDirty: true,
-      }
+      // Note lives on the persisted row (UR-011); it is bound to the case by
+      // ID, not mirrored into the assignment-based expectedValues rule layer.
+      const next = { ...target }
+      if (note.length > 0) next.note = note
+      else delete next.note
+      rows[index] = next
+      return { testSuite: { ...state.testSuite, rows }, isDirty: true }
     })
+  },
+
+  setTestCaseCount(index, count) {
+    set(state => {
+      if (!state.testSuite) return state
+      if (index < 0 || index >= state.testSuite.rows.length) return state
+      const target = state.testSuite.rows[index]!
+      // Forbidden rows are not test cases and carry no flag.
+      if (target.forbidden === true) return state
+      const rows = state.testSuite.rows.slice()
+      rows[index] = { ...target, count }
+      return { testSuite: { ...state.testSuite, rows }, isDirty: true }
+    })
+  },
+
+  hasFlagsOrNotes() {
+    return suiteHasAnnotations(get().testSuite)
   },
 
   markSaved(filePath) {

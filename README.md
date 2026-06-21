@@ -7,12 +7,12 @@
 > **Try the demo:** https://neo-combi.vercel.app/ — author DSL, visualize forbidden combinations, and generate test cases live. Decision-table generation runs in your browser; pairwise runs against a hosted PICT service.
 >
 > **Open a sample** (loaded via the `?file=<url>` parameter; sample models live outside the app). Each content example is available in English and Japanese / 各例題は英語版・日本語版あり:
-> - **Shopping site / ショッピング** — a mask level (`_MASK_`) + several constraints — [EN](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/shopping-en.tmodel) · [JA](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/shopping.tmodel)
-> - **Multifunction printer / 複合機（とじしろ）** — binding-margin geometry: valid gutters depend on orientation × duplex — [EN](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/mfp-en.tmodel) · [JA](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/mfp.tmodel)
-> - **Copier N-up & zoom / 複合機（N-up・倍率）** — when a hidden control needs a `_MASK_` level, and when a locked field is just a fixed value — [EN](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/mfp-zoom-en.tmodel) · [JA](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/mfp-zoom.tmodel)
-> - **Admission fee / 入館料** — a decision table: inputs determine the fee, enforced by constraints (the fee is an expected-result factor) — [EN](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/admission-fee-en.tmodel) · [JA](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/admission-fee.tmodel)
-> - **Browsers / ブラウザ** — small pairwise model — [EN](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/browsers.tmodel) · [JA](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/browsers-ja.tmodel)
-> - **Scale fixtures** (synthetic, language-neutral) — [50 factors](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/large-50.tmodel) · [100 factors](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/large-100.tmodel)
+> - **Shopping site / ショッピング** — a mask level (`_MASK_`) + several constraints — [EN](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/shopping-en.ncombi) · [JA](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/shopping.ncombi)
+> - **Multifunction printer / 複合機（とじしろ）** — binding-margin geometry: valid gutters depend on orientation × duplex — [EN](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/mfp-en.ncombi) · [JA](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/mfp.ncombi)
+> - **Copier N-up & zoom / 複合機（N-up・倍率）** — when a hidden control needs a `_MASK_` level, and when a locked field is just a fixed value — [EN](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/mfp-zoom-en.ncombi) · [JA](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/mfp-zoom.ncombi)
+> - **Admission fee / 入館料** — a decision table: inputs determine the fee, enforced by constraints (the fee is an expected-result factor) — [EN](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/admission-fee-en.ncombi) · [JA](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/admission-fee.ncombi)
+> - **Browsers / ブラウザ** — small pairwise model — [EN](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/browsers.ncombi) · [JA](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/browsers-ja.ncombi)
+> - **Scale fixtures** (synthetic, language-neutral) — [50 factors](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/large-50.ncombi) · [100 factors](https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/large-100.ncombi)
 
 > **Docs:** [`Doc/User_Manual.md`](Doc/User_Manual.md) — for people *using* the tool (GUI, DSL, generation, export). · [`Doc/Deployment_Guide.md`](Doc/Deployment_Guide.md) — for administrators *self-hosting* it (PICT service, CLI in CI/CD, HTTP API, security). Both bilingual.
 
@@ -20,7 +20,7 @@
 
 **NeoCombi** is a combinatorial test design tool that pairs PICT-compatible DSL authoring with rich visualization. It mirrors Microsoft **PICT**'s constraint language (`IF/THEN/ELSE`, `=`, `<>`, `>`, `>=`, `<`, `<=`, `AND`, `OR`, `NOT`, `IN`) as a first-class subset DSL, parses it locally for instant feedback, and delegates pairwise / N-wise generation to PICT itself when invoked.
 
-NeoCombi is a modern reconstruction of the author's older Excel VBA tool **PICT-PAPP**, scaled to handle HAYST-method workloads of 100–300 factors. The .tmodel file format is plain PICT input plus a few `# @neocombi:` annotations, so each project file is also a valid PICT model file.
+NeoCombi is a modern reconstruction of the author's older Excel VBA tool **PICT-PAPP**, scaled to handle HAYST-method workloads of 100–300 factors. Files are plain PICT input plus a few `# @neocombi:` annotations, so a model file is also a valid PICT model. There are two native extensions: **`.ncombi`** holds the DSL model alone (shareable, CI-facing), and **`.ncproj`** is a full project that also embeds the generated test set with its IDs, count flags, and notes (legacy `.tmodel` files still open).
 
 ## Sibling Projects
 
@@ -41,7 +41,9 @@ See [`Doc/PROJECT_KICKOFF.md`](Doc/PROJECT_KICKOFF.md) for the full architectura
 | UR-002 Author factors, levels, constraints | ✅ DSL editor + Factors & Levels inline editing (rename / drag-reorder) |
 | UR-003 Verify forbidden combinations | ✅ live forbidden matrix with constraint-propagation slice suggestions |
 | UR-004 Verify pair coverage | ✅ cross-tabulation matrix with covered / missed / forbidden cells + summary |
-| UR-005 Record expected values | ✅ editable Expected column on each test case, persisted in `.tmodel` |
+| UR-005 Record a note per test case | ✅ editable **Notes** column on each test case, persisted in `.ncproj` |
+| UR-010 Gate coverage by a count flag | ✅ per-case stable ID (`P01`/`D0001`) + **Count** flag; coverage counts only flagged-in cases; three-column `id,count,note` results write-back |
+| UR-011 Persist the test set; resume without regenerating | ✅ the generated set (rows, IDs, flags, notes) is saved in `.ncproj` and restored verbatim; regeneration is explicit and guarded |
 | UR-006 Invoke from CI/CD pipeline | ✅ `neocombi generate` CLI with deterministic exit codes |
 | UR-007 Natural-language → AI → DSL | ⛔ planned for v2 |
 
@@ -82,8 +84,8 @@ A typical session:
 2. **Factors & Levels** tab — same data shown as a table; rename factors, add or remove levels inline, drag rows or level chips to reorder. Renames automatically rewrite `[refs]` in constraints.
 3. **Top pane → Coverage** — exhaustive cross-tabulation with covered / missed / forbidden cells. The **Show** column in the Factors & Levels tab controls which factors appear here (per-row checkboxes plus All / None bulk toggles in the column header).
 4. **Top pane → Forbidden** — live forbidden-combination matrix computed from the DSL by the in-house evaluator (no PICT spawn needed). The ✨ **Suggest from constraints** button proposes slices automatically, including propagation slices that surface chained restrictions across multiple constraints.
-5. **Test cases** tab — automatic re-generation runs whenever the DSL parses cleanly, or click **Re-generate** for an explicit run. Edit the **Expected** column to record per-row expectations; values survive re-generation by stable id.
-6. **Save As…** writes a `.tmodel` file you can re-open later or drop into CI.
+5. **Test cases** tab — the first set is generated automatically once the DSL parses; after that, click **Re-generate** for an explicit (guarded) run. Each case has a stable **ID** (`P01`/`D0001`), a **Count** flag (only flagged-in cases count toward coverage), and a free-form **Notes** column. **Import results…** writes back a three-column `id,count,note` CSV from an external execution system.
+6. **Save As…** writes a **`.ncproj`** project (DSL + the test set with its IDs, flags, and notes) you can re-open and resume without regenerating — or pick **`.ncombi`** to export just the DSL model for CI / sharing.
 
 ### Install as a PWA
 
@@ -92,16 +94,16 @@ The dev server (and any production deployment) ships a Web App Manifest. Chrome 
 ### Generate test cases on the CLI
 
 ```bash
-node bin/neocombi.mjs generate path/to/project.tmodel
+node bin/neocombi.mjs generate path/to/model.ncombi
 ```
 
-The CLI reads the `.tmodel` file, validates the DSL, runs PICT, and prints CSV to stdout. Common flags:
+The CLI reads a `.ncombi` model (a `.ncproj` or legacy `.tmodel` also works — it reads the DSL and always regenerates), validates the DSL, runs PICT, and prints CSV to stdout. Common flags:
 
 ```bash
-neocombi generate model.tmodel --format json --output cases.json
-neocombi generate model.tmodel --order 3                # 3-wise instead of pairwise
-neocombi generate model.tmodel --pict /opt/bin/pict     # explicit PICT path
-NEOCOMBI_PICT_PATH=/opt/bin/pict neocombi generate model.tmodel
+neocombi generate model.ncombi --format json --output cases.json
+neocombi generate model.ncombi --order 3                # 3-wise instead of pairwise
+neocombi generate model.ncombi --pict /opt/bin/pict     # explicit PICT path
+NEOCOMBI_PICT_PATH=/opt/bin/pict neocombi generate model.ncombi
 ```
 
 Exit codes for CI:
@@ -118,9 +120,13 @@ Exit codes for CI:
 
 In the **Test cases** tab, click **Import CSV…** and pick the file the CLI produced. The grid populates and the upper-pane coverage matrix overlays occurrence counts.
 
-## .tmodel file format
+## File format (`.ncombi` / `.ncproj`)
 
-The on-disk format is plain PICT DSL plus two NeoCombi-specific annotations carried in PICT-compatible comments:
+Both extensions share one on-disk grammar: plain PICT DSL plus NeoCombi-specific
+annotations carried in PICT-compatible comments. A **`.ncombi`** model carries the
+DSL, generation settings, and expected-value rules; a **`.ncproj`** project adds the
+persisted test set (one `# @neocombi:case` line per row). Legacy `.tmodel` files
+still open.
 
 ```
 OS:      Linux, Windows, macOS
@@ -131,12 +137,15 @@ IF [OS] = "Linux" THEN [Browser] <> "Safari";
 # ===== NeoCombi annotations (auto-generated; do not edit) =====
 # @neocombi:order 3
 # @neocombi:expected OS=Linux Browser=Chrome | Renders OK
+# --- the lines below appear only in a .ncproj project ---
+# @neocombi:caseset-factors OS Browser
+# @neocombi:case id=P1 count=1 OS=Linux Browser=Chrome | Renders OK
 ```
 
-Because annotation lines are PICT comments, you can also feed a `.tmodel` file directly to PICT:
+Because annotation lines are PICT comments, you can also feed a `.ncombi` file directly to PICT:
 
 ```bash
-pict project.tmodel /o:2
+pict model.ncombi /o:2
 ```
 
 ## Tech stack
@@ -162,7 +171,7 @@ The DSL evaluator that powers the live forbidden matrix is implemented locally i
 - [`Doc/requirements/Requirements_Specification.md`](Doc/requirements/Requirements_Specification.md) — UR / SR specification
 - [`Doc/DSL_Grammar_Specification.md`](Doc/DSL_Grammar_Specification.md) — PICT-subset EBNF
 - [`Doc/ADR_Index.md`](Doc/ADR_Index.md) — recorded architecture decisions
-- [`examples/`](examples/) — sample `.tmodel` files
+- [`examples/`](examples/) — sample `.ncombi` model files
 
 ## License
 

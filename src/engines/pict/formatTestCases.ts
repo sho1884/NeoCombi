@@ -17,40 +17,52 @@ export function formatTestSuite(suite: TestSuite, format: OutputFormat): string 
   }
 }
 
+// Column layout (SR-053): ID, Count, <factors...>, Notes. The ID and count
+// flag carry the stable identity and coverage gating (UR-010); the notes column
+// is the free-form memo (UR-005). Count is emitted as true / false.
 function formatCsv(suite: TestSuite): string {
-  const headers = [...suite.factorOrder, 'Expected']
+  const headers = ['ID', 'Count', ...suite.factorOrder, 'Notes']
   const lines: string[] = [headers.map(escapeCsvCell).join(',')]
   for (const row of suite.rows) {
-    const cells = suite.factorOrder.map(name => row.values[name] ?? '')
-    cells.push(row.expected ?? '')
+    const cells = [row.id ?? '', countCell(row)]
+    cells.push(...suite.factorOrder.map(name => row.values[name] ?? ''))
+    cells.push(row.note ?? '')
     lines.push(cells.map(escapeCsvCell).join(','))
   }
   return lines.join('\n') + '\n'
 }
 
 function formatTsv(suite: TestSuite): string {
-  const headers = [...suite.factorOrder, 'Expected']
+  const headers = ['ID', 'Count', ...suite.factorOrder, 'Notes']
   const lines: string[] = [headers.join('\t')]
   for (const row of suite.rows) {
-    const cells = suite.factorOrder.map(name => row.values[name] ?? '')
-    cells.push(row.expected ?? '')
+    const cells = [row.id ?? '', countCell(row)]
+    cells.push(...suite.factorOrder.map(name => row.values[name] ?? ''))
+    cells.push(row.note ?? '')
     lines.push(cells.join('\t'))
   }
   return lines.join('\n') + '\n'
 }
 
 function formatJson(suite: TestSuite): string {
-  // Stable shape: an array of objects with factor names as keys + an optional
-  // `expected` field. Easier for downstream tools to consume than nested.
+  // Stable shape: an array of objects with an `id`, a `count` flag, the factor
+  // names as keys, and an optional `note` field.
   const out = suite.rows.map((row: TestCase) => {
-    const obj: Record<string, string> = {}
+    const obj: Record<string, string | boolean> = {}
+    if (row.id !== undefined) obj['id'] = row.id
+    if (row.count !== undefined) obj['count'] = row.count
     for (const name of suite.factorOrder) {
       obj[name] = row.values[name] ?? ''
     }
-    if (row.expected !== undefined) obj['Expected'] = row.expected
+    if (row.note !== undefined) obj['note'] = row.note
     return obj
   })
   return JSON.stringify(out, null, 2) + '\n'
+}
+
+/** Count flag as a text cell: true / false, empty for non-cases (no flag). */
+function countCell(row: TestCase): string {
+  return row.count === undefined ? '' : String(row.count)
 }
 
 function escapeCsvCell(s: string): string {
@@ -67,14 +79,15 @@ function escapeCsvCell(s: string): string {
  * representation that callers ship alongside.
  */
 export function testSuiteToHtml(suite: TestSuite): string {
-  const headers = [...suite.factorOrder, 'Expected']
+  const headers = ['ID', 'Count', ...suite.factorOrder, 'Notes']
   const headerHtml = headers
     .map(h => `<th>${escapeHtml(h)}</th>`)
     .join('')
   const rowsHtml = suite.rows
     .map((row: TestCase) => {
-      const cells = suite.factorOrder.map(name => row.values[name] ?? '')
-      cells.push(row.expected ?? '')
+      const cells = [row.id ?? '', countCell(row)]
+      cells.push(...suite.factorOrder.map(name => row.values[name] ?? ''))
+      cells.push(row.note ?? '')
       return (
         '<tr>' +
         cells.map(c => `<td>${escapeHtml(c)}</td>`).join('') +

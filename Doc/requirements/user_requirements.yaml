@@ -66,7 +66,7 @@ requirements:
     task: "Invoke from CI/CD pipeline deterministically"
     background: >
       Test design should be reproducible from version-controlled inputs.
-      NeoCombi provides a CLI mode that consumes a .tmodel source file and
+      NeoCombi provides a CLI mode that consumes a .ncombi model file and
       emits CSV/JSON outputs without requiring the GUI, suitable for use
       as a UNIX-style filter in CI pipelines. Identical inputs always
       produce identical outputs (no AI, no nondeterminism).
@@ -145,7 +145,7 @@ requirements:
       configuration of one shared pure-TypeScript core:
         - GUI (browser): the core runs in-browser; the decision table is a
           generation mode of the test case table.
-        - CLI (Node, CI/CD): the core runs in one process; reads .tmodel, writes
+        - CLI (Node, CI/CD): the core runs in one process; reads the .ncombi model, writes
           CSV/JSON or fails with an exit code. No PICT, no network.
         - HTTP API (server, CI/CD): the core runs in the service (the existing
           pict-service gains a /decision-table endpoint beside /generate); a

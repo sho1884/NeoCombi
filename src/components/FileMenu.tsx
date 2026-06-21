@@ -3,16 +3,19 @@ import { useProjectStore } from '../stores/projectStore'
 import {
   clearActiveHandle,
   hasActiveHandle,
-  openTmodel,
-  saveTmodel,
+  openProjectFile,
+  saveProjectFile,
 } from '../services/fileBridge'
+import { isModelFileName } from '../services/projectFile'
 import './FileMenu.css'
 
 export function FileMenu() {
   const isDirty = useProjectStore(s => s.isDirty)
   const filePath = useProjectStore(s => s.filePath)
-  const loadFromTmodel = useProjectStore(s => s.loadFromTmodel)
-  const toTmodel = useProjectStore(s => s.toTmodel)
+  const hasTestSuite = useProjectStore(s => s.testSuite !== null)
+  const loadProjectFile = useProjectStore(s => s.loadProjectFile)
+  const toProjectFile = useProjectStore(s => s.toProjectFile)
+  const toModelFile = useProjectStore(s => s.toModelFile)
   const markSaved = useProjectStore(s => s.markSaved)
   const resetToEmpty = useProjectStore(s => s.resetToEmpty)
 
@@ -38,9 +41,9 @@ export function FileMenu() {
     setBusy(true)
     setError(null)
     try {
-      const result = await openTmodel()
+      const result = await openProjectFile()
       if (!result) return
-      loadFromTmodel(result.content, result.name)
+      loadProjectFile(result.content, result.name)
     } catch (e) {
       setError(formatError('open', e))
     } finally {
@@ -52,9 +55,15 @@ export function FileMenu() {
     setBusy(true)
     setError(null)
     try {
-      const content = toTmodel()
-      const suggested = filePath ?? 'project.tmodel'
-      const result = await saveTmodel(content, { saveAs, suggestedName: suggested })
+      // Content follows the target extension: a .ncombi name writes a DSL-only
+      // model; anything else (.ncproj, legacy .tmodel) writes the full project
+      // including the persisted test set.
+      const content = (name: string) =>
+        isModelFileName(name) ? toModelFile() : toProjectFile()
+      // Default name when there is no path yet: a project once a test set
+      // exists (so flags / notes are kept), otherwise a bare model.
+      const suggested = filePath ?? (hasTestSuite ? 'project.ncproj' : 'model.ncombi')
+      const result = await saveProjectFile(content, { saveAs, suggestedName: suggested })
       if (!result) return
       markSaved(result.name)
     } catch (e) {
