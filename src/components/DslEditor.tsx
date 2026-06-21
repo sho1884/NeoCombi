@@ -44,6 +44,24 @@ export function DslEditor() {
     }
   }
 
+  // Download the DSL as a .ncombi model file (DSL + generation settings, no
+  // test set). A direct file download — distinct from File -> Save, which keeps
+  // an editable handle to the project. Mirrors the Test cases tab's Download.
+  const onDownload = () => {
+    if (source.length === 0) return
+    const text = useProjectStore.getState().toModelFile()
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'model.ncombi'
+    a.style.display = 'none'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 100)
+  }
+
   return (
     <div className="dsl-editor">
       <div className="dsl-editor__toolbar">
@@ -55,6 +73,15 @@ export function DslEditor() {
           title="Copy the DSL source to the clipboard"
         >
           {copied ? 'Copied' : 'Copy DSL'}
+        </button>
+        <button
+          type="button"
+          className="dsl-editor__download"
+          onClick={onDownload}
+          disabled={source.length === 0}
+          title="Download the DSL as a .ncombi model file"
+        >
+          Download .ncombi
         </button>
       </div>
       <textarea
