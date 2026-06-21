@@ -314,14 +314,27 @@ run, or hasn't run yet) any pair it alone covered shows as *missed*. This turns
 そのケースだけが覆っていたペアは「未達」表示になります。「計画網羅」を「達成網羅」に
 変えるための仕組みです。
 
-**Import results / 結果の取り込み.** **Import results…** writes back a fixed
-three-column CSV — `id,count,note` (header row `id,count,note`, the flag as
-`true`/`false`) — matching each row to a case by ID. This is how an external
-execution system feeds results back. Rows whose ID matches nothing are reported,
-not created.
+**Import results / 結果の取り込み.** **Import results…** writes back a CSV with
+`id`, `count`, and `note` columns (header required; the flag as `true`/`false`),
+matching each row to a case by ID. This is how an external execution system feeds
+results back. Validation is strict but never destructive or silent:
 
-**Import results…** は3列固定 CSV（`id,count,note`）を ID 一致で取り込み、外部実行系の
-結果を書き戻します。一致しない行は作らず報告します。
+- **Wrong file** — if the header has no `id` / `count` / `note` columns (e.g. you
+  picked a factor-column CSV by mistake), the whole import is **rejected**:
+  nothing changes and an error names the required columns.
+- **Bad rows** — a row with an unrecognised count, an empty ID, or a duplicate ID
+  is **skipped** (for a duplicate, the first wins) and reported with its line and
+  reason.
+- **Unmatched IDs** — a row whose ID matches no case is skipped and reported (with
+  a sample of the IDs); no case is created.
+- An empty note cell clears that case's note; overwriting recorded flags / notes
+  is guarded first (it asks before discarding).
+
+**Import results…** は `id,count,note` 列を持つ CSV を ID 一致で取り込み、外部実行系の
+結果を書き戻します。検証は厳格かつ非破壊：**ヘッダが不正なファイル（別の CSV など）は
+全体を拒否**してエラー表示、count 不正・空 ID・重複 ID（先勝ち）・未一致 ID は当該行を
+飛ばして**行番号と理由つきで報告**します。case は新規作成せず、既存のフラグ/メモを上書き
+する場合は事前に確認します。
 
 **Copy / コピー.** Copies both a table (paste into Excel / Google Sheets) and plain
 text in your selected format (CSV or JSON). 表と選択形式テキストの両方をコピー。

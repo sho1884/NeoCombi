@@ -480,17 +480,40 @@ requirements:
     function: "Write back results from a three-column CSV matched by ID"
     note: |
       A separate import path from any factor-column CSV: the round-trip file has
-      exactly three columns — ID, count flag, note — with a header row
-      'id,count,note' and the flag as true / false. Each row is matched to an
-      existing case by ID; the case's flag and note are updated. This is how the
-      external execution system writes results back into NeoCombi.
+      a header row with id / count / note columns (case-insensitive, any order)
+      and the flag as true / false (1 / 0 also accepted). Each data row is
+      matched to an existing case by ID; the case's flag and note are updated.
+      This is how the external execution system writes results back into
+      NeoCombi.
+
+      Validation is strict but non-destructive — a problem either rejects the
+      whole import (wrong file) or skips the offending rows (partial issues),
+      and every outcome is reported so the user can see what happened. It never
+      creates cases and never silently changes the wrong thing:
+        - Wrong file (header lacks id / count / note): reject the whole import,
+          apply nothing, and show an error naming the required columns. This is
+          how a factor-column CSV chosen by mistake is bounced.
+        - A row whose count is not true / false (1 / 0): skip it, reported with
+          its line number and reason.
+        - A row with an empty ID: skip it, reported.
+        - A duplicate ID within the file: keep the first, ignore the rest,
+          reported (the last row never silently wins).
+        - A row whose ID matches no current case: skip it, reported with a
+          sample of the unmatched IDs; no case is created.
+        - An empty note cell clears that case's note; a non-empty one sets it.
     scenarios:
       - context: "User imports a results CSV"
         action: "Import runs"
-        outcome: "For each row whose ID matches a case, set that case's count flag and note from the CSV"
+        outcome: "For each row whose ID matches a case, set that case's count flag and note from the CSV; report the number updated"
+      - context: "The file's header has no id / count / note columns (e.g. a factor-column CSV was chosen by mistake)"
+        action: "Import runs"
+        outcome: "Reject the whole import — apply nothing — and show an error stating the header must have id, count, and note columns"
+      - context: "A row has an unrecognised count, an empty ID, or a duplicate ID"
+        action: "Import runs"
+        outcome: "Skip that row (for a duplicate, keep the first occurrence) and report it with its line number and reason"
       - context: "A CSV row's ID matches no current case"
         action: "Import runs"
-        outcome: "Skip that row and report it (e.g., 'N rows did not match any case'); do not create a case"
+        outcome: "Skip that row and report it (count plus a sample of the unmatched IDs); do not create a case"
       - context: "Importing would overwrite existing flags / notes"
         action: "Import starts"
         outcome: "Apply the destructive-action guard (SR-073) before overwriting"
