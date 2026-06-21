@@ -83,7 +83,8 @@
 }
 
 .test-cases-tab__copy-btn,
-.test-cases-tab__download {
+.test-cases-tab__download,
+.test-cases-tab__import-results {
   appearance: none;
   border: 1px solid #cfd8dc;
   background: #fff;
@@ -95,8 +96,15 @@
   cursor: pointer;
 }
 
+/* It's a <label> wrapping a hidden file input, so make it size like a button. */
+.test-cases-tab__import-results {
+  display: inline-flex;
+  align-items: center;
+}
+
 .test-cases-tab__copy-btn:hover,
-.test-cases-tab__download:hover {
+.test-cases-tab__download:hover,
+.test-cases-tab__import-results:hover {
   background: #f5f7f8;
   border-color: #37474f;
 }

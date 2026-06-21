@@ -31,6 +31,15 @@ describe('parseResultsCsv', () => {
     expect(rows).toEqual([{ id: 'P3', count: true, note: 'z' }])
     expect(warnings).toHaveLength(2)
   })
+
+  it('ignores a duplicate id (keeps the first) and reports it', () => {
+    const { rows, warnings } = parseResultsCsv(
+      'id,count,note\nP1,true,first\nP1,false,second\n',
+    )
+    expect(rows).toEqual([{ id: 'P1', count: true, note: 'first' }])
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]?.reason).toMatch(/duplicate id/)
+  })
 })
 
 describe('applyResultsCsv', () => {

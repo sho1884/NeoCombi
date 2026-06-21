@@ -42,12 +42,19 @@ export function parseResultsCsv(text: string): ResultsParseResult {
   }
 
   const out: ResultRow[] = []
+  const seenIds = new Set<string>()
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i]!
     if (r.cells.length === 1 && r.cells[0]!.trim() === '') continue
     const id = (r.cells[idIdx] ?? '').trim()
     if (id.length === 0) {
       warnings.push({ line: r.line, reason: 'empty id' })
+      continue
+    }
+    if (seenIds.has(id)) {
+      // A results file should name each case once; flag the dupe rather than
+      // silently letting the last row win.
+      warnings.push({ line: r.line, reason: `duplicate id "${id}" (ignored)` })
       continue
     }
     const raw = (r.cells[countIdx] ?? '').trim().toLowerCase()
@@ -59,6 +66,7 @@ export function parseResultsCsv(text: string): ResultsParseResult {
       continue
     }
     const note = (r.cells[noteIdx] ?? '').trim()
+    seenIds.add(id)
     out.push({ id, count, note })
   }
   return { rows: out, warnings }

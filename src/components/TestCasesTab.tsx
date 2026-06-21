@@ -182,15 +182,36 @@ export function TestCasesTab() {
   // matching cases' flags and notes. Overwriting recorded values is guarded.
   const onImportResults = async (file: File) => {
     setError(null)
+    setImportInfo(null)
     if (!confirmDiscardFlagsNotes('Importing results')) return
     const text = await file.text()
     const result = applyResultsCsv(text)
+
+    // Hard failures get the error style with a specific reason, not a vague
+    // "0 updated".
+    if (result.warnings.some(w => w.reason.startsWith('header'))) {
+      setError('Not a results CSV: the header row must have id, count, and note columns.')
+      return
+    }
+    if (result.matched === 0 && result.unmatchedIds.length === 0 && result.warnings.length === 0) {
+      setError('No data rows found in the file.')
+      return
+    }
+
     const parts = [`Updated ${result.matched} case${result.matched === 1 ? '' : 's'}`]
     if (result.unmatchedIds.length > 0) {
-      parts.push(`${result.unmatchedIds.length} row(s) matched no case`)
+      const sample = result.unmatchedIds.slice(0, 5).join(', ')
+      const more = result.unmatchedIds.length > 5 ? ', …' : ''
+      parts.push(
+        `${result.unmatchedIds.length} ID${result.unmatchedIds.length === 1 ? '' : 's'} matched no case (${sample}${more})`,
+      )
     }
     if (result.warnings.length > 0) {
-      parts.push(`${result.warnings.length} row(s) skipped`)
+      // Surface the first concrete reason (e.g. "line 4: invalid count …").
+      const w = result.warnings[0]!
+      parts.push(
+        `${result.warnings.length} row${result.warnings.length === 1 ? '' : 's'} skipped (line ${w.line}: ${w.reason})`,
+      )
     }
     setImportInfo(parts.join('; ') + '.')
   }
