@@ -279,6 +279,39 @@ describe('projectFile / persisted test set (UR-011)', () => {
   it('leaves testSuite null when the file has no case lines', () => {
     expect(deserialize('A: 1, 2\n').testSuite).toBeNull()
   })
+
+  it('round-trips factor names and level values containing spaces', () => {
+    const text = serialize({
+      source: 'Paper Type: Letter Size, A4\n',
+      expectedValues: [],
+      pictOrder: 2,
+      generationMode: 'pairwise',
+      testSuite: {
+        factorOrder: ['Paper Type'],
+        rows: [{ id: 'P1', count: true, values: { 'Paper Type': 'Letter Size' }, note: 'a memo' }],
+      },
+    })
+    const back = deserialize(text)
+    expect(back.warnings).toEqual([])
+    expect(back.testSuite).toEqual({
+      factorOrder: ['Paper Type'],
+      rows: [{ id: 'P1', count: true, values: { 'Paper Type': 'Letter Size' }, note: 'a memo' }],
+    })
+  })
+
+  it('round-trips a value containing a literal percent sign', () => {
+    const text = serialize({
+      source: 'Zoom: x\n',
+      expectedValues: [],
+      pictOrder: 2,
+      generationMode: 'pairwise',
+      testSuite: {
+        factorOrder: ['Zoom'],
+        rows: [{ id: 'P1', count: true, values: { Zoom: '50% size' } }],
+      },
+    })
+    expect(deserialize(text).testSuite?.rows[0]?.values).toEqual({ Zoom: '50% size' })
+  })
 })
 
 describe('projectFile / stripAnnotations', () => {

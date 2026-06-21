@@ -105,7 +105,7 @@ export function serialize(input: TmodelFileContents): string {
   }
   if (input.testSuite && input.testSuite.rows.length > 0) {
     const suite = input.testSuite
-    annotations.push(`${ANNOTATION_PREFIX}caseset-factors ${suite.factorOrder.join(' ')}`)
+    annotations.push(`${ANNOTATION_PREFIX}caseset-factors ${suite.factorOrder.map(encodeToken).join(' ')}`)
     for (const row of suite.rows) {
       annotations.push(formatCaseAnnotation(suite.factorOrder, row))
     }
@@ -244,6 +244,22 @@ export function stripAnnotations(source: string): string {
 // Annotation parsers
 // =============================================================================
 
+// Factor names and level values may legitimately contain spaces (the DSL's
+// Identifier rule allows internal spaces, and quoted-string levels allow any
+// character). The annotation grammar is whitespace-delimited, so a raw space in
+// a name / value would split one token into two and corrupt the line. We
+// percent-encode space (and the percent sign itself, so the encoding is
+// reversible) inside every name / value token; splitting on whitespace then
+// stays safe. `%` is encoded first on the way out and decoded last on the way
+// in, so values that already contain `%NN` round-trip unchanged.
+function encodeToken(s: string): string {
+  return s.replace(/%/g, '%25').replace(/ /g, '%20')
+}
+
+function decodeToken(s: string): string {
+  return s.replace(/%20/g, ' ').replace(/%25/g, '%')
+}
+
 function parseOrderAnnotation(rest: string): number | null {
   const match = rest.match(/^order\s+(\d+)\s*$/)
   if (!match) return null
@@ -272,8 +288,8 @@ function parseExpectedAnnotation(rest: string): ExpectedValueEntry | null {
     for (const pair of assignmentText.split(/\s+/)) {
       const eq = pair.indexOf('=')
       if (eq < 0) return null
-      const k = pair.slice(0, eq).trim()
-      const v = pair.slice(eq + 1).trim()
+      const k = decodeToken(pair.slice(0, eq).trim())
+      const v = decodeToken(pair.slice(eq + 1).trim())
       if (!k) return null
       assignment[k] = v
     }
@@ -298,14 +314,14 @@ function lastUnescapedPipe(s: string): number {
 function parseCasesetFactorsAnnotation(rest: string): string[] | null {
   const withoutKey = rest.replace(/^caseset-factors\s*/, '').trim()
   if (withoutKey.length === 0) return null
-  return withoutKey.split(/\s+/)
+  return withoutKey.split(/\s+/).map(decodeToken)
 }
 
 /**
  * Format one persisted case as a `# @neocombi:case ...` line. Reserved keys
  * (id / count / forbidden) come first, then factor=level pairs in column order,
- * then ` | note`. Like @neocombi:expected, this cannot represent level values
- * containing whitespace (PICT subset levels are identifiers / numbers).
+ * then ` | note`. Factor names and level values are percent-encoded (see
+ * encodeToken) so spaces inside them survive the whitespace-delimited grammar.
  */
 function formatCaseAnnotation(factorOrder: string[], row: TestCase): string {
   const parts: string[] = []
@@ -320,7 +336,7 @@ function formatCaseAnnotation(factorOrder: string[], row: TestCase): string {
     parts.push(`count=${row.count === false ? 0 : 1}`)
   }
   for (const name of factorOrder) {
-    parts.push(`${name}=${row.values[name] ?? ''}`)
+    parts.push(`${encodeToken(name)}=${encodeToken(row.values[name] ?? '')}`)
   }
   const safeNote = (row.note ?? '').replace(/\r?\n/g, ' ').replace(/\|/g, '\\|')
   return `${ANNOTATION_PREFIX}case ${parts.join(' ')} | ${safeNote}`
@@ -342,8 +358,8 @@ function parseCaseAnnotation(rest: string): TestCase | null {
     for (const pair of assignmentText.split(/\s+/)) {
       const eq = pair.indexOf('=')
       if (eq < 0) return null
-      const k = pair.slice(0, eq).trim()
-      const v = pair.slice(eq + 1).trim()
+      const k = decodeToken(pair.slice(0, eq).trim())
+      const v = decodeToken(pair.slice(eq + 1).trim())
       if (!k) return null
       if (k === 'id') id = v
       else if (k === 'count') count = v !== '0' && v !== 'false'
@@ -368,7 +384,7 @@ function parseCaseAnnotation(rest: string): TestCase | null {
 
 function formatExpectedAnnotation(ev: ExpectedValueEntry): string {
   const assignmentText = Object.entries(ev.assignment)
-    .map(([k, v]) => `${k}=${v}`)
+    .map(([k, v]) => `${encodeToken(k)}=${encodeToken(v)}`)
     .join(' ')
   // Newlines inside expected values would break the line-based annotation
   // format; collapse them to single spaces. Pipes are escaped.

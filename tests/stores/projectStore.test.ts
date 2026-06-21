@@ -233,6 +233,37 @@ describe('projectStore / test suite: IDs, notes, count flags', () => {
     expect(useProjectStore.getState().testSuite?.rows[0]?.note).toBeUndefined()
   })
 
+  it('carries a factor rename into the persisted set (SR-052), keeping id/flag/note', () => {
+    const store = useProjectStore.getState()
+    store.setSource('OS: Linux, Windows\nBrowser: Chrome, Safari\n')
+    store.setTestSuite({
+      factorOrder: ['OS', 'Browser'],
+      rows: [{ values: { OS: 'Linux', Browser: 'Chrome' }, note: 'memo' }],
+    })
+    store.setTestCaseCount(0, false)
+    store.renameFactor('OS', 'Platform')
+    const suite = useProjectStore.getState().testSuite!
+    expect(suite.factorOrder).toEqual(['Platform', 'Browser'])
+    expect(suite.rows[0]?.values).toEqual({ Platform: 'Linux', Browser: 'Chrome' })
+    // Identity-bearing fields survive the rename — no regeneration occurred.
+    expect(suite.rows[0]?.id).toBe('P1')
+    expect(suite.rows[0]?.count).toBe(false)
+    expect(suite.rows[0]?.note).toBe('memo')
+  })
+
+  it('carries a level rename into the persisted set', () => {
+    const store = useProjectStore.getState()
+    store.setSource('OS: Linux, Windows\n')
+    store.setTestSuite({
+      factorOrder: ['OS'],
+      rows: [{ values: { OS: 'Linux' } }, { values: { OS: 'Windows' } }],
+    })
+    store.renameLevel('OS', 'Linux', 'Ubuntu')
+    const rows = useProjectStore.getState().testSuite!.rows
+    expect(rows[0]?.values['OS']).toBe('Ubuntu')
+    expect(rows[1]?.values['OS']).toBe('Windows')
+  })
+
   it('toggles the count flag; forbidden rows have no flag to toggle', () => {
     const store = useProjectStore.getState()
     store.setGenerationMode('decision-table')

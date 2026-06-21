@@ -77,6 +77,50 @@ function assignmentSubsetMatches(
   return true
 }
 
+/**
+ * Rewrite a factor's name in a persisted suite (column order + every row's
+ * value key), preserving each row's id / count / note / forbidden. Returns the
+ * suite unchanged when there is none or the factor isn't present.
+ */
+function renameFactorInSuite(
+  suite: TestSuite | null,
+  oldName: string,
+  newName: string,
+): TestSuite | null {
+  if (!suite) return suite
+  if (!suite.factorOrder.includes(oldName)) return suite
+  return {
+    factorOrder: suite.factorOrder.map(n => (n === oldName ? newName : n)),
+    rows: suite.rows.map(row => {
+      if (!(oldName in row.values)) return row
+      const values: Record<string, string> = {}
+      for (const [k, v] of Object.entries(row.values)) {
+        values[k === oldName ? newName : k] = v
+      }
+      return { ...row, values }
+    }),
+  }
+}
+
+/** Rewrite a level value within one factor's column across a persisted suite. */
+function renameLevelInSuite(
+  suite: TestSuite | null,
+  factorName: string,
+  oldValue: string,
+  newValue: string,
+): TestSuite | null {
+  if (!suite) return suite
+  if (!suite.factorOrder.includes(factorName)) return suite
+  return {
+    factorOrder: suite.factorOrder.slice(),
+    rows: suite.rows.map(row =>
+      row.values[factorName] === oldValue
+        ? { ...row, values: { ...row.values, [factorName]: newValue } }
+        : row,
+    ),
+  }
+}
+
 type Actions = {
   /** Replace the DSL source. Recomputes parse and marks the project dirty. */
   setSource(source: string): void
@@ -156,7 +200,15 @@ export const useProjectStore = create<Store>()((set, get) => ({
   renameFactor(oldName, newName) {
     const next = editRenameFactor(get().source, oldName, newName)
     if (next === get().source) return
-    set({ source: next, parseResult: parse(next), isDirty: true })
+    // SR-052: a structured rename keeps the persisted set bound to its cases.
+    // Carry the factor rename into the saved suite (column order + each row's
+    // value key) so IDs / flags / notes survive without regeneration.
+    set({
+      source: next,
+      parseResult: parse(next),
+      testSuite: renameFactorInSuite(get().testSuite, oldName, newName),
+      isDirty: true,
+    })
   },
 
   addFactor(name, levels) {
@@ -185,7 +237,13 @@ export const useProjectStore = create<Store>()((set, get) => ({
   renameLevel(factorName, oldValue, newValue) {
     const next = editRenameLevel(get().source, factorName, oldValue, newValue)
     if (next === get().source) return
-    set({ source: next, parseResult: parse(next), isDirty: true })
+    // SR-052: carry the level rename into the saved suite so its rows stay valid.
+    set({
+      source: next,
+      parseResult: parse(next),
+      testSuite: renameLevelInSuite(get().testSuite, factorName, oldValue, newValue),
+      isDirty: true,
+    })
   },
 
   moveFactor(factorName, direction) {
