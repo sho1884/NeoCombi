@@ -24,6 +24,11 @@ out of v0.x.
 
 ### Changed
 
+- **Pairwise and decision-table sets are both kept.** Switching generation mode
+  no longer discards the current test cases — each mode keeps its own set
+  (swapped in and out), switching loses nothing, and a `.ncproj` persists both.
+  Re-generating replaces only the active mode's set; the mode-switch confirm
+  prompt is gone (nothing is lost).
 - **File format split into `.ncombi` and `.ncproj`** (ADR-014, supersedes
   ADR-009). `.ncombi` is the DSL model alone (shareable, CI-facing); `.ncproj`
   is a full project that also embeds the persisted test set. Both share one

@@ -354,6 +354,37 @@ describe('projectStore / load and save', () => {
     expect(useProjectStore.getState().testSuite?.rows[0]?.note).toBe('memo')
   })
 
+  it('saves and restores BOTH the pairwise and decision-table sets', () => {
+    const store = useProjectStore.getState()
+    store.setSource('Color: Red, Blue\n')
+    // Build a decision-table set, then switch and build a pairwise set.
+    store.setGenerationMode('decision-table')
+    store.setTestSuite({
+      factorOrder: ['Color'],
+      rows: [
+        { values: { Color: 'Red' }, forbidden: false },
+        { values: { Color: 'Blue' }, forbidden: true },
+      ],
+    })
+    store.setGenerationMode('pairwise')
+    store.setTestSuite({
+      factorOrder: ['Color'],
+      rows: [{ values: { Color: 'Red' }, note: 'keep me' }],
+    })
+    const text = useProjectStore.getState().toProjectFile()
+
+    useProjectStore.getState().resetToEmpty()
+    useProjectStore.getState().loadProjectFile(text)
+    const after = useProjectStore.getState()
+    // Active mode (pairwise) restored to testSuite; decision set stashed.
+    expect(after.generationMode).toBe('pairwise')
+    expect(after.testSuite?.rows[0]?.note).toBe('keep me')
+    expect(after.inactiveSuite?.rows.some(r => r.forbidden === true)).toBe(true)
+    // Switching reveals the restored decision-table set.
+    useProjectStore.getState().setGenerationMode('decision-table')
+    expect(useProjectStore.getState().testSuite?.rows).toHaveLength(2)
+  })
+
   it('markSaved clears the dirty flag and updates the file path when given', () => {
     useProjectStore.getState().setSource('OS: Linux')
     expect(useProjectStore.getState().isDirty).toBe(true)

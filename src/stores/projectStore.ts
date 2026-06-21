@@ -43,6 +43,7 @@ function emptyState(): ProjectState {
     parseResult: parse(source),
     expectedValues: [],
     testSuite: null,
+    inactiveSuite: null,
     pictOrder: DEFAULT_PICT_ORDER,
     generationMode: 'pairwise',
     view: { ...DEFAULT_VIEW },
@@ -99,6 +100,23 @@ function renameFactorInSuite(
       }
       return { ...row, values }
     }),
+  }
+}
+
+/**
+ * Map the active + stashed suites onto their generation modes for persistence.
+ * testSuite belongs to generationMode; inactiveSuite belongs to the other mode.
+ */
+function suitesByMode(state: {
+  generationMode: GenerationMode
+  testSuite: TestSuite | null
+  inactiveSuite: TestSuite | null
+}): Partial<Record<GenerationMode, TestSuite | null>> {
+  const otherMode: GenerationMode =
+    state.generationMode === 'pairwise' ? 'decision-table' : 'pairwise'
+  return {
+    [state.generationMode]: state.testSuite,
+    [otherMode]: state.inactiveSuite,
   }
 }
 
@@ -207,6 +225,7 @@ export const useProjectStore = create<Store>()((set, get) => ({
       source: next,
       parseResult: parse(next),
       testSuite: renameFactorInSuite(get().testSuite, oldName, newName),
+      inactiveSuite: renameFactorInSuite(get().inactiveSuite, oldName, newName),
       isDirty: true,
     })
   },
@@ -242,6 +261,7 @@ export const useProjectStore = create<Store>()((set, get) => ({
       source: next,
       parseResult: parse(next),
       testSuite: renameLevelInSuite(get().testSuite, factorName, oldValue, newValue),
+      inactiveSuite: renameLevelInSuite(get().inactiveSuite, factorName, oldValue, newValue),
       isDirty: true,
     })
   },
@@ -277,9 +297,16 @@ export const useProjectStore = create<Store>()((set, get) => ({
 
   setGenerationMode(mode) {
     if (mode === get().generationMode) return
-    // Clear the suite: the displayed rows belong to the previous mode (pairwise
-    // rows have no forbidden flag; decision-table rows do). Re-generate.
-    set({ generationMode: mode, testSuite: null, isDirty: true })
+    // Keep BOTH sets: swap the active suite with the stashed other-mode suite
+    // instead of discarding it. There are exactly two modes, so the stash is a
+    // single slot. Switching loses nothing; re-generation (per mode) is the
+    // only thing that replaces a set, and it stays guarded.
+    set(state => ({
+      generationMode: mode,
+      testSuite: state.inactiveSuite,
+      inactiveSuite: state.testSuite,
+      isDirty: true,
+    }))
   },
 
   setExpectedValue(assignment, value) {
@@ -384,15 +411,19 @@ export const useProjectStore = create<Store>()((set, get) => ({
 
   loadProjectFile(content, filePath) {
     const result = deserialize(content)
+    // UR-011 / SR-072: restore both persisted sets verbatim. No regeneration
+    // runs on load. The active mode's set goes to testSuite, the other to the
+    // stash, so switching modes after load still shows the saved rows.
+    const suites = result.testSuites ?? {}
+    const otherMode: GenerationMode =
+      result.generationMode === 'pairwise' ? 'decision-table' : 'pairwise'
     set({
       filePath: filePath ?? null,
       source: result.source,
       parseResult: parse(result.source),
       expectedValues: result.expectedValues,
-      // UR-011 / SR-072: restore the persisted test set verbatim. No
-      // regeneration runs on load — the saved rows (with their IDs, flags,
-      // notes) are authoritative.
-      testSuite: result.testSuite,
+      testSuite: suites[result.generationMode] ?? null,
+      inactiveSuite: suites[otherMode] ?? null,
       pictOrder: result.pictOrder,
       generationMode: result.generationMode,
       view: { ...DEFAULT_VIEW },
@@ -407,20 +438,19 @@ export const useProjectStore = create<Store>()((set, get) => ({
       expectedValues: state.expectedValues,
       pictOrder: state.pictOrder,
       generationMode: state.generationMode,
-      testSuite: state.testSuite,
+      testSuites: suitesByMode(state),
     })
   },
 
   toModelFile() {
     const state = get()
-    // A model file (.ncombi) is DSL + settings + rules only — the persisted
-    // test set is deliberately omitted (testSuite: null).
+    // A model file (.ncombi) is DSL + settings + rules only — both persisted
+    // test sets are deliberately omitted.
     return serialize({
       source: state.source,
       expectedValues: state.expectedValues,
       pictOrder: state.pictOrder,
       generationMode: state.generationMode,
-      testSuite: null,
     })
   },
 

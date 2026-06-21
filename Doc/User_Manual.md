@@ -359,16 +359,21 @@ Testing should still represent that "masked" situation.
 
 - **Two file types.** **`.ncombi`** is the DSL model alone — shareable, CI-facing,
   diff-friendly. **`.ncproj`** is a full project that also embeds the generated
-  test set (rows, IDs, count flags, notes) so you can reopen and **resume without
-  regenerating**. **File → Save** writes the type the file name implies; **Save
-  As…** lets you choose. Legacy `.tmodel` files still open.
+  test set(s) (rows, IDs, count flags, notes) so you can reopen and **resume
+  without regenerating**. **File → Save** writes the type the file name implies;
+  **Save As…** lets you choose. Legacy `.tmodel` files still open.
   **`.ncombi`** は DSL モデルだけ、**`.ncproj`** はテストセット（行・ID・カウント・
   メモ）も含むプロジェクト。`.ncproj` は開き直しても**再生成せず**そのまま続けられます。
   旧 `.tmodel` も開けます。
+- **Both modes are kept.** Pairwise and Decision table each keep their own set —
+  switching between them loses nothing, and a `.ncproj` saves both. Re-generating
+  replaces only the current mode's set.
+  ペアワイズとデシジョンテーブルはそれぞれのセットを保持します。モード切替では失われず、
+  `.ncproj` は両方を保存します。再生成は現在のモードのセットだけを置き換えます。
 - **No surprise regeneration.** Opening a project shows the saved set as-is; it is
-  never auto-regenerated. Re-generating, switching mode, clearing, or importing
-  results **asks first** whenever any count flag or note would be lost.
-  プロジェクトを開いても自動再生成しません。再生成・モード切替・クリア・結果取り込みで
+  never auto-regenerated. Re-generating, clearing, or importing results **asks
+  first** whenever any count flag or note would be lost.
+  プロジェクトを開いても自動再生成しません。再生成・クリア・結果取り込みで
   フラグ/メモを失う場合は事前に確認します。
 - **Share a sample by link.** Opening NeoCombi with `?file=<url>` loads a model
   from that address — handy for sharing examples. `?file=<url>` 付きで開くと、その

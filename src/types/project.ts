@@ -70,11 +70,19 @@ export type ProjectState = {
   parseResult: ParseResult
   expectedValues: ExpectedValueEntry[]
   /**
-   * The generated / imported test set. Persisted in a project file (.ncproj)
-   * with its IDs, count flags, and notes (UR-011), so it restores without
-   * regenerating; a model file (.ncombi) omits it. null until generated.
+   * The ACTIVE generation mode's test set (the one shown / edited). Persisted
+   * in a project file (.ncproj) with its IDs, count flags, and notes (UR-011),
+   * so it restores without regenerating; a model file (.ncombi) omits it. null
+   * until generated.
    */
   testSuite: TestSuite | null
+  /**
+   * The OTHER mode's test set, kept so switching between pairwise and
+   * decision-table does not discard either. There are exactly two modes, so a
+   * single stash slot suffices: setGenerationMode swaps testSuite <-> this.
+   * Persisted alongside the active set in a .ncproj.
+   */
+  inactiveSuite: TestSuite | null
   /** PICT generation order (N-wise); default 2 (pairwise). Persisted. */
   pictOrder: number
   /** Generation mode (pairwise via PICT vs decision-table via built-in core). Persisted. */

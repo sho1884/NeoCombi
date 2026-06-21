@@ -157,10 +157,10 @@ export function TestCasesTab() {
 
   const onChangeMode = (mode: 'pairwise' | 'decision-table') => {
     if (mode === generationMode) return
-    // Switching modes discards the current set (its rows belong to the old
-    // mode); guard the recorded flags / notes first (SR-073).
-    if (!confirmDiscardFlagsNotes('Switching mode')) return
+    // Both sets are kept (the store swaps active <-> stash), so switching loses
+    // nothing and needs no guard. Re-generating within a mode is still guarded.
     setImportInfo(null)
+    setError(null)
     setGenerationMode(mode)
   }
 

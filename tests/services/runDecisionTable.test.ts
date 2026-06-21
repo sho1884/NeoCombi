@@ -40,15 +40,24 @@ describe('runDecisionTable (GUI path)', () => {
 })
 
 describe('projectStore / generationMode', () => {
-  it('switching mode clears the suite and marks dirty', () => {
-    useProjectStore.getState().setSource('A: 1, 2\nB: x, y')
+  it('switching mode preserves both sets (swaps active <-> stash)', () => {
+    const store = useProjectStore.getState()
+    store.setSource('A: 1, 2\nB: x, y')
+    store.setGenerationMode('decision-table')
     runDecisionTable()
-    expect(useProjectStore.getState().testSuite).not.toBeNull()
+    const dt = useProjectStore.getState().testSuite
+    expect(dt).not.toBeNull()
 
-    useProjectStore.getState().setGenerationMode('decision-table')
-    expect(useProjectStore.getState().generationMode).toBe('decision-table')
+    // Switch to pairwise: the decision set is stashed, the active slot is empty.
+    store.setGenerationMode('pairwise')
+    expect(useProjectStore.getState().generationMode).toBe('pairwise')
     expect(useProjectStore.getState().testSuite).toBeNull()
+    expect(useProjectStore.getState().inactiveSuite).toBe(dt)
     expect(useProjectStore.getState().isDirty).toBe(true)
+
+    // Switch back: the decision set is restored verbatim, not regenerated.
+    store.setGenerationMode('decision-table')
+    expect(useProjectStore.getState().testSuite).toBe(dt)
   })
 
   it('preserves the forbidden flag when editing a note', () => {

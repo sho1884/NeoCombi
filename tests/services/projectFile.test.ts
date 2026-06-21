@@ -215,23 +215,26 @@ describe('projectFile / persisted test set (UR-011)', () => {
       expectedValues: [],
       pictOrder: 2,
       generationMode: 'pairwise',
-      testSuite: {
-        factorOrder: ['OS', 'Browser'],
-        rows: [
-          { id: 'P1', count: true, values: { OS: 'Linux', Browser: 'Chrome' }, note: 'ok' },
-          { id: 'P2', count: false, values: { OS: 'Windows', Browser: 'Safari' } },
-        ],
+      testSuites: {
+        pairwise: {
+          factorOrder: ['OS', 'Browser'],
+          rows: [
+            { id: 'P1', count: true, values: { OS: 'Linux', Browser: 'Chrome' }, note: 'ok' },
+            { id: 'P2', count: false, values: { OS: 'Windows', Browser: 'Safari' } },
+          ],
+        },
       },
     })
     expect(text).toContain('# @neocombi:caseset-factors OS Browser')
     const back = deserialize(text)
-    expect(back.testSuite).toEqual({
+    expect(back.testSuites?.pairwise).toEqual({
       factorOrder: ['OS', 'Browser'],
       rows: [
         { id: 'P1', count: true, values: { OS: 'Linux', Browser: 'Chrome' }, note: 'ok' },
         { id: 'P2', count: false, values: { OS: 'Windows', Browser: 'Safari' } },
       ],
     })
+    expect(back.testSuites?.['decision-table']).toBeNull()
   })
 
   it('round-trips a decision table, keeping the forbidden distinction', () => {
@@ -240,26 +243,60 @@ describe('projectFile / persisted test set (UR-011)', () => {
       expectedValues: [],
       pictOrder: 2,
       generationMode: 'decision-table',
-      testSuite: {
-        factorOrder: ['Color'],
-        rows: [
-          { id: 'D1', count: true, values: { Color: 'Red' }, forbidden: false },
-          { values: { Color: 'Blue' }, forbidden: true },
-        ],
+      testSuites: {
+        'decision-table': {
+          factorOrder: ['Color'],
+          rows: [
+            { id: 'D1', count: true, values: { Color: 'Red' }, forbidden: false },
+            { values: { Color: 'Blue' }, forbidden: true },
+          ],
+        },
       },
     })
     const back = deserialize(text)
     expect(back.generationMode).toBe('decision-table')
-    expect(back.testSuite?.rows[0]).toEqual({
+    const dt = back.testSuites?.['decision-table']
+    expect(dt?.rows[0]).toEqual({
       id: 'D1',
       count: true,
       values: { Color: 'Red' },
       forbidden: false,
     })
-    expect(back.testSuite?.rows[1]).toEqual({
+    expect(dt?.rows[1]).toEqual({
       values: { Color: 'Blue' },
       forbidden: true,
     })
+    expect(back.testSuites?.pairwise).toBeNull()
+  })
+
+  it('round-trips BOTH a pairwise and a decision-table set in one file', () => {
+    const text = serialize({
+      source: 'Color: Red, Blue\n',
+      expectedValues: [],
+      pictOrder: 2,
+      generationMode: 'pairwise',
+      testSuites: {
+        pairwise: {
+          factorOrder: ['Color'],
+          rows: [{ id: 'P1', count: true, values: { Color: 'Red' }, note: 'pw' }],
+        },
+        'decision-table': {
+          factorOrder: ['Color'],
+          rows: [
+            { id: 'D1', count: false, values: { Color: 'Red' }, forbidden: false, note: 'dt' },
+            { values: { Color: 'Blue' }, forbidden: true },
+          ],
+        },
+      },
+    })
+    const back = deserialize(text)
+    expect(back.testSuites?.pairwise?.rows).toEqual([
+      { id: 'P1', count: true, values: { Color: 'Red' }, note: 'pw' },
+    ])
+    expect(back.testSuites?.['decision-table']?.rows).toEqual([
+      { id: 'D1', count: false, values: { Color: 'Red' }, forbidden: false, note: 'dt' },
+      { values: { Color: 'Blue' }, forbidden: true },
+    ])
   })
 
   it('escapes pipes in notes', () => {
@@ -268,16 +305,18 @@ describe('projectFile / persisted test set (UR-011)', () => {
       expectedValues: [],
       pictOrder: 2,
       generationMode: 'pairwise',
-      testSuite: {
-        factorOrder: ['A'],
-        rows: [{ id: 'P1', count: true, values: { A: '1' }, note: 'a | b' }],
+      testSuites: {
+        pairwise: {
+          factorOrder: ['A'],
+          rows: [{ id: 'P1', count: true, values: { A: '1' }, note: 'a | b' }],
+        },
       },
     })
-    expect(deserialize(text).testSuite?.rows[0]?.note).toBe('a | b')
+    expect(deserialize(text).testSuites?.pairwise?.rows[0]?.note).toBe('a | b')
   })
 
-  it('leaves testSuite null when the file has no case lines', () => {
-    expect(deserialize('A: 1, 2\n').testSuite).toBeNull()
+  it('leaves testSuites undefined when the file has no case lines', () => {
+    expect(deserialize('A: 1, 2\n').testSuites).toBeUndefined()
   })
 
   it('round-trips factor names and level values containing spaces', () => {
@@ -286,14 +325,16 @@ describe('projectFile / persisted test set (UR-011)', () => {
       expectedValues: [],
       pictOrder: 2,
       generationMode: 'pairwise',
-      testSuite: {
-        factorOrder: ['Paper Type'],
-        rows: [{ id: 'P1', count: true, values: { 'Paper Type': 'Letter Size' }, note: 'a memo' }],
+      testSuites: {
+        pairwise: {
+          factorOrder: ['Paper Type'],
+          rows: [{ id: 'P1', count: true, values: { 'Paper Type': 'Letter Size' }, note: 'a memo' }],
+        },
       },
     })
     const back = deserialize(text)
     expect(back.warnings).toEqual([])
-    expect(back.testSuite).toEqual({
+    expect(back.testSuites?.pairwise).toEqual({
       factorOrder: ['Paper Type'],
       rows: [{ id: 'P1', count: true, values: { 'Paper Type': 'Letter Size' }, note: 'a memo' }],
     })
@@ -305,12 +346,14 @@ describe('projectFile / persisted test set (UR-011)', () => {
       expectedValues: [],
       pictOrder: 2,
       generationMode: 'pairwise',
-      testSuite: {
-        factorOrder: ['Zoom'],
-        rows: [{ id: 'P1', count: true, values: { Zoom: '50% size' } }],
+      testSuites: {
+        pairwise: {
+          factorOrder: ['Zoom'],
+          rows: [{ id: 'P1', count: true, values: { Zoom: '50% size' } }],
+        },
       },
     })
-    expect(deserialize(text).testSuite?.rows[0]?.values).toEqual({ Zoom: '50% size' })
+    expect(deserialize(text).testSuites?.pairwise?.rows[0]?.values).toEqual({ Zoom: '50% size' })
   })
 })
 

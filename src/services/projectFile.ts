@@ -51,10 +51,13 @@ export type TmodelFileContents = {
   pictOrder: number
   generationMode: GenerationMode
   /**
-   * Persisted test set (UR-011). null / omitted when the file has no saved
-   * cases — the GUI then starts with an empty set and the user generates one.
+   * Persisted test sets keyed by generation mode (UR-011). Both pairwise and
+   * decision-table sets can coexist in one .ncproj. Omitted / empty when the
+   * file has no saved cases. Case lines for the two modes are distinguished on
+   * load by whether they carry a `forbidden=` key (decision-table) or not
+   * (pairwise), so they round-trip without a separate per-row mode tag.
    */
-  testSuite?: TestSuite | null
+  testSuites?: Partial<Record<GenerationMode, TestSuite | null>>
 }
 
 export type TmodelLoadWarning = {
@@ -103,11 +106,23 @@ export function serialize(input: TmodelFileContents): string {
   for (const ev of input.expectedValues) {
     annotations.push(formatExpectedAnnotation(ev))
   }
-  if (input.testSuite && input.testSuite.rows.length > 0) {
-    const suite = input.testSuite
-    annotations.push(`${ANNOTATION_PREFIX}caseset-factors ${suite.factorOrder.map(encodeToken).join(' ')}`)
-    for (const row of suite.rows) {
-      annotations.push(formatCaseAnnotation(suite.factorOrder, row))
+  // Persisted test sets (UR-011). Both modes can coexist; their case lines are
+  // distinguished on load by the presence of a `forbidden=` key. Each row is
+  // formatted against its own suite's factor order; one caseset-factors line
+  // (from the first non-empty suite) sets the display column order on reload.
+  const suiteList = input.testSuites
+    ? (Object.values(input.testSuites).filter(
+        (s): s is TestSuite => s != null && s.rows.length > 0,
+      ))
+    : []
+  if (suiteList.length > 0) {
+    annotations.push(
+      `${ANNOTATION_PREFIX}caseset-factors ${suiteList[0]!.factorOrder.map(encodeToken).join(' ')}`,
+    )
+    for (const suite of suiteList) {
+      for (const row of suite.rows) {
+        annotations.push(formatCaseAnnotation(suite.factorOrder, row))
+      }
     }
   }
 
@@ -203,13 +218,20 @@ export function deserialize(content: string): TmodelLoadResult {
   let source = sourceLines.join('\n').replace(/\n+$/, '')
   if (source.length > 0) source += '\n'
 
-  let testSuite: TestSuite | null = null
+  // Bucket case rows into their generation mode: decision-table rows carry a
+  // `forbidden` flag (true/false), pairwise rows never do.
+  let testSuites: Partial<Record<GenerationMode, TestSuite | null>> | undefined
   if (caseRows.length > 0) {
     const factorOrder = casesetFactors ?? deriveFactorOrder(caseRows)
-    testSuite = { factorOrder, rows: caseRows }
+    const pairwiseRows = caseRows.filter(r => r.forbidden === undefined)
+    const decisionRows = caseRows.filter(r => r.forbidden !== undefined)
+    testSuites = {
+      pairwise: pairwiseRows.length > 0 ? { factorOrder, rows: pairwiseRows } : null,
+      'decision-table': decisionRows.length > 0 ? { factorOrder, rows: decisionRows } : null,
+    }
   }
 
-  return { source, expectedValues, pictOrder, generationMode, testSuite, warnings }
+  return { source, expectedValues, pictOrder, generationMode, testSuites, warnings }
 }
 
 /** Fallback factor order when no caseset-factors line was present: first-seen keys. */
