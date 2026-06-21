@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useProjectStore } from '../stores/projectStore'
 import { computeForbiddenSlice } from '../engines/dsl'
+import { inspectTestSuite } from '../services/staleSet'
 import { MASK_LEVEL } from '../engines/dsl/maskLevel'
 import { FORBIDDEN_MARK } from '../engines/dsl/formatDecisionTable'
 import type { Model, ParameterDecl } from '../types/dsl'
@@ -31,6 +32,8 @@ export function ExhaustiveMatrix() {
     () => buildOccurrenceMap(testSuite),
     [testSuite],
   )
+
+  const stale = useMemo(() => inspectTestSuite(testSuite, model), [testSuite, model])
 
   const forbiddenMap = useMemo(
     () => buildForbiddenMap(model, visibleFactors),
@@ -67,6 +70,14 @@ export function ExhaustiveMatrix() {
         occurrenceMap={occurrenceMap}
         forbiddenMap={forbiddenMap}
       />
+      {hasTestSuite && stale.stale && (
+        <div className="matrix__stale-banner" role="alert">
+          <strong>Coverage may be misleading.</strong> The imported test set no
+          longer matches the model (a factor or level was removed or renamed in
+          the DSL), so some cells show as missed only because their cases can no
+          longer be matched. Re-generate the set in the <strong>Test cases</strong> tab.
+        </div>
+      )}
       {!hasTestSuite && (
         <div className="matrix__no-suite-banner" role="status">
           <strong>No test cases imported.</strong> Cells show only the pair

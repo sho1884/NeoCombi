@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useProjectStore } from '../stores/projectStore'
 import { runGenerate } from '../services/runGenerate'
 import { runDecisionTable } from '../services/runDecisionTable'
@@ -10,6 +10,7 @@ import {
 } from '../engines/dsl/formatDecisionTable'
 import { copyTableToClipboard, escapeHtml } from '../services/clipboardWrite'
 import { applyResultsCsv } from '../services/resultsCsv'
+import { inspectTestSuite } from '../services/staleSet'
 import { isHostedDeployment, isPictApiConfigured } from '../services/demoMode'
 import { MASK_LEVEL } from '../engines/dsl/maskLevel'
 import type { TestSuite } from '../types/testCase'
@@ -76,6 +77,9 @@ export function TestCasesTab() {
   const diagnostics = useProjectStore(s => s.parseResult.diagnostics)
   const generationMode = useProjectStore(s => s.generationMode)
   const setGenerationMode = useProjectStore(s => s.setGenerationMode)
+  const model = useProjectStore(s => s.parseResult.model)
+
+  const stale = useMemo(() => inspectTestSuite(testSuite, model), [testSuite, model])
 
   const [error, setError] = useState<string | null>(null)
   const [generating, setGenerating] = useState(false)
@@ -394,6 +398,20 @@ export function TestCasesTab() {
         {importInfo ? <span className="test-cases-tab__import-info" role="status">{importInfo}</span> : null}
         {error ? <span className="test-cases-tab__error">{error}</span> : null}
       </div>
+
+      {stale.stale ? (
+        <div className="test-cases-tab__stale-banner" role="alert">
+          <strong>This saved test set no longer matches the model.</strong>{' '}
+          {stale.missingFactors.length > 0
+            ? `Factor${stale.missingFactors.length === 1 ? '' : 's'} ${stale.missingFactors
+                .map(f => `“${f}”`)
+                .join(', ')} ${stale.missingFactors.length === 1 ? 'is' : 'are'} no longer in the DSL` +
+              (stale.hasInvalidValues ? ', and some rows use levels that were removed or renamed.' : '.')
+            : 'Some rows use levels that were removed or renamed.'}{' '}
+          Coverage may be misleading — <strong>Re-generate</strong> to refresh the set (this
+          discards the current flags / notes), or undo the DSL change.
+        </div>
+      ) : null}
 
       <div className="test-cases-tab__table-wrap">
         <table className="test-cases-tab__table">
