@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useProjectStore } from '../stores/projectStore'
 import { runGenerate } from '../services/runGenerate'
-import { checkPictApiHealth, DEFAULT_PICT_API_URL } from '../services/pictApi'
+import {
+  checkPictApiHealth,
+  DEFAULT_PICT_API_URL,
+  type PictApiResult,
+  type PictHealth,
+} from '../services/pictApi'
 import { runDecisionTable } from '../services/runDecisionTable'
 import { formatTestSuite, testSuiteToHtml } from '../engines/pict'
 import {
@@ -16,6 +21,27 @@ import { isHostedDeployment, isPictApiConfigured } from '../services/demoMode'
 import { MASK_LEVEL } from '../engines/dsl/maskLevel'
 import type { TestSuite } from '../types/testCase'
 import './TestCasesTab.css'
+
+/**
+ * Reachability of the PICT service from this page, as far as the Test cases tab
+ * has been able to tell. Drives the status banner and the empty-state copy so a
+ * down / waking / missing service is never silently indistinguishable from
+ * "you just haven't entered anything yet".
+ */
+type ServiceProbe =
+  | { kind: 'idle' } // no service expected here (decision-table, or unconfigured hosted)
+  | { kind: 'probing' } // health check in flight
+  | { kind: 'starting' } // first probe timed out — likely a cold start, waiting it out
+  | { kind: 'reachable' } // up, PICT available
+  | { kind: 'no-pict' } // service up but PICT not usable on it
+  | { kind: 'unreachable'; message: string } // down / errored / timed out
+
+function probeFromHealth(r: PictApiResult<PictHealth>): ServiceProbe {
+  if (r.ok) {
+    return r.value.available === false ? { kind: 'no-pict' } : { kind: 'reachable' }
+  }
+  return { kind: 'unreachable', message: r.error.message }
+}
 
 /** A decision table is shown whenever its rows carry the forbidden flag. */
 function isDecisionTable(suite: TestSuite | null): boolean {
@@ -88,22 +114,42 @@ export function TestCasesTab() {
   const expectsService =
     generationMode === 'pairwise' && !(isHostedDeployment() && !isPictApiConfigured())
 
-  // null = not yet probed / not applicable; true = unreachable or PICT missing.
-  const [serviceDown, setServiceDown] = useState<boolean | null>(null)
+  // Reachability of the PICT service. `probeNonce` lets the Retry button re-run
+  // the probe (e.g. after waking the service).
+  const [probe, setProbe] = useState<ServiceProbe>({ kind: 'idle' })
+  const [probeNonce, setProbeNonce] = useState(0)
+  const retryProbe = () => setProbeNonce(n => n + 1)
+
+  // Whether the remote service is a configured public one (vs. a local
+  // docker-compose service). Picks the right "how to fix" wording.
+  const remoteService = isPictApiConfigured()
+
+  // When no service is expected here, treat the probe as idle regardless of any
+  // value left over from a previous mode (the effect below skips probing, so it
+  // won't overwrite it). Derived rather than set, to avoid a setState-in-effect.
+  const effectiveProbe: ServiceProbe = expectsService ? probe : { kind: 'idle' }
 
   useEffect(() => {
-    // Only probe when a service is expected; the banner is gated on
-    // expectsService anyway, so a stale value while not applicable is harmless.
     if (!expectsService) return
     let cancelled = false
-    void checkPictApiHealth().then(r => {
+    void (async () => {
+      setProbe({ kind: 'probing' })
+      // Fast first attempt. A free-tier host that is merely asleep won't answer
+      // in time, so escalate to a visible "waking up" state and wait out the
+      // cold start rather than declaring it down prematurely.
+      let r = await checkPictApiHealth(DEFAULT_PICT_API_URL, { timeoutMs: 5000 })
       if (cancelled) return
-      setServiceDown(!r.ok || r.value.available === false)
-    })
+      if (!r.ok && r.error.kind === 'network') {
+        setProbe({ kind: 'starting' })
+        r = await checkPictApiHealth(DEFAULT_PICT_API_URL, { timeoutMs: 60000 })
+        if (cancelled) return
+      }
+      setProbe(probeFromHealth(r))
+    })()
     return () => {
       cancelled = true
     }
-  }, [expectsService])
+  }, [expectsService, probeNonce])
 
   const [error, setError] = useState<string | null>(null)
   const [generating, setGenerating] = useState(false)
@@ -150,13 +196,13 @@ export function TestCasesTab() {
       const result = await runGenerate()
       switch (result.kind) {
         case 'ok':
-          setServiceDown(false)
+          setProbe({ kind: 'reachable' })
           break
         case 'skipped':
           setError(`Cannot generate: ${result.reason.replace('-', ' ')}`)
           break
         case 'network-error':
-          setServiceDown(true)
+          setProbe({ kind: 'unreachable', message: result.message })
           setError(
             `Cannot reach the PICT generator. ${result.message}`,
           )
@@ -315,19 +361,67 @@ export function TestCasesTab() {
       </div>
     ) : null
 
-  // The PICT service is expected here (local, or a configured remote) but can't
-  // be reached / has no PICT. Pairwise can't run; say so explicitly instead of
-  // failing silently.
-  const serviceBanner =
-    expectsService && serviceDown ? (
-      <div className="test-cases-tab__stale-banner" role="alert">
-        <strong>Can&apos;t reach the PICT service</strong> at{' '}
-        <code>{DEFAULT_PICT_API_URL}</code>. Pairwise generation needs it running
-        — start it (<code>docker compose up -d pict-service</code>) and click{' '}
-        <strong>Generate</strong>, or switch <strong>Mode</strong> to{' '}
-        <strong>Decision table</strong> to generate in-browser (no PICT needed).
-      </div>
-    ) : null
+  // The PICT service is expected here (local, or a configured remote). Report
+  // its reachability explicitly — checking / waking / down / no-PICT — instead
+  // of failing silently and leaving the neutral "no test cases" empty state.
+  const decisionTableHint = (
+    <>
+      , or switch <strong>Mode</strong> to <strong>Decision table</strong> to
+      generate in-browser (no PICT needed)
+    </>
+  )
+  const serviceBanner = (() => {
+    if (!expectsService) return null
+    switch (effectiveProbe.kind) {
+      case 'probing':
+        return (
+          <div className="test-cases-tab__hosted-banner" role="status">
+            <strong>Checking the PICT service…</strong> at{' '}
+            <code>{DEFAULT_PICT_API_URL}</code>
+          </div>
+        )
+      case 'starting':
+        return (
+          <div className="test-cases-tab__hosted-banner" role="status">
+            <strong>Waking the PICT service…</strong> at{' '}
+            <code>{DEFAULT_PICT_API_URL}</code> — a free-tier service can take
+            ~30–60s to cold-start. Hang on.
+          </div>
+        )
+      case 'no-pict':
+        return (
+          <div className="test-cases-tab__stale-banner" role="alert">
+            <strong>The PICT service is up but PICT isn&apos;t available on it</strong>{' '}
+            (<code>{DEFAULT_PICT_API_URL}</code>). Pairwise can&apos;t run
+            {decisionTableHint}.
+          </div>
+        )
+      case 'unreachable':
+        return (
+          <div className="test-cases-tab__stale-banner" role="alert">
+            <strong>Can&apos;t reach the PICT service</strong> at{' '}
+            <code>{DEFAULT_PICT_API_URL}</code> — {effectiveProbe.message}.{' '}
+            {remoteService ? (
+              'It may be asleep or down. '
+            ) : (
+              <>
+                Start it (<code>docker compose up -d pict-service</code>).{' '}
+              </>
+            )}
+            <button
+              type="button"
+              className="test-cases-tab__retry"
+              onClick={retryProbe}
+            >
+              Retry
+            </button>
+            {decisionTableHint}.
+          </div>
+        )
+      default:
+        return null
+    }
+  })()
 
   if (!testSuite || testSuite.rows.length === 0) {
     return (
@@ -363,7 +457,11 @@ export function TestCasesTab() {
             <strong>Generate</strong>.{' '}
             {generationMode === 'decision-table'
               ? 'Decision-table mode lists every combination in-browser (forbidden ones marked) — no PICT needed.'
-              : 'Pairwise mode runs PICT to produce a reduced covering set.'}
+              : effectiveProbe.kind === 'unreachable' || effectiveProbe.kind === 'no-pict'
+                ? 'Pairwise runs PICT on the service above, which isn’t reachable right now — see the notice above, or switch to Decision table.'
+                : effectiveProbe.kind === 'probing' || effectiveProbe.kind === 'starting'
+                  ? 'Pairwise runs PICT on the service above — confirming it’s reachable…'
+                  : 'Pairwise mode runs PICT to produce a reduced covering set.'}
           </p>
         </div>
       </div>

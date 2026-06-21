@@ -158,6 +158,24 @@
   line-height: 1.45;
 }
 
+/* Inline "Retry" inside the unreachable-service banner. */
+.test-cases-tab__retry {
+  display: inline;
+  padding: 0.1rem 0.5rem;
+  margin: 0 0.1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #7f1d1d;
+  background: #fff;
+  border: 1px solid #c62828;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.test-cases-tab__retry:hover {
+  background: #fdecea;
+}
+
 /* --- Empty state: prominent step-by-step instructions ----------------- */
 
 .test-cases-tab__no-suite {
