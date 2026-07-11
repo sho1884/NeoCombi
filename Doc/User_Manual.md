@@ -285,6 +285,30 @@ combinations and tells you the count.
 Switching mode clears the current table (its rows belong to the previous mode);
 just generate again. モードを切り替えると現在の表はクリアされます（再生成してください）。
 
+### 開発者向け：API として呼び出す（デモ環境）/ Call it as an API (demo)
+
+同じ生成器が、デモ環境で **認証なしの HTTP API**（ベース URL
+`https://modellogue.com/pict`）として動いています。インストール不要で、DSL を本文に
+渡して `curl` から直接生成できます。The same generator is live as a **no-auth HTTP
+API** on the demo environment — POST your DSL as the request body, no install needed.
+
+```bash
+# 疎通確認 / liveness
+curl https://modellogue.com/pict/health
+# → {"ok":true,"available":true, ...}
+
+# ペアワイズ（PICT）— order=2、本文=DSL、TSV が返る
+printf 'OS: Win, Mac, Linux\nBrowser: Chrome, Firefox, Safari\n' \
+  | curl -X POST 'https://modellogue.com/pict/generate?order=2' --data-binary @-
+
+# デシジョンテーブル（内製評価器・PICT 不使用）— 全組み合わせ＋禁止フラグの JSON
+printf 'OS: Win, Mac\nBrowser: Chrome, Firefox\n' \
+  | curl -X POST 'https://modellogue.com/pict/decision-table' --data-binary @-
+```
+
+`order` は強度（`2` ＝ペアワイズ）。デモ環境はレート制限・タイムアウトありのベストエフォート
+です。本番 CI に組み込むなら、ローカルでの自前ホスト（`pict-service` コンテナ）を推奨します。
+
 ---
 
 ## 9. Notes, Count Flags & Export / メモ・カウント対象とエクスポート
