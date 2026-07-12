@@ -134,9 +134,10 @@ export function TestCasesTab() {
     let cancelled = false
     void (async () => {
       setProbe({ kind: 'probing' })
-      // Fast first attempt. A free-tier host that is merely asleep won't answer
-      // in time, so escalate to a visible "waking up" state and wait out the
-      // cold start rather than declaring it down prematurely.
+      // Fast first attempt. A slow-to-respond service (a network blip, or a
+      // free-tier host cold-starting from scale-to-zero) won't answer in time,
+      // so escalate to a visible "still waiting" state and give it longer
+      // rather than declaring it down prematurely.
       let r = await checkPictApiHealth(DEFAULT_PICT_API_URL, { timeoutMs: 5000 })
       if (cancelled) return
       if (!r.ok && r.error.kind === 'network') {
@@ -383,9 +384,10 @@ export function TestCasesTab() {
       case 'starting':
         return (
           <div className="test-cases-tab__hosted-banner" role="status">
-            <strong>Waking the PICT service…</strong> at{' '}
-            <code>{DEFAULT_PICT_API_URL}</code> — a free-tier service can take
-            ~30–60s to cold-start. Hang on.
+            <strong>Still waiting on the PICT service…</strong> at{' '}
+            <code>{DEFAULT_PICT_API_URL}</code> — it&apos;s taking longer than
+            usual to respond (a sleeping free-tier host can need ~30–60s to wake).
+            Hang on.
           </div>
         )
       case 'no-pict':
@@ -402,7 +404,7 @@ export function TestCasesTab() {
             <strong>Can&apos;t reach the PICT service</strong> at{' '}
             <code>{DEFAULT_PICT_API_URL}</code> — {effectiveProbe.message}.{' '}
             {remoteService ? (
-              'It may be asleep or down. '
+              'It may be temporarily unavailable. '
             ) : (
               <>
                 Start it (<code>docker compose up -d pict-service</code>).{' '}

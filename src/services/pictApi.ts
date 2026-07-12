@@ -161,7 +161,7 @@ function abortableMessage(
   timeoutMs: number,
 ): string {
   if (controller.signal.aborted) {
-    return `no response within ${Math.round(timeoutMs / 1000)}s (the service may be asleep or unreachable)`
+    return `no response within ${Math.round(timeoutMs / 1000)}s (the service may be slow to respond or unreachable)`
   }
   return errorMessage(e)
 }
