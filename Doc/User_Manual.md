@@ -225,6 +225,16 @@ impossible. It is derived from your constraints automatically and updates live.
 **Forbidden** ビューは、制約が不可能にする組み合わせを格子で示します。制約から自動で
 導出され、ライブ更新します。
 
+![Forbidden view for the shopping-site example — a 決済方法 × 支払回数 slice with red X cells, and the decision table below flagging forbidden rows](asset/Screenshot_Forbidden.png)
+
+*The Forbidden view for the shopping-site example, sliced as 決済方法 (rows) ×
+支払回数 (columns). Red **X** cells mark the installment plans コンビニ払い /
+銀行振込 / 代金引換 can't use. Below, the decision table keeps those forbidden
+rows and flags each with an **X** in the FORBIDDEN column.*
+<br>*ショッピングサイト例の禁則ビュー（決済方法＝行 × 支払回数＝列）。赤い **X** は、
+コンビニ払い／銀行振込／代金引換 が選べない支払回数を示します。下段のデシジョン
+テーブルは禁止行を残し、FORBIDDEN 列に **X** を立てて明示します。*
+
 - Pick **N** and a **slice** — N−1 *condition* factors down the rows, one
   *constrained* factor across the columns. **N** と**スライス**（条件因子 N−1／被制約因子 1）を選択。
 - A forbidden cell shows **`X`** (red); an allowed cell is blank.
@@ -249,6 +259,16 @@ cases cover each level pair — so you can spot gaps.
 
 **Coverage** ビューは全因子ペアを総当たりします。生成前はペア構造のみ、生成後は各
 水準ペアを何件のケースが覆うかを重ねて表示し、抜けを見つけられます。
+
+![Coverage matrix after generating — every factor pair cross-tabulated, with a covered / missed / forbidden summary reading 100% pair coverage](asset/Screenshot_Coverage.png)
+
+*The Coverage matrix after generating the shopping-site example. Every factor
+pair is cross-tabulated; the summary reads **covered 138 / missed 0 / forbidden
+26** — 100% pair coverage. Green cells show how many cases hit each level pair;
+red **X** cells are pairs a constraint forbids.*
+<br>*生成後の総当たり表（ショッピングサイト例）。全因子ペアを総当たりし、上部に
+**covered 138／missed 0／forbidden 26**＝ペア被覆 100% と表示。緑セルは各水準
+ペアを覆うケース数、赤い **X** は制約で禁止されたペアです。*
 
 | Cell shows / セル表示 | Meaning / 意味 |
 |---|---|
