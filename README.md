@@ -22,9 +22,55 @@
 
 NeoCombi is a modern reconstruction of the author's older Excel VBA tool **PICT-PAPP**, scaled to handle HAYST-method workloads of 100–300 factors. Files are plain PICT input plus a few `# @neocombi:` annotations, so a model file is also a valid PICT model. There are two native extensions: **`.ncombi`** holds the DSL model alone (shareable, CI-facing), and **`.ncproj`** is a full project that also embeds the generated test set with its IDs, count flags, and notes (legacy `.tmodel` files still open).
 
+## Built for AI-assisted authoring
+
+AI-assisted authoring is a **first-class premise** of NeoCombi, not a bolt-on. NeoCombi itself embeds **no AI** — it stays a deterministic transformer — but every choice in the model format is made so that an LLM can *author* the design and NeoCombi can *verify* it. The AI writes the model; NeoCombi keeps it honest.
+
+```mermaid
+flowchart LR
+    NL["📝 Natural-language<br/>requirement"]:::ai -->|"AI drafts (any LLM)"| DSL["📄 .ncombi DSL<br/>PICT-subset · plain text"]:::file
+    DSL -->|deterministic| NC(["🧩 NeoCombi<br/>engine"]):::core
+    NC --> FB["🚫 Forbidden<br/>matrix"]:::out
+    NC --> COV["🔲 Coverage<br/>matrix"]:::out
+    NC --> TC["⚙️ PICT<br/>test cases"]:::out
+    FB --> REV["👀 Review"]:::ai
+    COV --> REV
+    TC --> REV
+    REV -.->|"refine the prompt"| NL
+    classDef ai fill:#f3e8ff,stroke:#a855f7,color:#111,font-weight:bold;
+    classDef file fill:#e0edff,stroke:#3b82f6,color:#111;
+    classDef core fill:#dcfce7,stroke:#16a34a,color:#111,font-weight:bold;
+    classDef out fill:#fff7ed,stroke:#f97316,color:#111;
+```
+
+Why the format makes AI *design* the test model easily:
+
+- **Plain-text, PICT-subset DSL.** No proprietary binary, no bespoke schema an LLM has to be taught — it is the widely documented Microsoft PICT constraint language, so any capable model can already write it well.
+- **A `.ncombi` file is also a valid PICT model.** The AI's output is directly runnable; there is no lossy translation layer for a model to hallucinate around.
+- **Deterministic verification closes the loop.** The forbidden matrix, coverage matrix, and PICT generation give the AI (or a human reviewer) an objective signal to refine against — the same input always yields the same output.
+- **Review-driven by design.** Today you can draft a model with any LLM and paste the DSL straight in; the roadmap (UR-007) brings natural-language → DSL authoring in-app, and **ModelLogue** layers AI review on top via n8n.
+
 ## Sibling Projects
 
-NeoCombi is one of three sibling tools that share the factor / level / constraint problem domain:
+NeoCombi is one of three sibling tools that share the factor / level / constraint problem domain. The two authoring tools are deterministic; AI lives *outside* them, reached through n8n:
+
+```mermaid
+flowchart TB
+    subgraph det["Deterministic transformers · no AI inside"]
+        direction LR
+        NCEG["🔗 NeoCEG<br/>Cause-Effect Graph"]
+        NCOMBI["🧩 NeoCombi<br/>Pairwise / N-wise"]
+    end
+    NCEG -->|model output| ML
+    NCOMBI -->|model output| ML
+    ML["💬 ModelLogue<br/>AI review platform"] -.->|via n8n| AI(["🤖 AI"])
+    classDef tool fill:#dcfce7,stroke:#16a34a,color:#111,font-weight:bold;
+    classDef review fill:#f3e8ff,stroke:#a855f7,color:#111,font-weight:bold;
+    classDef ai fill:#fff7ed,stroke:#f97316,color:#111;
+    class NCEG,NCOMBI tool;
+    class ML review;
+    class AI ai;
+```
 
 - **[NeoCEG](https://github.com/sho1884/NeoCEG)** — Cause-Effect Graph authoring tool.
 - **[ModelLogue](https://github.com/sho1884/ModelLogue)** — AI-assisted review platform that consumes NeoCEG / NeoCombi outputs as model-type plug-ins.
