@@ -1,26 +1,54 @@
-# ショッピングサイトの注文 — combinatorial test example (Japanese factors/levels)
-# Shopping-site order. Shows a mask level: the credit-card status only matters
-# when paying by credit card. (Example assumptions, not a real site's rules.)
+# KASANE STORE Checkout Benchmark — 注文・決済の有効系ペアワイズ
+# Valid-flow pairwise model for a real, runnable mock checkout site.
+# 対象 / System under test: https://modellogue.com/checkout-benchmark/
+# 仕様 / Spec: https://modellogue.com/checkout-benchmark/guide.html
+#
+# この模擬サイトは「入力を求めるべきでない項目」を3状態に区別します。
+# The site distinguishes three states for a field you should not be asked to fill:
+#   1. 項目そのものが無い          — カード払い以外のカード情報   → _MASK_ で表す
+#      the field is absent                                        → modeled as _MASK_
+#   2. あるが伏せられ操作できない  — カード払い以外の支払回数（値は一括払い）
+#      present but masked & disabled, holding 一括払い            → modeled as the value itself
+#   3. 見えているが選べない        — ゲストのお急ぎ／分割／リボ、代金引換の置き配／コンビニ受取
+#      visible but unselectable                                   → 異常系（下記）で確認する
 
-会員種別:        ゲスト, 通常会員, プレミアム
-配送方法:        通常, お急ぎ
-受け取り方法:    置き配, 直接受け取り, コンビニ受取
-決済方法:        クレジットカード, コンビニ払い, 銀行振込, 代金引換
-クレジットカード: 未登録, 期限切れ, 有効, 無効, _MASK_
-支払回数:        一括払い, 分割払い, リボ払い
+会員種別: ゲスト, 通常会員, プレミアム会員
+配送方法: 通常, お急ぎ
+受け取り方法: 置き配, 直接受け取り, コンビニ受取
+支払い方法: クレジットカード, コンビニ払い, 銀行振込, 代金引換
+カード情報: 有効, 未入力, 期限切れ, 承認拒否, _MASK_
+支払回数: 一括払い, 分割払い, リボ払い
 
-# クレジットカード以外の決済では、カード状態は不適用（マスク水準）
-IF [決済方法] <> "クレジットカード" THEN [クレジットカード] = "_MASK_";
-# クレジットカード決済なら、カード状態はマスクでない（実カード状態を持つ）
-IF [決済方法] = "クレジットカード" THEN [クレジットカード] <> "_MASK_";
+# 有効系ペアワイズでは、無効なカード情報は生成しない
+[カード情報] <> "未入力";
+[カード情報] <> "期限切れ";
+[カード情報] <> "承認拒否";
 
-# 分割払い・リボ払いはクレジットカードのみ（他の決済は一括払い）
-IF [決済方法] <> "クレジットカード" THEN [支払回数] = "一括払い";
-# ゲストは分割・リボ不可（一括払いのみ）
+# ゲストはお急ぎ配送・分割払い・リボ払いを使えない
+IF [会員種別] = "ゲスト" THEN [配送方法] = "通常";
 IF [会員種別] = "ゲスト" THEN [支払回数] = "一括払い";
 
-# 代金引換は対面受け取りが必須（置き配・コンビニ受取は不可）
-IF [決済方法] = "代金引換" THEN [受け取り方法] = "直接受け取り";
+# カード払い以外ではカード情報の欄そのものが無い（マスク水準）
+IF [支払い方法] <> "クレジットカード" THEN [カード情報] = "_MASK_";
 
-# お急ぎ便は会員限定（ゲスト不可）
-IF [配送方法] = "お急ぎ" THEN [会員種別] IN { "通常会員", "プレミアム" };
+# カード払いでは有効なカード情報を使う
+IF [支払い方法] = "クレジットカード" THEN [カード情報] = "有効";
+
+# カード払い以外では支払回数の欄は伏せられ、値は一括払いになる
+IF [支払い方法] <> "クレジットカード" THEN [支払回数] = "一括払い";
+
+# 代金引換では受け取り方法は直接受け取りになる
+IF [支払い方法] = "代金引換" THEN [受け取り方法] = "直接受け取り";
+
+# --- 異常系はこの表の外に、1因子ずつ単独ケースとして置く -------------------
+# Abnormal cases live outside this matrix, one factor at a time.
+# 打ち切りを起こす値を有効系に混ぜると、その行の配送・受け取りは一度も実行されず、
+# ペア被覆が帳簿上だけ成立してしまうため。
+# Mixing a flow-aborting value into the matrix inflates pair coverage: the rest of
+# the row never executes.
+#
+#   カード払い × カード番号が空欄            → CARD_REQUIRED
+#   カード払い × 有効期限が基準日(2026-07-01)より前 → CARD_EXPIRED
+#   カード払い × カード番号 4000 0000 0000 0002    → PAYMENT_DECLINED
+#   代金引換 で 置き配／コンビニ受取が選べないこと     → 見えているが選べない（状態3）
+#   ゲスト で お急ぎ配送／分割払い／リボ払いが選べないこと → 見えているが選べない（状態3）

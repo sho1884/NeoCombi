@@ -1,26 +1,51 @@
-# Shopping-site order — combinatorial test example (English version of shopping.ncombi).
-# Shows a mask level: the credit-card status only matters when paying by credit
-# card. (Example assumptions, not a real site's rules.)
+# KASANE STORE Checkout Benchmark — valid-flow pairwise model for checkout
+# (English version of shopping.ncombi).
+# System under test: https://modellogue.com/checkout-benchmark/
+# Spec:              https://modellogue.com/checkout-benchmark/guide.html
+#
+# The site distinguishes three states for a field you should not be asked to fill:
+#   1. the field is absent               — card info under non-card payment
+#                                        -> modeled as the _MASK_ level
+#   2. present but masked and disabled   — installments under non-card payment,
+#      holding "Single"                  -> modeled as the value itself
+#   3. visible but unselectable          — Express / Installment / Revolving for a
+#      guest, DropOff / ConvenienceStore under cash on delivery
+#                                        -> covered by the abnormal cases below
 
 MemberType:   Guest, Regular, Premium
 Shipping:     Standard, Express
-Delivery:     DropOff, InPerson, ConvenienceStore
+Pickup:       DropOff, InPerson, ConvenienceStore
 Payment:      CreditCard, ConveniencePay, BankTransfer, CashOnDelivery
-CardStatus:   Unregistered, Expired, Valid, Invalid, _MASK_
+CardInfo:     Valid, Missing, Expired, Declined, _MASK_
 Installments: Single, Installment, Revolving
 
-# For non-credit-card payment the card status is not applicable (mask level).
-IF [Payment] <> "CreditCard" THEN [CardStatus] = "_MASK_";
-# For credit-card payment the card status is not masked (it holds a real state).
-IF [Payment] = "CreditCard" THEN [CardStatus] <> "_MASK_";
+# A valid-flow pairwise run never generates invalid card information.
+[CardInfo] <> "Missing";
+[CardInfo] <> "Expired";
+[CardInfo] <> "Declined";
 
-# Installment / revolving are credit-card only (other payments are single).
-IF [Payment] <> "CreditCard" THEN [Installments] = "Single";
-# Guests cannot use installment / revolving (single only).
+# Guests cannot use express shipping, installment or revolving payment.
+IF [MemberType] = "Guest" THEN [Shipping] = "Standard";
 IF [MemberType] = "Guest" THEN [Installments] = "Single";
 
-# Cash on delivery requires in-person receipt (no drop-off / convenience store).
-IF [Payment] = "CashOnDelivery" THEN [Delivery] = "InPerson";
+# For non-card payment the card-information fields are absent (mask level).
+IF [Payment] <> "CreditCard" THEN [CardInfo] = "_MASK_";
 
-# Express shipping is members-only (no guests).
-IF [Shipping] = "Express" THEN [MemberType] IN { "Regular", "Premium" };
+# Card payment uses valid card information.
+IF [Payment] = "CreditCard" THEN [CardInfo] = "Valid";
+
+# For non-card payment the installment field is masked and disabled, holding Single.
+IF [Payment] <> "CreditCard" THEN [Installments] = "Single";
+
+# Cash on delivery forces in-person pickup.
+IF [Payment] = "CashOnDelivery" THEN [Pickup] = "InPerson";
+
+# --- Abnormal cases belong outside this matrix, one factor at a time ---------
+# A flow-aborting value mixed into the matrix inflates pair coverage: shipping and
+# pickup in that row are never executed, so the pairs are covered on paper only.
+#
+#   CreditCard x empty card number                       -> CARD_REQUIRED
+#   CreditCard x expiry before the reference date 2026-07-01 -> CARD_EXPIRED
+#   CreditCard x card number 4000 0000 0000 0002         -> PAYMENT_DECLINED
+#   CashOnDelivery: DropOff / ConvenienceStore are visible but unselectable (state 3)
+#   Guest: Express / Installment / Revolving are visible but unselectable (state 3)
