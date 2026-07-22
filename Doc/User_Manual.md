@@ -263,11 +263,11 @@ cases cover each level pair — so you can spot gaps.
 ![Coverage matrix after generating — every factor pair cross-tabulated, with a covered / missed / forbidden summary reading 100% pair coverage](asset/Screenshot_Coverage.png)
 
 *The Coverage matrix after generating the shopping-site example. Every factor
-pair is cross-tabulated; the summary reads **covered 102 / missed 0 / forbidden
-62** — 100% pair coverage. Green cells show how many cases hit each level pair;
+pair is cross-tabulated; the summary reads **covered 88 / missed 0 / forbidden
+59** — 100% pair coverage. Green cells show how many cases hit each level pair;
 red **X** cells are pairs a constraint forbids.*
 <br>*生成後の総当たり表（ショッピングサイト例）。全因子ペアを総当たりし、上部に
-**covered 102／missed 0／forbidden 62**＝ペア被覆 100% と表示。緑セルは各水準
+**covered 88／missed 0／forbidden 59**＝ペア被覆 100% と表示。緑セルは各水準
 ペアを覆うケース数、赤い **X** は制約で禁止されたペアです。*
 
 | Cell shows / セル表示 | Meaning / 意味 |

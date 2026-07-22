@@ -12,7 +12,7 @@
 #      guest, DropOff / ConvenienceStore under cash on delivery
 #                                        -> covered by the abnormal cases below
 
-MemberType:   Guest, Regular, Premium
+MemberType:   Guest, Member
 Shipping:     Standard, Express
 Pickup:       DropOff, InPerson, ConvenienceStore
 Payment:      CreditCard, ConveniencePay, BankTransfer, CashOnDelivery
