@@ -1,0 +1,705 @@
+# Medical insurance underwriting — application input model
+# (English version of medical-underwriting.ncproj).
+# System under test: ENISHI Life medical insurance application simulator
+#                    https://modellogue.com/medical-underwriting/
+#
+# A companion to the NeoCEG model of the SAME specification (cause-effect graph):
+#   https://neo-ceg.vercel.app/?file=https://sho1884.github.io/public-files/NeoCEG/Samples/OneMask-medical_insurance_underwriting_en.nceg
+# NeoCEG draws the logic that derives the two results (main-contract class and
+# rider decision) from the inputs; NeoCombi describes the same screen's input
+# space as factors, levels and constraints, and generates the combinations to try.
+#
+# Three inputs exist on the screen only while their condition holds:
+#   SinceDischarge        — only when there is a hospitalization in the last 5 years
+#   OccupationalRisk      — only while employed
+#   IncomeProtectionRider — only while employed
+# The absent state is the _MASK_ level, pinned in both directions by a constraint
+# pair (= and <>), so _MASK_ appears exactly when the field is hidden — never as a
+# stand-in for "any value".
+#
+# This is a .ncproj (project): it carries the generated pairwise set (13 cases)
+# and the full decision table (648 rows — 90 valid, 558 forbidden).
+
+AgeBand:               18to64, 65to74, 75OrOlder
+CurrentTreatment:      None, Ongoing
+Hospitalization5y:     None, Yes
+SinceDischarge:        Under2Years, 2YearsOrMore, _MASK_
+Employment:            Employed, NotEmployed
+OccupationalRisk:      Normal, Hazardous, _MASK_
+IncomeProtectionRider: NotAttached, Attached, _MASK_
+
+# SinceDischarge exists on the screen only when there is a hospitalization.
+IF [Hospitalization5y] = "None" THEN [SinceDischarge]  = "_MASK_";
+IF [Hospitalization5y] = "Yes"  THEN [SinceDischarge] <> "_MASK_";
+
+# OccupationalRisk exists on the screen only while employed.
+IF [Employment] = "NotEmployed" THEN [OccupationalRisk]  = "_MASK_";
+IF [Employment] = "Employed"    THEN [OccupationalRisk] <> "_MASK_";
+
+# IncomeProtectionRider exists on the screen only while employed.
+IF [Employment] = "NotEmployed" THEN [IncomeProtectionRider]  = "_MASK_";
+IF [Employment] = "Employed"    THEN [IncomeProtectionRider] <> "_MASK_";
+
+# ===== NeoCombi annotations (auto-generated; do not edit) =====
+# @neocombi:caseset-factors AgeBand CurrentTreatment Hospitalization5y SinceDischarge Employment OccupationalRisk IncomeProtectionRider
+# @neocombi:case id=P01 count=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case id=P02 count=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case id=P03 count=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case id=P04 count=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case id=P05 count=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case id=P06 count=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case id=P07 count=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case id=P08 count=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case id=P09 count=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case id=P10 count=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case id=P11 count=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case id=P12 count=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case id=P13 count=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D01 count=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D02 count=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D03 count=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D04 count=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=0 id=D05 count=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D06 count=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D07 count=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D08 count=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D09 count=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=0 id=D10 count=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D11 count=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D12 count=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D13 count=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D14 count=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=0 id=D15 count=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D16 count=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D17 count=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D18 count=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D19 count=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=0 id=D20 count=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D21 count=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D22 count=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D23 count=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D24 count=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=0 id=D25 count=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D26 count=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D27 count=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D28 count=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D29 count=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=0 id=D30 count=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=18to64 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D31 count=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D32 count=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D33 count=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D34 count=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=0 id=D35 count=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D36 count=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D37 count=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D38 count=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D39 count=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=0 id=D40 count=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D41 count=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D42 count=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D43 count=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D44 count=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=0 id=D45 count=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D46 count=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D47 count=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D48 count=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D49 count=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=0 id=D50 count=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D51 count=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D52 count=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D53 count=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D54 count=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=0 id=D55 count=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D56 count=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D57 count=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D58 count=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D59 count=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=0 id=D60 count=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=65to74 CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D61 count=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D62 count=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D63 count=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D64 count=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=0 id=D65 count=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D66 count=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D67 count=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D68 count=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D69 count=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=0 id=D70 count=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D71 count=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D72 count=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D73 count=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D74 count=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=0 id=D75 count=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=None Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D76 count=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D77 count=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D78 count=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D79 count=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=0 id=D80 count=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=None SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D81 count=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D82 count=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D83 count=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D84 count=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=0 id=D85 count=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=Under2Years Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D86 count=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D87 count=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=0 id=D88 count=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=0 id=D89 count=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=0 id=D90 count=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=2YearsOrMore Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=Employed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Normal IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=Hazardous IncomeProtectionRider=_MASK_ | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=NotAttached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=Attached | 
+# @neocombi:case forbidden=1 AgeBand=75OrOlder CurrentTreatment=Ongoing Hospitalization5y=Yes SinceDischarge=_MASK_ Employment=NotEmployed OccupationalRisk=_MASK_ IncomeProtectionRider=_MASK_ | 

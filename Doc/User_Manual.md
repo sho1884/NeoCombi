@@ -438,6 +438,16 @@ Testing should still represent that "masked" situation.
   ```
   https://neo-combi.vercel.app/?file=https://…/mfp.ncombi
   ```
+  Point it at a `.ncproj` and the saved sets come with it, so the link opens on the
+  results rather than an empty Test cases tab — as the medical-insurance
+  underwriting sample does. `.ncproj` を指せば保存済みのセットごと開くので、リンクを
+  踏んだ時点で結果が表示されます（医療保険 引受判定の例がそれです）。
+  ```
+  https://neo-combi.vercel.app/?file=https://sho1884.github.io/public-files/NeoCombi/Samples/medical-underwriting.ncproj
+  ```
+  The full sample list — each in English and Japanese — is on the
+  [documentation home](https://sho1884.github.io/public-files/NeoCombi/).
+  例題の一覧（各英語版・日本語版）はドキュメントのトップページにあります。
 
 A NeoCombi file is plain text (PICT input plus a few `# @neocombi:` comment lines),
 so a `.ncombi` model is also a valid PICT model file and is friendly to version
