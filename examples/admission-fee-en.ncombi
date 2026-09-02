@@ -6,6 +6,13 @@
 #
 # Fees are written bare-safe (12USD means $12, etc.): a declaration level may be
 # a bare identifier, digit-leading included, whereas a "$" sign cannot lead one.
+#
+# The SAME specification is also published as a NeoCEG cause-effect graph:
+#   https://neo-ceg.vercel.app/?file=https://sho1884.github.io/public-files/NeoCEG/Samples/Admissionfee_en.nceg
+# NeoCEG draws the fee as five terminal effects; NeoCombi carries it as a
+# five-level expected-result factor pinned to the inputs by constraints. Both say
+# the same thing — one fee per each of the 16 input combinations — through a
+# different kind of output.
 
 Party:    Individual, Group
 AgeBand:  Adult, Elementary, Senior65Plus, Under6

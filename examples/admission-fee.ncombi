@@ -6,6 +6,17 @@
 # 宣言の水準は bare（"1200円" のような数字始まりもクォート不要）、制約の右辺は
 # 文字列リテラルとしてクォートする。A declaration level may be a bare identifier
 # (digit-leading is fine); a constraint right-hand side is a quoted string.
+#
+# 同一仕様を姉妹ツール NeoCEG（原因結果グラフ）でも公開しています。読み比べ用：
+# The SAME specification is also published as a NeoCEG cause-effect graph:
+#   https://neo-ceg.vercel.app/?file=https://sho1884.github.io/public-files/NeoCEG/Samples/Admissionfee_jp.nceg
+# NeoCEG は料金を5つの終端 Effect として描き、NeoCombi は料金を5水準の「期待結果」
+# 因子として持ち、制約で入力に結び付けます。どちらも入力16通りに料金が一意に決まる
+# ことを表しており、出口の形が違うだけです。
+# NeoCEG draws the fee as five terminal effects; NeoCombi carries it as a
+# five-level expected-result factor pinned to the inputs by constraints. Both say
+# the same thing — one fee per each of the 16 input combinations — through a
+# different kind of output.
 
 区分1:    個人, 団体
 区分2:    一般, 小学生, 65歳以上, 6歳未満
