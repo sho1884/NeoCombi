@@ -510,4 +510,10 @@ IF NOT ( [Region] = "APAC" AND [Tier] = "Free" ) THEN [Tier] <> "Free";
 - [Deployment & Operations Guide](Deployment_Guide.md) — for administrators self-hosting NeoCombi.
 - [DSL_Grammar_Specification.md](DSL_Grammar_Specification.md) — DSL grammar v1.0 (full).
 - [Microsoft PICT](https://github.com/microsoft/pict/blob/main/doc/pict.md) — the upstream constraint language.
-- Sibling tool: [NeoCEG](https://github.com/sho1884/NeoCEG).
+- Sibling tools — NeoCombi is one of three tools introduced together at
+  [modellogue.com](https://modellogue.com/): [ModelLogue](https://modellogue.com/app)
+  (state machines and SysML diagrams designed and reviewed in dialogue with AI; N-switch
+  tests from a state machine) and [NeoCEG](https://sho1884.github.io/public-files/NeoCEG/)
+  (the logic that derives an outcome, as a cause-effect graph → decision table).
+  姉妹ツール — NeoCombi は [modellogue.com](https://modellogue.com/) でまとめて紹介している
+  3つのツールの一つです。
