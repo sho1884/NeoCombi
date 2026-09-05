@@ -59,38 +59,25 @@ Why the format makes AI *design* the test model easily / なぜこの形式は A
 - **Plain-text, PICT-subset DSL.** No proprietary binary, no bespoke schema an LLM has to be taught — it is the widely documented Microsoft PICT constraint language, so any capable model can already write it well. / プレーンテキストの PICT サブセット DSL。独自バイナリも、LLM に教え込む独自スキーマも不要。広く文書化された Microsoft PICT の制約言語そのものなので、能力の高いモデルはすでに上手く書けます。
 - **A `.ncombi` file is also a valid PICT model.** The AI's output is directly runnable; there is no lossy translation layer for a model to hallucinate around. / `.ncombi` はそのまま有効な PICT モデル。AI の出力は直接実行でき、幻覚の温床になる変換レイヤーがありません。
 - **Deterministic verification closes the loop.** The forbidden matrix, coverage matrix, and PICT generation give the AI (or a human reviewer) an objective signal to refine against — the same input always yields the same output. / 決定論的な検証がループを閉じる。禁則マトリクス・カバレッジ表・PICT 生成が、AI（や人間のレビュアー）に refine の客観指標を与えます。同じ入力からは常に同じ出力。
-- **Review-driven by design.** Today you can draft a model with any LLM and paste the DSL straight in; the roadmap (UR-007) brings natural-language → DSL authoring in-app, and **ModelLogue** layers AI review on top via n8n. / レビュー駆動の設計。現状でも任意の LLM でモデルを書いて DSL を貼り付けられます。ロードマップ（UR-007）でアプリ内の 自然言語 → DSL オーサリングを、**ModelLogue** が n8n 経由で AI レビューを重ねます。
+- **Review-driven by design.** Today you can draft a model with any LLM and paste the DSL straight in; the roadmap (UR-007) brings natural-language → DSL authoring in-app, reaching an AI outward through n8n rather than embedding one. / レビュー駆動の設計。現状でも任意の LLM でモデルを書いて DSL を貼り付けられます。ロードマップ（UR-007）ではアプリ内の 自然言語 → DSL オーサリングを、AI 内蔵ではなく n8n 経由の外向き連携として実装します。
 
 ## Sibling Projects / 姉妹プロジェクト
 
-NeoCombi is one of three sibling tools that share the factor / level / constraint problem domain. The two authoring tools are deterministic; AI lives *outside* them, reached through n8n.
+NeoCombi is one of **three tools** that share a plain-text design source and one coherent architecture, introduced together at **[modellogue.com](https://modellogue.com/)**. They are independent programs, not a pipeline — each makes a different thing explicit about the same specification.
 
-NeoCombi は、因子・水準・制約という問題領域を共有する3兄弟ツールの一つです。オーサリングツール2つは決定論的で、AI はその *外* に置かれ、n8n を介して呼び出されます。
+NeoCombi は、テキストの設計ソースと統一感のある構成思想でつながる**3つのツール**の一つです。まとめて **[modellogue.com](https://modellogue.com/)** で紹介しています。3つは互いに独立したツールで（パイプラインではありません）、同じ仕様について、それぞれ違うものを明示します。
 
-```mermaid
-flowchart TB
-    subgraph det["Deterministic transformers · no AI inside"]
-        direction LR
-        NCEG["🔗 NeoCEG<br/>Cause-Effect Graph"]
-        NCOMBI["🧩 NeoCombi<br/>Pairwise / N-wise"]
-    end
-    NCEG -->|model output| ML
-    NCOMBI -->|model output| ML
-    ML["💬 ModelLogue<br/>AI review platform"] -.->|via n8n| AI(["🤖 AI"])
-    classDef tool fill:#dcfce7,stroke:#16a34a,color:#111,font-weight:bold;
-    classDef review fill:#f3e8ff,stroke:#a855f7,color:#111,font-weight:bold;
-    classDef ai fill:#fff7ed,stroke:#f97316,color:#111;
-    class NCEG,NCOMBI tool;
-    class ML review;
-    class AI ai;
-```
+| Tool | What it makes explicit / 何を明示するか |
+|---|---|
+| [ModelLogue](https://modellogue.com/app) | State machines, SysML requirement and process diagrams, designed and reviewed in dialogue with AI; N-switch tests from a state machine / 状態遷移・SysML の要求図とプロセス図を AI との対話で設計・レビュー。状態遷移から N スイッチテストを生成 |
+| [NeoCEG](https://github.com/sho1884/NeoCEG) | The logic that derives an outcome, as a cause-effect graph → decision table / 結果を導く論理を、原因結果グラフ → デシジョンテーブルとして |
+| **NeoCombi** (this repo / 本リポジトリ) | The input space and the combinations worth trying / 入力空間と、試すべき組み合わせ |
 
-- **[NeoCEG](https://github.com/sho1884/NeoCEG)** — Cause-Effect Graph authoring tool. / 原因結果グラフ（CEG）のオーサリングツール。
-- **[ModelLogue](https://github.com/sho1884/ModelLogue)** — AI-assisted review platform that consumes NeoCEG / NeoCombi outputs as model-type plug-ins. / NeoCEG / NeoCombi の出力を model-type プラグインとして受け取る AI レビュープラットフォーム。
+Two of the samples above — **admission fee** and **medical insurance underwriting** — are built from the same specification in both NeoCombi and NeoCEG, so a pair can be read side by side. / 上の例のうち**入館料**と**医療保険 引受判定**は、同じ仕様から NeoCombi と NeoCEG の両方で作ってあり、対で読み比べられます。
 
-NeoCEG and NeoCombi are **deterministic transformers** (no AI inside). ModelLogue provides AI review on top via n8n. / NeoCEG と NeoCombi は **決定論変換器**（AI 非内蔵）。ModelLogue が n8n 経由で AI レビューを上乗せします。
+NeoCombi itself embeds no AI — generation is deterministic, so the same model always yields the same test set. Optional AI authoring is meant to reach *outward* through n8n rather than live inside the tool ([ADR-003](Doc/adr/ADR-003-no-embedded-ai-n8n-passthrough.yaml)). / NeoCombi 自体は AI を内蔵しません。生成は決定論的で、同じモデルからは常に同じテストセットが出ます。将来の AI オーサリングも、内蔵ではなく n8n 経由の *外向き* パススルーに限る方針です（[ADR-003](Doc/adr/ADR-003-no-embedded-ai-n8n-passthrough.yaml)）。
 
-See [`Doc/PROJECT_KICKOFF.md`](Doc/PROJECT_KICKOFF.md) for the full architectural rationale. / 詳細なアーキテクチャの根拠は [`Doc/PROJECT_KICKOFF.md`](Doc/PROJECT_KICKOFF.md) を参照。
+See [`Doc/PROJECT_KICKOFF.md`](Doc/PROJECT_KICKOFF.md) for the original architectural rationale — note that its ModelLogue plug-in integration was a kickoff-time plan, not something that was built. / 当初のアーキテクチャの根拠は [`Doc/PROJECT_KICKOFF.md`](Doc/PROJECT_KICKOFF.md) を参照（同書の ModelLogue plug-in 統合は立ち上げ時の構想で、実装されたものではありません）。
 
 ## What's in v0.1 / v0.1 の対応範囲
 

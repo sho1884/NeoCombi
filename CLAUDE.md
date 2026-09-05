@@ -8,9 +8,11 @@
 
 姉妹ツール：
 - **[NeoCEG](https://github.com/sho1884/NeoCEG)** — 原因結果グラフ（CEG）専用の test design tool
-- **[ModelLogue](https://github.com/sho1884/ModelLogue)** — AI 支援レビュープラットフォーム
+- **[ModelLogue](https://modellogue.com/app)** — 状態遷移・SysML の要求図/プロセス図を AI との対話で設計・レビュー。状態遷移から N スイッチテストを生成
 
-NeoCEG / NeoCombi は決定論変換器（AI を内蔵しない）。ModelLogue がそれら CLI 出力を model-type plug-in として呼び出し AI レビューを提供する、という 3 兄弟構成（[`Doc/PROJECT_KICKOFF.md`](Doc/PROJECT_KICKOFF.md) 参照）。
+3つはテキストの設計ソースと構成思想を共有する独立したツールで、まとめて [modellogue.com](https://modellogue.com/) で紹介している。**相互にデータを渡すパイプラインではない。** NeoCombi 自体は決定論変換器で AI を内蔵しない。
+
+> `Doc/PROJECT_KICKOFF.md` は「ModelLogue が NeoCEG / NeoCombi の出力を model-type plug-in として取り込み AI レビューする」構成を記しているが、これは立ち上げ時（2026-05）の構想であって実装されていない。3兄弟の関係を説明するときにこの構図を事実として書かないこと。
 
 ## 作業方針
 
@@ -82,7 +84,7 @@ NeoCEG と同等構成を予定：
 
 ### AI 不使用（NeoCEG と同様）
 
-NeoCombi は決定論変換器として設計し、内部に AI を持ち込まない。AI レビューが必要な場合は ModelLogue 経由で行う。これにより：
+NeoCombi は決定論変換器として設計し、内部に AI を持ち込まない。AI 連携が必要な場合は n8n 経由の外向きパススルーとして実装する（[ADR-003](Doc/adr/ADR-003-no-embedded-ai-n8n-passthrough.yaml)）。これにより：
 
 - CI/CD パイプラインから決定論的に呼び出せる（CLI モード）
 - 同じ入力から常に同じ出力（再現性）
